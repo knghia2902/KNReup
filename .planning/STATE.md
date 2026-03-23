@@ -5,13 +5,13 @@
 See: .planning/PROJECT.md (updated 2026-03-23)
 
 **Core value:** Tự động hoá pipeline lồng tiếng video end-to-end
-**Current focus:** Phase 2 — Core Pipeline MVP
+**Current focus:** Phase 3 — NLE Editor UI
 
 ## Current Status
 
 - **Milestone:** 1 (Desktop App Hoàn Chỉnh)
-- **Phase:** 1 (Foundation)
-- **Status:** Phase 1 ✅ Complete
+- **Phase:** 2 (Core Pipeline MVP)
+- **Status:** Phase 2 ✅ Complete
 
 ## Context
 
@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | Foundation (Tauri + Sidecar) | ✅ Complete |
-| 2 | Core Pipeline MVP | — |
+| 2 | Core Pipeline MVP | ✅ Complete |
 | 3 | NLE Editor UI | — |
 | 4 | Multi-Engine + Advanced | — |
 | 5 | Output Advanced | — |
