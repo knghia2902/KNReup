@@ -16,7 +16,7 @@ result: pass
 
 ### 2. Giao diện Processing Overlay
 expected: Ngay khi bắt đầu xử lý, một màn hình overlay mờ (Processing Overlay) xuất hiện che toàn màn hình, hiển thị vòng loading, tên bước hiện tại (vd: Extracting/Transcribing) và % tiến độ.
-result: pending
+result: issue
 
 ### 3. Tiến trình SSE - Transcribe & Translate
 expected: Overlay cập nhật tiến trình liên tục, chuyển mượt mà từ bước `transcribe` (Whisper) sang `translate` (DeepSeek/Argos) mà không bị kẹt hay crash trình duyệt.
@@ -44,4 +44,7 @@ skipped: 0
 
 ## Gaps
 
-[none yet]
+- **Test 2 (issue)**: Không thả được video do bị kẹt HTML5 Drop, và UI Overlay hiển thị cản trở batch processing. 
+- **Root cause**: Tauri native drag-drop trả về đường dẫn Absolute thay vì object File, đồng thời sử dụng Upload qua HTTP cục bộ quá nặng/chậm. Thiết kế Blocking Overlay sai UX.
+- **Evidence**: `.planning/debug/upload-and-overlay-issue.md`
+- **Fix Plan**: `05-GAP-PLAN.md` (Tái thiết kế hệ thống nhận File thông qua Local Path, và thay Overlay bằng Job Monitor thả nổi nền).
