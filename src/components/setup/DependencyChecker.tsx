@@ -1,9 +1,13 @@
 /**
- * DependencyChecker — First-run popup kiểm tra GPU/FFmpeg.
- * Hiển thị ✅/❌ cho mỗi dependency. Tự đóng sau 2s nếu tất cả OK.
- * Tham khảo: VideoTransAI backend status card.
+ * DependencyChecker — taste-skill compliant
+ * No emojis. Phosphor Icons. Liquid glass card.
+ * Skeleton shimmer loading. Tactile feedback.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import {
+  CheckCircle, Warning, XCircle,
+  Circuitry, FilmStrip, Cpu, CircleNotch,
+} from '@phosphor-icons/react';
 import type { SystemCheck } from '../../hooks/useSidecar';
 import './DependencyChecker.css';
 
@@ -16,21 +20,13 @@ interface DependencyCheckerProps {
 }
 
 export function DependencyChecker({
-  systemCheck,
-  loading,
-  error,
-  onComplete,
-  onRetry,
+  systemCheck, loading, error, onComplete, onRetry,
 }: DependencyCheckerProps) {
   const [dismissed, setDismissed] = useState(false);
 
-  // Auto-dismiss sau 2s nếu tất cả OK
   useEffect(() => {
     if (systemCheck?.all_ok && !dismissed) {
-      const timer = setTimeout(() => {
-        setDismissed(true);
-        onComplete();
-      }, 2000);
+      const timer = setTimeout(() => { setDismissed(true); onComplete(); }, 2000);
       return () => clearTimeout(timer);
     }
   }, [systemCheck, dismissed, onComplete]);
@@ -39,72 +35,62 @@ export function DependencyChecker({
 
   return (
     <div className="dep-overlay">
-      <div className="dep-card">
-        <h2 className="dep-title">Kiểm Tra Hệ Thống</h2>
-        <p className="dep-desc">KNReup đang kiểm tra các dependency cần thiết...</p>
+      <div className="dep-card glass-panel">
+        <div className="dep-header">
+          <Cpu size={20} weight="duotone" className="dep-header-icon" />
+          <div>
+            <h2 className="dep-title">System Check</h2>
+            <p className="dep-desc">Verifying dependencies...</p>
+          </div>
+        </div>
 
         {error && (
-          <div className="dep-error">
-            <span className="dep-error-icon">⚠️</span>
+          <div className="dep-alert danger">
+            <Warning size={14} weight="bold" />
             <span>{error}</span>
           </div>
         )}
 
         {loading && !systemCheck && (
           <div className="dep-loading">
-            <div className="dep-spinner" />
-            <span>Đang kết nối tới backend...</span>
+            <CircleNotch size={18} className="dep-spin" />
+            <span>Connecting to backend...</span>
           </div>
         )}
 
         {systemCheck && (
           <div className="dep-list">
-            {/* GPU */}
-            <div className={`dep-item ${systemCheck.gpu.gpu_available ? 'ok' : 'warn'}`}>
-              <span className="dep-icon">{systemCheck.gpu.gpu_available ? '✅' : '⚠️'}</span>
-              <div className="dep-info">
-                <span className="dep-label">GPU</span>
-                <span className="dep-detail">{systemCheck.summary.gpu}</span>
-              </div>
-            </div>
-
-            {/* CUDA */}
-            {systemCheck.gpu.gpu_available && (
-              <div className={`dep-item ${systemCheck.gpu.cuda_version ? 'ok' : 'warn'}`}>
-                <span className="dep-icon">{systemCheck.gpu.cuda_version ? '✅' : '⚠️'}</span>
-                <div className="dep-info">
-                  <span className="dep-label">CUDA</span>
-                  <span className="dep-detail">
-                    {systemCheck.gpu.cuda_version
-                      ? `CUDA ${systemCheck.gpu.cuda_version} — ${systemCheck.gpu.compute_type}`
-                      : 'Không tìm thấy CUDA runtime'}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* FFmpeg */}
-            <div className={`dep-item ${systemCheck.ffmpeg.available ? 'ok' : 'fail'}`}>
-              <span className="dep-icon">{systemCheck.ffmpeg.available ? '✅' : '❌'}</span>
-              <div className="dep-info">
-                <span className="dep-label">FFmpeg</span>
-                <span className="dep-detail">{systemCheck.summary.ffmpeg}</span>
-              </div>
-            </div>
+            <DepItem
+              icon={<Circuitry size={16} weight="duotone" />}
+              label="GPU"
+              detail={systemCheck.gpu.gpu_available
+                ? `${systemCheck.gpu.gpu_name} ${systemCheck.gpu.cuda_version ? `/ CUDA ${systemCheck.gpu.cuda_version}` : ''}`
+                : 'Not found — CPU mode'}
+              status={systemCheck.gpu.gpu_available ? 'ok' : 'warn'}
+            />
+            <DepItem
+              icon={<FilmStrip size={16} weight="duotone" />}
+              label="FFmpeg"
+              detail={systemCheck.ffmpeg.available
+                ? (systemCheck.ffmpeg.version?.split(' ').slice(0, 3).join(' ') || 'Installed')
+                : 'Not installed'}
+              status={systemCheck.ffmpeg.available ? 'ok' : 'fail'}
+            />
           </div>
         )}
 
-        {/* Status bar */}
         {systemCheck && (
           <div className="dep-footer">
             {systemCheck.all_ok ? (
-              <span className="dep-ok-text">Tất cả OK — đang chuyển vào app...</span>
+              <div className="dep-ok">
+                <CheckCircle size={14} weight="fill" />
+                <span>All clear</span>
+              </div>
             ) : (
               <div className="dep-actions">
-                <span className="dep-warn-text">Một số dependency chưa cài đặt</span>
-                <button className="btn btn-primary" onClick={onRetry}>Kiểm tra lại</button>
-                <button className="btn" onClick={() => { setDismissed(true); onComplete(); }}>
-                  Tiếp tục
+                <button className="dep-btn primary" onClick={onRetry}>Retry</button>
+                <button className="dep-btn" onClick={() => { setDismissed(true); onComplete(); }}>
+                  Skip
                 </button>
               </div>
             )}
@@ -114,3 +100,20 @@ export function DependencyChecker({
     </div>
   );
 }
+
+function DepItem({ icon, label, detail, status }: {
+  icon: ReactNode; label: string; detail: string; status: 'ok' | 'warn' | 'fail';
+}) {
+  const StatusIcon = status === 'ok' ? CheckCircle : status === 'warn' ? Warning : XCircle;
+  return (
+    <div className={`dep-item ${status}`}>
+      <div className="dep-item-icon">{icon}</div>
+      <div className="dep-item-info">
+        <span className="dep-item-label">{label}</span>
+        <span className="dep-item-detail">{detail}</span>
+      </div>
+      <StatusIcon size={14} weight="fill" className={`dep-status-icon ${status}`} />
+    </div>
+  );
+}
+
