@@ -10,8 +10,8 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 ## Current Status
 
 - **Milestone:** 1 (Desktop App Hoàn Chỉnh)
-- **Phase:** 2 (Core Pipeline MVP)
-- **Status:** Phase 2 ✅ Complete
+- **Phase:** 3 (NLE Editor UI)
+- **Status:** Phase 3 ✅ Complete
 
 ## Context
 
@@ -39,7 +39,7 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 |-------|------|--------|
 | 1 | Foundation (Tauri + Sidecar) | ✅ Complete |
 | 2 | Core Pipeline MVP | ✅ Complete |
-| 3 | NLE Editor UI | — |
+| 3 | NLE Editor UI | ✅ Complete |
 | 4 | Multi-Engine + Advanced | — |
 | 5 | Output Advanced | — |
 | 6 | Timeline + Premium UI | — |
@@ -48,4 +48,4 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 9 | Polish + License | — |
 
 ---
-*Last updated: 2026-03-23T12:45+07:00 — Phase 1 complete*
+*Last updated: 2026-03-23T15:50+07:00 — Phase 3 complete*
