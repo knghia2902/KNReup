@@ -1,6 +1,18 @@
 # Roadmap — KNReup
 
 > Thiết kế lại hoàn toàn từ tonghop.md, tối ưu cho flow phát triển thực tế.
+> Cập nhật 2026-03-23: bổ sung feedback từ tech review, chốt layout, thêm notes kỹ thuật.
+
+## Layout đã chốt
+> Xem chi tiết: `.planning/references/layout-spec.md`
+> Sơ đồ: `.planning/references/layout-overview.png`, `layout-states.png`
+>
+> - Titlebar tabs: Editor / Downloader / Monitor / Settings
+> - Sidebar 44px + Media Bin 210px + Video Preview flex:1 + Properties 268px (4 tabs: STYLE/TTS/SUB/OUT)
+> - Timeline 120px (4 tracks: VIDEO/AUDIO/SUB/BGM) + Status bar 22px
+> - Logic ẩn/hiện theo module + sidebar state
+
+---
 
 ## Phase 1: Foundation — Tauri Shell + Sidecar Bridge
 > **Mục tiêu**: App chạy được, frontend ↔ backend giao tiếp OK
@@ -9,12 +21,16 @@
 - Tauri 2.0 project initialization + React/TypeScript/Vite
 - Python FastAPI sidecar setup (auto-port detection)
 - Sidecar bridge: Tauri ↔ FastAPI HTTP + JSON protocol
-- First-run dependency checker (Python, FFmpeg, CUDA detect)
-- GPU auto-detect + status popup (✅/❌)
+- Health-check polling với **exponential backoff** (không dùng fixed interval)
+- First-run dependency checker (FFmpeg, CUDA detect, GPU status ✅/❌)
 - taste-skill installation + base design system (dark theme, glassmorphism)
-- Basic app layout skeleton (5-panel NLE frame)
+- Layout skeleton: Titlebar + Sidebar + Media Bin + Preview + Properties + Timeline + Status bar
+- Module switching logic (Editor/Downloader/Monitor/Settings ẩn/hiện panels)
 
-**UAT**: App khởi động → detect GPU → hiển thị status → frontend gọi `/api/health` thành công
+> **Note**: Dùng `react-resizable-panels` cho panel resize, không tự viết.
+> **Note**: Test SSE localhost trên Windows sớm (Windows Defender có thể chặn).
+
+**UAT**: App khởi động → detect GPU → hiển thị status → frontend gọi `/api/health` → layout 4 module hoạt động
 
 ---
 
@@ -22,15 +38,22 @@
 > **Mục tiêu**: Upload video → nhận diện giọng → dịch → tạo giọng → xuất video
 > **Output**: Pipeline 4 bước hoạt động end-to-end
 
-- Whisper ASR integration (faster-whisper, model selection, VAD, chunked)
-- Translation engine #1: DeepSeek API (đã chứng minh từ VideoTransAI)
+- Whisper ASR integration (faster-whisper, model selection, VAD Silero, chunked)
+- **Model strategy**: base cho CPU-only, large-v3 cho GPU (quyết định dựa trên VRAM)
+- Translation engine #1: DeepSeek API — **retry với exponential backoff ngay từ đầu**
 - Translation engine #2: CTranslate2/Argos offline
 - TTS engine #1: Edge TTS (Microsoft Neural)
-- TTS engine #2: Piper TTS offline (ONNX model vi_VN)
+- TTS engine #2: Piper TTS offline (ONNX model vi_VN) — **offline fallback cho Edge TTS**
 - FFmpeg output builder: merge audio + video
 - Burn phụ đề: ASS via FFmpeg (phương pháp 1)
-- SSE progress streaming
-- Basic upload + processing UI
+- SSE progress streaming (test trên Windows kỹ)
+- **Abstract interface pattern** cho Translation + TTS engines (dễ mở rộng Phase 4):
+  ```python
+  class TranslationEngine(ABC):
+      async def translate(self, text, src, tgt) -> str: ...
+      async def health_check(self) -> bool: ...
+  ```
+- Basic upload + processing UI (tab TTS trong Properties)
 
 **UAT**: Upload MP4 → Whisper transcribe → DeepSeek dịch → Edge TTS đọc → FFmpeg xuất video có lồng tiếng + phụ đề
 
@@ -38,37 +61,44 @@
 
 ## Phase 3: NLE Editor UI — Preview + Subtitle Editor
 > **Mục tiêu**: Giao diện editor chuyên nghiệp, WYSIWYG preview
-> **Output**: 5-panel NLE layout hoàn chỉnh
+> **Output**: Layout hoàn chỉnh với 4 properties tabs
 
-- NLE 5-Panel layout implementation (resizable panels)
 - Video Preview panel: playback controls, WYSIWYG subtitle overlay (Canvas API)
-- Subtitle Panel: segment list, inline edit, timestamp edit
-- Properties Panel: Style/Text/TTS tabs
-- Burn phụ đề: WYSIWYG Canvas → PNG overlay (phương pháp 2)
-- So sánh + benchmark ASS vs Canvas rendering
+- **Canvas font rendering tiếng Việt**: test FontFaceObserver, kiểm tra dấu render đúng
+- **Chiến lược hardsub**: Canvas cho preview, ASS cho export — không cố 1:1 giống nhau
+- Properties tab STYLE: 5 sections (ngôn ngữ, phụ đề style, video ratio, blur regions, logo/watermark)
+- Properties tab SUB: segment list, timecode input, split/merge/del, source + translated text, re-TTS per segment
+- Properties tab TTS: dubbing toggle, engine select, voice dropdown, speed/vol/pitch, fallback chain
+- Properties tab OUT: codec H264/H265/VP9, CRF, resolution, audio mix mode, export queue
+- Sidebar state switching (Preview/Subtitle/Pipeline/Monitor focus)
 - SRT import/export
 - Drag & drop video import
 - Style presets (7+ presets)
+- Subtitle overlay on Canvas: font, size, color, outline, position
 
-**UAT**: Mở video → thấy subtitle overlay trên preview → chỉnh sửa text → thay đổi style → export đúng như preview
+> **Note**: Dùng `react-resizable-panels` cho panels.
+> **Note**: Logo/watermark drag dot trên preview zone.
+
+**UAT**: Mở video → subtitle overlay trên preview → chỉnh text tab SUB → style tab STYLE → export tab OUT → preview WYSIWYG khớp
 
 ---
 
 ## Phase 4: Multi-Engine + Advanced Features
-> **Mục tiêu**: Đa dạng engine, audio FX, các tính năng nâng cao
+> **Mục tiêu**: Đa dạng engine, audio FX, batch processing
 > **Output**: 4 engine dịch + 4 engine TTS + audio processing
 
 - Translation engine #3: Google Gemini API
 - Translation engine #4: OpenAI API
 - TTS engine #3: gTTS (Google)
-- TTS engine #4: SmartVoice (kiểm tra ali33.site API)
+- TTS engine #4: SmartVoice (kiểm tra ali33.site API — **API không chính thức, có rủi ro**)
+- **Circuit breaker pattern** cho fallback chain (cool-down period khi engine bị lỗi liên tục)
 - Auto fallback chain + key rotation (round-robin)
 - Custom prompt presets (nhiều slot, context-aware)
 - Audio FX Pipeline (highpass, lowpass, EQ, compressor, loudness, speed, pitch, fade)
 - Batch processing + job queue
 - Cancel / Pause pipeline
 
-**UAT**: Chọn engine → dịch thành công → fallback khi gặp lỗi → Audio FX nghe rõ sự khác biệt
+**UAT**: Chọn engine → dịch thành công → bật circuit breaker khi lỗi → fallback tự động → Audio FX rõ khác biệt
 
 ---
 
@@ -76,13 +106,13 @@
 > **Mục tiêu**: Professional output với đầy đủ effects
 > **Output**: Video export chất lượng cao với mọi tùy chỉnh
 
-- Watermark text + logo (drag-and-drop positioning)
-- PaddleOCR + auto blur phụ đề cứng
-- Manual blur regions
-- BGM (nhạc nền): auto loop, gain, trim
+- Watermark text + logo (drag dot positioning trên preview — đã có từ layout)
+- PaddleOCR + auto blur phụ đề cứng — **model ~500MB, chậm trên CPU, cân nhắc easyocr alternative**
+- Manual blur regions (vẽ trên preview zone)
+- BGM (nhạc nền): auto loop, gain, trim — track BGM trên timeline
 - Audio denoise (afftdn)
-- Smart Crop/Resize (16:9, 9:16, 1:1 — AI subject detection)
-- Encoding presets (H.264/H.265, CRF, resolution)
+- Smart Crop/Resize (16:9, 9:16 — **AI subject detection để experimental/optional**)
+- Encoding presets (H.264/H.265/VP9, CRF, resolution) — đã có tab OUT
 - Font tùy chỉnh (Google Fonts), bold/italic, nền phụ đề, text shadow
 
 **UAT**: Export video 9:16 với watermark + blur sub cũ + nhạc nền + H.265
@@ -90,35 +120,37 @@
 ---
 
 ## Phase 6: Multi-Track Timeline + Premium UI
-> **Mục tiêu**: Timeline chuyên nghiệp, UI đẹp hoàn thiện
-> **Output**: Editor-grade timeline + polished UI
+> **Mục tiêu**: Timeline 4 tracks, UI đẹp hoàn thiện
+> **Output**: Timeline hoạt động + polished UI
 
-- Multi-track timeline (video + audio + subtitle tracks)
-- Waveform display, thumbnail frames
-- Playhead, snap-to-grid, collision detection, zoom
+- 4-track timeline cố định: VIDEO / AUDIO / SUB / BGM
+- **Dùng `wavesurfer.js`** cho waveform thay vì tự render
+- Thumbnail generation bằng FFmpeg ở background, cache ra disk
+- Playhead, zoom controls
+- **Simplified version trước**: không cần snap-to-grid, collision detection ngay v1
 - Merge/Split subtitle segments từ timeline
 - Dark/Light theme toggle + accent color
 - Micro-animations, hover effects, panel transitions
 - Keyboard shortcuts (Space, ←→, C, V, Ctrl+S, Ctrl+Z)
 - Multi API key management + rotation + usage tracking
 
-**UAT**: Kéo subtitle block trên timeline → snap vào grid → merge 2 segments → toggle theme
+**UAT**: Play video → waveform hiển thị → kéo playhead → zoom timeline → merge subtitle → toggle theme
 
 ---
 
 ## Phase 7: Video Downloader
 > **Mục tiêu**: Download video đa nền tảng, no-watermark
-> **Output**: Download panel tích hợp trong app
+> **Output**: Module Downloader trong titlebar tab
 
 - Douyin downloader (f2 + no-watermark extraction)
 - TikTok / YouTube / Facebook (yt-dlp)
-- Paste link + batch URL import
+- Paste link + batch URL import (URL Queue panel trong Downloader module)
 - SQLite state tracking + dedup protection
 - Async batch download pipeline
-- Download Panel UI (progress, queue, history)
+- Download Panel UI (progress, queue, history) — Downloader module layout
 - Folder organization by user/platform
 
-**UAT**: Paste Douyin URL → download no-watermark 1080p → auto organize folder
+**UAT**: Chuyển tab Downloader → paste Douyin URL → download no-watermark 1080p → tổ chức folder
 
 ---
 
@@ -128,14 +160,14 @@
 
 - Account tracking + periodic polling
 - Cookie extraction + JIT auth + health check
-- Proxy rotation + anti-ban
-- Monitor dashboard UI
+- Proxy rotation + anti-ban — **đây là arms race, cần maintain thường xuyên**
+- Monitor module UI (Account list + Video feed trong titlebar tab Monitor)
 - AI Text Editor (review + suggest)
 - AI Video Summarizer (key moments → short video)
 - Auto Copyright Analyzer
 - Subtitle Masking (AI detect + overlay)
 
-**UAT**: Thêm Douyin account → scan 10 video mới → auto queue download → AI summarize 1 video
+**UAT**: Tab Monitor → thêm Douyin account → scan 10 video mới → auto queue download
 
 ---
 
@@ -143,30 +175,59 @@
 > **Mục tiêu**: Sản phẩm hoàn thiện sẵn sàng phân phối
 > **Output**: App ổn định, có license, sẵn sàng release
 
-- License system (user, expiry, device binding)
+- **Dùng SaaS license** (Keygen.sh hoặc LemonSqueezy) thay vì tự xây
 - Auto-update mechanism
 - Error reporting / crash analytics
 - Performance optimization + memory management
 - Documentation / User guide
-- Installer / packaging
+- Installer / packaging (PyInstaller cho sidecar, Tauri bundler cho app)
 - Beta testing + bug fixes
 
 **UAT**: User cài app → nhập license → sử dụng đầy đủ tính năng → auto update khi có bản mới
 
 ---
 
+## Milestones
+
+### Milestone 1 — MVP Release (sau Phase 3)
+> Pipeline + Editor cơ bản đủ để có user thực tế.
+> Phase 1 + 2 + 3 → release sớm.
+
+### Milestone 2 — Pro Release (sau Phase 6)
+> Multi-engine + effects + timeline → sản phẩm pro.
+
+### Milestone 3 — Full Release (sau Phase 9)
+> Downloader + Monitor + AI + License → sản phẩm hoàn chỉnh.
+
+---
+
 ## Tóm Tắt
 
-| Phase | Tên | Dependencies | Ước tính |
-|-------|-----|-------------|----------|
-| 1 | Foundation (Tauri + Sidecar) | Không | 1-2 tuần |
-| 2 | Core Pipeline MVP | Phase 1 | 2-3 tuần |
-| 3 | NLE Editor UI | Phase 2 | 2-3 tuần |
-| 4 | Multi-Engine + Advanced | Phase 2 | 2 tuần |
-| 5 | Output Advanced | Phase 3, 4 | 2 tuần |
-| 6 | Timeline + Premium UI | Phase 3 | 2 tuần |
-| 7 | Video Downloader | Phase 1 | 2 tuần |
-| 8 | Auto-Monitor + AI | Phase 7 | 2-3 tuần |
-| 9 | Polish + License | All | 1-2 tuần |
+| Phase | Tên | Dependencies |
+|-------|-----|-------------|
+| 1 | Foundation (Tauri + Sidecar + Layout) | Không |
+| 2 | Core Pipeline MVP | Phase 1 |
+| 3 | NLE Editor UI (4 tabs, sidebar states) | Phase 2 |
+| 4 | Multi-Engine + Advanced | Phase 2 |
+| 5 | Output Advanced | Phase 3, 4 |
+| 6 | Timeline + Premium UI | Phase 3 |
+| 7 | Video Downloader | Phase 1 |
+| 8 | Auto-Monitor + AI | Phase 7 |
+| 9 | Polish + License | All |
 
-**Tổng ước tính**: ~16-22 tuần (4-5 tháng)
+## Kỹ thuật Notes (từ tech review)
+
+| Chủ đề | Quyết định |
+|--------|-----------|
+| Panel resize | Dùng `react-resizable-panels` (battle-tested library) |
+| Waveform | Dùng `wavesurfer.js` |
+| License system | Dùng SaaS (Keygen.sh / LemonSqueezy) |
+| API fallback | Circuit breaker pattern (cool-down period) |
+| SSE trên Windows | Test sớm Phase 1 (Defender có thể chặn) |
+| Canvas tiếng Việt | Test FontFaceObserver cho dấu tiếng Việt |
+| Hardsub strategy | Canvas = preview, ASS = export |
+| PaddleOCR | ~500MB model, cân nhắc easyocr alternative |
+| SmartVoice ali33.site | API không chính thức, rủi ro cao |
+| Anti-ban downloader | Arms race, cần maintain liên tục |
+| Sidecar health-check | Exponential backoff, không fixed interval |
+| Whisper model | base (CPU) / large-v3 (GPU), strategy theo VRAM |
