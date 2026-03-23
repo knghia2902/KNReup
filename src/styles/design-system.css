@@ -3,13 +3,14 @@
  * taste-skill settings: DESIGN_VARIANCE=5, MOTION_INTENSITY=4, VISUAL_DENSITY=7
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* ─── Colors: NLE Dark Theme ─────────────────────────── */
-  --bg-primary:    #0a0a0f;
-  --bg-secondary:  #12121a;
-  --bg-panel:      #1a1a25;
+  /* taste-skill settings: DESIGN_VARIANCE=5, MOTION_INTENSITY=4, VISUAL_DENSITY=8 */
+  /* ─── Colors: NLE Dark Theme (Off-Black, no pure #000) ──── */
+  --bg-primary:    #0c0c12;
+  --bg-secondary:  #131320;
+  --bg-panel:      #1b1b2a;
   --bg-surface:    #222233;
   --bg-hover:      #2a2a3d;
   --bg-active:     #33334d;
@@ -17,8 +18,8 @@
   /* Borders */
   --border:        #2d2d44;
   --border-hover:  #3d3d55;
-  --border-active: #4f46e5;
-  --border-focus:  #6366f1;
+  --border-active: #10b981;
+  --border-focus:  #34d399;
 
   /* Text */
   --text-primary:   #e2e8f0;
@@ -26,11 +27,11 @@
   --text-muted:     #64748b;
   --text-disabled:  #475569;
 
-  /* Accent */
-  --accent:         #6366f1;
-  --accent-hover:   #818cf8;
-  --accent-active:  #4f46e5;
-  --accent-subtle:  rgba(99, 102, 241, 0.15);
+  /* Accent — Emerald (taste-skill: purple/lila BANNED) */
+  --accent:         #10b981;
+  --accent-hover:   #34d399;
+  --accent-active:  #059669;
+  --accent-subtle:  rgba(16, 185, 129, 0.15);
 
   /* Semantic */
   --success:        #22c55e;
@@ -58,9 +59,9 @@
   --panel-glass:    rgba(26, 26, 37, 0.85);
   --panel-blur:     12px;
 
-  /* ─── Typography ─────────────────────────────────────── */
-  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono:  'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  /* ─── Typography (taste-skill: Inter BANNED, use Geist) ─ */
+  --font-sans:  'Geist', 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Geist Mono', 'Consolas', monospace;
   --font-xs:    11px;
   --font-sm:    12px;
   --font-base:  13px;
