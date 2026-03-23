@@ -1,0 +1,160 @@
+/*
+ * DependencyChecker CSS — glassmorphism overlay popup
+ */
+
+.dep-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dep-card {
+  background: var(--panel-glass);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: var(--sp-8);
+  width: 480px;
+  max-width: 90vw;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: slideUp var(--duration-normal) var(--ease-out);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.dep-title {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  margin-bottom: var(--sp-2);
+}
+
+.dep-desc {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-6);
+}
+
+.dep-error {
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger);
+  border-radius: var(--panel-radius);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--font-sm);
+  color: var(--danger);
+}
+
+.dep-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 0;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+}
+
+.dep-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.dep-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+
+.dep-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--panel-radius);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.dep-item.ok { border-color: var(--success); }
+.dep-item.warn { border-color: var(--warning); }
+.dep-item.fail { border-color: var(--danger); }
+
+.dep-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.dep-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dep-label {
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.dep-detail {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+.dep-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.dep-ok-text {
+  color: var(--success);
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+.dep-warn-text {
+  color: var(--warning);
+  font-size: var(--font-sm);
+  margin-bottom: var(--sp-2);
+}
+
+.dep-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+}
+
+.dep-actions .btn {
+  width: 100%;
+  justify-content: center;
+}

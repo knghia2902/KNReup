@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+
+# Build
+dist/
+target/
+build/
+*.exe
+*.spec
+
+# Tauri
+src-tauri/target/
+
+# Python sidecar
+python-sidecar/dist/
+python-sidecar/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Clone directory (reference only, rất nặng)
+Clone/
+
+# Temp files
+*.tmp
+*.log
+
+# Outputs
+outputs/
+downloads/
+uploads/
+
+# Environment
+.env
+.env.local
+
+# Knreup-app temp (đã copy)
+# D:\Tools\knreup-app/
+
+# Images gốc (đã copy vào .planning/references/)
+"Sơ đồ tổng quan.png"
+"logic ẩn hiện theo từng state.png"
+"Đánh giá từ sonet 4.6"
+Layout

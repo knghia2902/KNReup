@@ -1,0 +1,257 @@
+/*
+ * KNReup Design System — NLE Dark Theme
+ * taste-skill settings: DESIGN_VARIANCE=5, MOTION_INTENSITY=4, VISUAL_DENSITY=7
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ─── Colors: NLE Dark Theme ─────────────────────────── */
+  --bg-primary:    #0a0a0f;
+  --bg-secondary:  #12121a;
+  --bg-panel:      #1a1a25;
+  --bg-surface:    #222233;
+  --bg-hover:      #2a2a3d;
+  --bg-active:     #33334d;
+
+  /* Borders */
+  --border:        #2d2d44;
+  --border-hover:  #3d3d55;
+  --border-active: #4f46e5;
+  --border-focus:  #6366f1;
+
+  /* Text */
+  --text-primary:   #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+  --text-disabled:  #475569;
+
+  /* Accent */
+  --accent:         #6366f1;
+  --accent-hover:   #818cf8;
+  --accent-active:  #4f46e5;
+  --accent-subtle:  rgba(99, 102, 241, 0.15);
+
+  /* Semantic */
+  --success:        #22c55e;
+  --success-subtle: rgba(34, 197, 94, 0.15);
+  --warning:        #f59e0b;
+  --warning-subtle: rgba(245, 158, 11, 0.15);
+  --danger:         #ef4444;
+  --danger-subtle:  rgba(239, 68, 68, 0.15);
+  --info:           #3b82f6;
+  --info-subtle:    rgba(59, 130, 246, 0.15);
+
+  /* ─── Layout Sizing (từ layout-spec.md) ─────────────── */
+  --titlebar-h:     40px;
+  --sidebar-w:      44px;
+  --media-bin-w:    210px;
+  --properties-w:   268px;
+  --timeline-h:     120px;
+  --statusbar-h:    22px;
+  --ruler-h:        16px;
+  --controls-h:     36px;
+
+  /* ─── Panel ──────────────────────────────────────────── */
+  --panel-gap:      2px;
+  --panel-radius:   6px;
+  --panel-glass:    rgba(26, 26, 37, 0.85);
+  --panel-blur:     12px;
+
+  /* ─── Typography ─────────────────────────────────────── */
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-xs:    11px;
+  --font-sm:    12px;
+  --font-base:  13px;
+  --font-md:    14px;
+  --font-lg:    16px;
+  --font-xl:    18px;
+  --font-2xl:   24px;
+
+  /* ─── Spacing ────────────────────────────────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* ─── Transitions ────────────────────────────────────── */
+  --ease-out:   cubic-bezier(0.19, 1, 0.22, 1);
+  --duration-fast:   0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow:   0.4s;
+}
+
+/* ─── Reset ────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-base);
+  line-height: 1.5;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* ─── Glassmorphism Panel ──────────────────────────────── */
+.panel {
+  background: var(--panel-glass);
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* ─── Buttons ──────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* ─── Tabs ─────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.tab-item {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.tab-item:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.tab-item.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ─── Status badges ────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+}
+.badge-success { background: var(--success-subtle); color: var(--success); }
+.badge-warning { background: var(--warning-subtle); color: var(--warning); }
+.badge-danger  { background: var(--danger-subtle);  color: var(--danger);  }
+.badge-info    { background: var(--info-subtle);    color: var(--info);    }
+
+/* ─── Slider ───────────────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* ─── Section in Properties ────────────────────────────── */
+.prop-section {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+}
+.prop-section-title {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--sp-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.prop-section-title::before {
+  content: '▸';
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.prop-section-title.open::before {
+  transform: rotate(90deg);
+}
+.prop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-1) 0;
+  font-size: var(--font-sm);
+}
+.prop-label {
+  color: var(--text-secondary);
+}
