@@ -5,13 +5,13 @@
 See: .planning/PROJECT.md (updated 2026-03-23)
 
 **Core value:** Tự động hoá pipeline lồng tiếng video end-to-end
-**Current focus:** Phase 1 — Foundation (Tauri Shell + Sidecar Bridge)
+**Current focus:** Phase 2 — Core Pipeline MVP
 
 ## Current Status
 
 - **Milestone:** 1 (Desktop App Hoàn Chỉnh)
 - **Phase:** 1 (Foundation)
-- **Status:** Not started — awaiting plan approval
+- **Status:** Phase 1 ✅ Complete
 
 ## Context
 
@@ -28,12 +28,16 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 2026-03-23 | Thêm Piper TTS offline | VideoTransAI đã có, cần offline option |
 | 2026-03-23 | taste-skill cho UI design | Đảm bảo design premium |
 | 2026-03-23 | First-run giống VideoTransAI | GPU detect → install deps |
+| 2026-03-23 | Layout chốt: 2-col + timeline | Titlebar tabs, Sidebar, Media Bin 210px, Preview flex:1, Properties 268px (4 tabs), Timeline 120px (4 tracks) |
+| 2026-03-23 | react-resizable-panels, wavesurfer.js | Library over custom code |
+| 2026-03-23 | Circuit breaker cho API fallback | Tech review feedback |
+| 2026-03-23 | Canvas=preview, ASS=export | Hardsub strategy |
 
 ## Phase Progress
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | Foundation (Tauri + Sidecar) | ⏳ Not started |
+| 1 | Foundation (Tauri + Sidecar) | ✅ Complete |
 | 2 | Core Pipeline MVP | — |
 | 3 | NLE Editor UI | — |
 | 4 | Multi-Engine + Advanced | — |
@@ -44,4 +48,4 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 9 | Polish + License | — |
 
 ---
-*Last updated: 2026-03-23 after project initialization*
+*Last updated: 2026-03-23T12:45+07:00 — Phase 1 complete*
