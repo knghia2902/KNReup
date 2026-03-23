@@ -2,17 +2,17 @@
 
 ## Bài test hiện tại
 
-number: 1
-name: Kéo thả Video vào Media Bin
+number: 2
+name: Giao diện Processing Overlay
 expected: |
-  Giao diện Media Bin cho phép kéo thả video. Các biểu tượng sử dụng Phosphor Icons (không có emoji). Khi thả video vào, hệ thống nhận diện được file.
+  Ngay khi bắt đầu xử lý, một màn hình overlay mờ (Processing Overlay) xuất hiện che toàn màn hình, hiển thị vòng loading, tên bước hiện tại (vd: Extracting/Transcribing) và % tiến độ.
 awaiting: user response
 
 ## Danh sách Test
 
 ### 1. Kéo thả Video vào Media Bin
 expected: Giao diện Media Bin cho phép kéo thả video. Các biểu tượng sử dụng Phosphor Icons (không có emoji). Khi thả video vào, hệ thống nhận diện được file.
-result: pending
+result: pass
 
 ### 2. Giao diện Processing Overlay
 expected: Ngay khi bắt đầu xử lý, một màn hình overlay mờ (Processing Overlay) xuất hiện che toàn màn hình, hiển thị vòng loading, tên bước hiện tại (vd: Extracting/Transcribing) và % tiến độ.
@@ -37,9 +37,9 @@ result: pending
 ## Summary
 
 total: 6
-passed: 0
+passed: 1
 issues: 0
-pending: 6
+pending: 5
 skipped: 0
 
 ## Gaps
