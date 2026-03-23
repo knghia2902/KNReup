@@ -1,0 +1,85 @@
+/* UploadPanel — taste-skill: glassmorphism, tactile, dark */
+
+.upload-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  height: 100%;
+  cursor: pointer;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  background: transparent;
+}
+
+.upload-panel:hover {
+  border-color: var(--accent);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.upload-panel.dragging {
+  border-color: var(--accent);
+  background: rgba(16, 185, 129, 0.08);
+  animation: pulse-border 1.2s ease infinite;
+}
+
+.upload-panel.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--accent); }
+  50% { border-color: var(--accent-dim); }
+}
+
+/* Drop zone empty state */
+.upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.upload-icon {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.upload-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+
+/* File info */
+.upload-file-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+}
+
+.upload-icon-selected {
+  color: var(--accent);
+}
+
+.upload-filename {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  word-break: break-all;
+  max-width: 180px;
+}
+
+.upload-filesize {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* Tactile feedback */
+.upload-panel:active:not(.disabled) {
+  transform: scale(0.98);
+}

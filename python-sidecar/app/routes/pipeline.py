@@ -104,3 +104,154 @@ async def translate(req: TranslateRequest):
     except Exception as e:
         logger.error(f"Translation failed: {e}")
         raise HTTPException(500, f"Translation failed: {str(e)}")
+
+
+# ─── TTS engine factory ──────────────────────────────────
+def get_tts_engine(engine_name: str):
+    """Factory: tạo TTS engine instance."""
+    if engine_name == "edge_tts":
+        from app.engines.tts.edge_tts_engine import EdgeTTSEngine
+
+        return EdgeTTSEngine()
+    elif engine_name == "piper":
+        from app.engines.tts.piper_engine import PiperTTSEngine
+
+        return PiperTTSEngine()
+    else:
+        raise HTTPException(400, f"Unknown TTS engine: {engine_name}")
+
+
+# ─── TTS Voices ───────────────────────────────────────────
+@router.get("/voices")
+async def list_voices(engine: str = "edge_tts"):
+    """Liệt kê available voices cho engine."""
+    try:
+        tts = get_tts_engine(engine)
+        voices = await tts.list_voices()
+        return {"voices": voices, "engine": engine}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"List voices failed: {e}")
+        raise HTTPException(500, f"List voices failed: {str(e)}")
+
+
+# ─── TTS Synthesis ────────────────────────────────────────
+class TTSRequest(BaseModel):
+    text: str
+    engine: str = "edge_tts"
+    voice: str = "vi-VN-HoaiMyNeural"
+    rate: float = 1.0
+    volume: float = 1.0
+    pitch: float = 0.5
+
+
+@router.post("/tts-preview")
+async def tts_preview(req: TTSRequest):
+    """Tạo audio preview cho 1 đoạn text."""
+    try:
+        tts = get_tts_engine(req.engine)
+        output_path = tempfile.mktemp(suffix=".mp3")
+        await tts.synthesize(
+            text=req.text,
+            voice=req.voice,
+            output_path=output_path,
+            rate=req.rate,
+            volume=req.volume,
+            pitch=req.pitch,
+        )
+        return {"audio_path": output_path}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"TTS preview failed: {e}")
+        raise HTTPException(500, f"TTS preview failed: {str(e)}")
+
+
+# ─── Full Pipeline (SSE) ─────────────────────────────────
+@router.post("/process")
+async def process_pipeline(
+    file: UploadFile = File(...),
+    config_json: str = "{}",
+):
+    """Full pipeline with SSE progress streaming."""
+    import json
+    from fastapi.responses import StreamingResponse
+    from app.pipeline_runner import PipelineRunner, PipelineConfig
+
+    # Save uploaded file
+    temp_path = None
+    try:
+        suffix = os.path.splitext(file.filename or "upload.mp4")[1]
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=suffix, mode="wb"
+        ) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            temp_path = tmp.name
+    except Exception as e:
+        raise HTTPException(500, f"File upload failed: {str(e)}")
+
+    # Parse config
+    try:
+        cfg = json.loads(config_json)
+    except json.JSONDecodeError:
+        cfg = {}
+
+    pipeline_config = PipelineConfig(**cfg)
+
+    async def event_stream():
+        runner = PipelineRunner()
+        async for event in runner.run(temp_path, pipeline_config):
+            yield f"data: {json.dumps(event)}\n\n"
+        # Cleanup temp file
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+# ─── Simple (non-streaming) ──────────────────────────────
+@router.post("/process-simple")
+async def process_simple(
+    file: UploadFile = File(...),
+    config_json: str = "{}",
+):
+    """Non-streaming pipeline for testing."""
+    import json
+    from app.pipeline_runner import PipelineRunner, PipelineConfig
+
+    temp_path = None
+    try:
+        suffix = os.path.splitext(file.filename or "upload.mp4")[1]
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=suffix, mode="wb"
+        ) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            temp_path = tmp.name
+
+        cfg = json.loads(config_json) if config_json != "{}" else {}
+        pipeline_config = PipelineConfig(**cfg)
+
+        runner = PipelineRunner()
+        last_event = {}
+        async for event in runner.run(temp_path, pipeline_config):
+            last_event = event
+
+        return last_event
+
+    except Exception as e:
+        logger.error(f"Pipeline failed: {e}")
+        raise HTTPException(500, f"Pipeline failed: {str(e)}")
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+
