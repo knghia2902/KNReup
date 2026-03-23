@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 01-foundation
 source: [01-PLAN.md, 02-PLAN.md, 03-PLAN.md]
 started: 2026-03-23T19:30:00Z
@@ -62,5 +62,10 @@ skipped: 1
   reason: "User reported: ERR_CONNECTION_REFUSED and API health check failure"
   severity: blocker
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: "Uvicorn with reload=True exits prematurely on this Windows environment."
+  artifacts:
+    - path: "python-sidecar/run_dev.py"
+      issue: "reload=True causes premature exit"
+  missing:
+    - "Set reload=False in run_dev.py"
+  debug_session: .planning/debug/backend-connection.md
