@@ -61,5 +61,13 @@ skipped: 0
   reason: "User reported: Không kéo được"
   severity: major
   test: 8
-  artifacts: []
-  missing: []
+  root_cause: "The layout was implemented with static widths and a placeholder comment for resizing logic. react-resizable-panels was not installed."
+  artifacts:
+    - path: "src/components/layout/NLELayout.tsx"
+      issue: "Uses static widths instead of resizable panels"
+    - path: "package.json"
+      issue: "Missing react-resizable-panels dependency"
+  missing:
+    - "Install react-resizable-panels"
+    - "Refactor NLELayout to use PanelGroup and PanelResizeHandle"
+  debug_session: .planning/debug/panel-resize.md
