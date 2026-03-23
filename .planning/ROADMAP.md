@@ -206,8 +206,7 @@
 | Phase | Tên | Dependencies |
 |-------|-----|-------------|
 | 1 | Foundation (Tauri + Sidecar + Layout) | Không |
-| 2 | Core Pipeline MVP | Phase 1 |
-| 3 | NLE Editor UI (4 tabs, sidebar states) | Phase 2 |
+| 2 | 0/5 | Planned    |  | 3 | NLE Editor UI (4 tabs, sidebar states) | Phase 2 |
 | 4 | Multi-Engine + Advanced | Phase 2 |
 | 5 | Output Advanced | Phase 3, 4 |
 | 6 | Timeline + Premium UI | Phase 3 |
