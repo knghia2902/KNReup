@@ -22,11 +22,12 @@ import './styles/design-system.css';
 
 function App() {
   const { connected, health, systemCheck, error, loading, retrySystemCheck } = useSidecar();
-  const { processing, progress, error: pipelineError, startPipeline, cancelPipeline } = usePipeline();
+  const { processing, progress, error: pipelineError, startPipeline, cancelPipeline, resetPipeline } = usePipeline();
   const [showSetup, setShowSetup] = useState(true);
   const [activeModule, setActiveModule] = useState<AppModule>('editor');
   const [sidebarFocus, setSidebarFocus] = useState<SidebarFocus>('preview');
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [filePaths, setFilePaths] = useState<string[]>([]);
 
   // Zustand stores
   const projectConfig = useProjectStore();
@@ -35,16 +36,17 @@ function App() {
   const handleSetupComplete = useCallback(() => setShowSetup(false), []);
 
   const handleFileSelected = useCallback(
-    (filePath: string) => {
-      setVideoSrc(convertFileSrc(filePath));
-      startPipeline(filePath, {
-        translation_engine: 'argos',
-        target_lang: 'vi',
-        tts_engine: 'edge_tts',
-        voice: 'vi-VN-HoaiMyNeural',
+    (selectedPath: string) => {
+      setFilePaths(prev => prev.includes(selectedPath) ? prev : [...prev, selectedPath]);
+      setVideoSrc(convertFileSrc(selectedPath));
+      startPipeline(selectedPath, {
+        translation_engine: 'argos', // Argos is hardcoded in MVP backend API logic right now, or maybe not? Wait, let me check the target_lang.
+        target_lang: projectConfig.language === 'auto' ? 'vi' : projectConfig.language, // Fallback target
+        tts_engine: projectConfig.tts_engine,
+        voice: projectConfig.voice,
       });
     },
-    [startPipeline],
+    [startPipeline, projectConfig.language, projectConfig.tts_engine, projectConfig.voice],
   );
 
   // Drag & drop video handler
@@ -75,8 +77,8 @@ function App() {
         />
       )}
 
-      {processing && progress && (
-        <JobMonitor progress={progress} onCancel={cancelPipeline} />
+      {(processing || error || (progress && progress.stage === 'done')) && progress && (
+        <JobMonitor progress={progress} onCancel={cancelPipeline} onDismiss={resetPipeline} />
       )}
 
       <Titlebar activeModule={activeModule} onModuleChange={setActiveModule} />
@@ -85,17 +87,18 @@ function App() {
         <NLELayout
           activeModule={activeModule}
           mediaBin={
-            <UploadPanel onFileSelected={handleFileSelected} disabled={processing} />
+            <UploadPanel onFileSelected={handleFileSelected} disabled={processing} filePaths={filePaths} />
           }
           videoPreview={
             <VideoPreview
               videoSrc={videoSrc}
               segments={segments}
               subtitleConfig={subtitleConfig}
+              videoRatio={projectConfig.video_ratio as 'original' | '16:9' | '9:16'}
             />
           }
           properties={<PropertiesPanel sidebarFocus={sidebarFocus} />}
-          timeline={<TimelinePlaceholder />}
+          timeline={<TimelinePlaceholder filePaths={filePaths} />}
           onVideoDrop={handleVideoDrop}
           statusContent={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>

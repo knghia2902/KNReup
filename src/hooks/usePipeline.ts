@@ -38,28 +38,27 @@ export function usePipeline() {
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const startPipeline = useCallback(
-    async (file: File, config: PipelineConfig = {}) => {
+    async (videoPath: string, config: PipelineConfig = {}) => {
       setProcessing(true);
       setError(null);
-      setProgress({ stage: 'upload', progress: 0, message: 'Uploading...' });
+      setProgress({ stage: 'upload', progress: 0, message: 'Processing local file...' });
 
       const controller = new AbortController();
       setAbortController(controller);
 
       try {
-        // Build FormData
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('config_json', JSON.stringify(config));
-
         // Detect sidecar port
         const port = localStorage.getItem('sidecar_port') || '8008';
         const baseUrl = `http://127.0.0.1:${port}`;
 
-        // POST to SSE endpoint
+        // POST JSON to SSE endpoint
         const response = await fetch(`${baseUrl}/api/pipeline/process`, {
           method: 'POST',
-          body: formData,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            video_path: videoPath,
+            config_json: JSON.stringify(config),
+          }),
           signal: controller.signal,
         });
 
@@ -90,12 +89,12 @@ export function usePipeline() {
 
                 if (event.stage === 'error') {
                   setError(event.message);
-                  setProcessing(false);
+                  // Bỏ setProcessing(false) để UI Job Monitor báo đỏ thay vì biến mất
                   return;
                 }
 
                 if (event.stage === 'done') {
-                  setProcessing(false);
+                  // Keep processing true to show 'Finished' state until dismissed
                   return;
                 }
               } catch {
@@ -111,8 +110,9 @@ export function usePipeline() {
           setProgress({ stage: 'cancelled', progress: 0, message: 'Cancelled by user' });
         } else {
           setError((err as Error).message);
+          setProgress({ stage: 'error', progress: -1, message: (err as Error).message });
         }
-        setProcessing(false);
+        // Tương tự, nếu lỗi mạng cũng không nên tắt popup ngay
       }
     },
     [],
@@ -124,11 +124,22 @@ export function usePipeline() {
     setProcessing(false);
   }, [abortController]);
 
+  const resetPipeline = useCallback(() => {
+    setProcessing(false);
+    setProgress(null);
+    setError(null);
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+    }
+  }, [abortController]);
+
   return {
     processing,
     progress,
     error,
     startPipeline,
     cancelPipeline,
+    resetPipeline,
   };
 }

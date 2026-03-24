@@ -16,9 +16,10 @@ interface VideoPreviewProps {
   videoSrc: string | null;
   segments: SubtitleSegment[];
   subtitleConfig: SubtitleConfig;
+  videoRatio?: 'original' | '16:9' | '9:16';
 }
 
-export function VideoPreview({ videoSrc, segments, subtitleConfig }: VideoPreviewProps) {
+export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 'original' }: VideoPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
@@ -115,6 +116,31 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig }: VideoPrevie
     renderSubtitles();
   }, [videoDimensions, renderSubtitles]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && video.paused) {
+      renderSubtitles();
+    }
+  }, [subtitleConfig, renderSubtitles]);
+
+  const getVframeStyle = () => {
+    let ratioW = 16;
+    let ratioH = 9;
+    
+    if (videoRatio === '16:9') {
+      ratioW = 16; ratioH = 9;
+    } else if (videoRatio === '9:16') {
+      ratioW = 9; ratioH = 16;
+    } else if (videoDimensions.w && videoDimensions.h) {
+      ratioW = videoDimensions.w; ratioH = videoDimensions.h;
+    }
+
+    return {
+      width: `min(100cqw, calc(100cqh * ${ratioW} / ${ratioH}))`,
+      height: `min(100cqh, calc(100cqw * ${ratioH} / ${ratioW}))`
+    };
+  };
+
   const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -144,7 +170,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig }: VideoPrevie
         <span className="vtc">00:00:00:00</span>
         <div className="vcorn tl"></div>
         <div className="vcorn br"></div>
-        <div className="vframe">
+        <div className="vframe" style={getVframeStyle()}>
           <div 
             className="vinner"
             style={{ display: 'grid', placeItems: 'center' }}
@@ -156,6 +182,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig }: VideoPrevie
               playsInline
               style={{
                 gridArea: '1 / 1',
+                width: '100%', height: '100%',
                 minWidth: 0, minHeight: 0,
                 maxWidth: '100%', maxHeight: '100%',
                 objectFit: 'contain'
@@ -165,6 +192,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig }: VideoPrevie
               ref={canvasRef} 
               style={{
                 gridArea: '1 / 1',
+                width: '100%', height: '100%',
                 minWidth: 0, minHeight: 0,
                 maxWidth: '100%', maxHeight: '100%',
                 pointerEvents: 'none',
