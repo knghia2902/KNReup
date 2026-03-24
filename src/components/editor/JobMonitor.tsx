@@ -1,7 +1,8 @@
 /**
  * JobMonitor — Background processing progress toast (taste-skill compliant).
  */
-import { X, CircleNotch, HardDrive, PlayCircle, ChatText, MusicNotes, Export } from '@phosphor-icons/react';
+import { X, CircleNotch, HardDrive, PlayCircle, ChatText, MusicNotes, Export, FolderOpen } from '@phosphor-icons/react';
+import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import type { PipelineProgress } from '../../hooks/usePipeline';
 import './JobMonitor.css';
 
@@ -58,6 +59,25 @@ export function JobMonitor({ progress, onCancel, onDismiss }: JobMonitorProps) {
       </div>
       
       <div className="job-message">{progress.message}</div>
+
+      {isDone && progress.output_path && (
+        <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
+          <button 
+            className="btn pri sm" 
+            onClick={() => openPath(progress.output_path!)}
+          >
+            <PlayCircle size={12} style={{ marginRight: 4 }} />
+            Open Video
+          </button>
+          <button 
+            className="btn sm" 
+            onClick={() => revealItemInDir(progress.output_path!)}
+          >
+            <FolderOpen size={12} style={{ marginRight: 4 }} />
+            Open Folder
+          </button>
+        </div>
+      )}
       
       {!isDone && !isError && (
         <div className="job-progress-container">
