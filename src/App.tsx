@@ -28,6 +28,7 @@ function App() {
   const [sidebarFocus, setSidebarFocus] = useState<SidebarFocus>('preview');
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [filePaths, setFilePaths] = useState<string[]>([]);
+  const [activeFile, setActiveFile] = useState<string | null>(null);
 
   // Zustand stores
   const projectConfig = useProjectStore();
@@ -38,14 +39,31 @@ function App() {
   const handleFileSelected = useCallback(
     (selectedPath: string) => {
       setFilePaths(prev => prev.includes(selectedPath) ? prev : [...prev, selectedPath]);
+      setActiveFile(selectedPath);
       setVideoSrc(convertFileSrc(selectedPath));
     },
     [],
   );
 
+  const handleFileSwitch = useCallback((path: string) => {
+    setActiveFile(path);
+    setVideoSrc(convertFileSrc(path));
+  }, []);
+
+  const handleFileRemove = useCallback((path: string) => {
+    setFilePaths(prev => {
+      const newPaths = prev.filter(p => p !== path);
+      if (activeFile === path) {
+        const nextActive = newPaths.length > 0 ? newPaths[0] : null;
+        setActiveFile(nextActive);
+        setVideoSrc(nextActive ? convertFileSrc(nextActive) : null);
+      }
+      return newPaths;
+    });
+  }, [activeFile]);
+
   const handleRender = useCallback(() => {
-    if (filePaths.length === 0) return;
-    const activeFile = filePaths[filePaths.length - 1];
+    if (!activeFile) return;
     startPipeline(activeFile, {
       translation_engine: 'argos',
       target_lang: projectConfig.language === 'auto' ? 'vi' : projectConfig.language,
@@ -92,7 +110,14 @@ function App() {
         <NLELayout
           activeModule={activeModule}
           mediaBin={
-            <UploadPanel onFileSelected={handleFileSelected} disabled={processing} filePaths={filePaths} />
+            <UploadPanel 
+              onFileSelected={handleFileSelected} 
+              onFileSwitch={handleFileSwitch}
+              onFileRemoved={handleFileRemove}
+              disabled={processing} 
+              filePaths={filePaths} 
+              activeFile={activeFile}
+            />
           }
           videoPreview={
             <VideoPreview
