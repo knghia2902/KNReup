@@ -2,10 +2,10 @@
 
 ## Bài test hiện tại
 
-number: 2
-name: Giao diện Processing Overlay
+number: 3
+name: Tiến trình SSE - Transcribe & Translate
 expected: |
-  Ngay khi bắt đầu xử lý, một panel Job Monitor mảnh (Floating Toast) xuất hiện ở góc dưới bên phải màn hình, hiển thị vòng loading, tên bước hiện tại và thanh % màu xanh. Người dùng vẫn thao tác được các panel khác bình thường.
+  Overlay cập nhật tiến trình liên tục, chuyển mượt mà từ bước `transcribe` (Whisper) sang `translate` (DeepSeek/Argos) mà không bị kẹt hay crash trình duyệt.
 awaiting: user response
 
 ## Danh sách Test
@@ -16,7 +16,7 @@ result: pass
 
 ### 2. Giao diện Job Monitor (Thay thế Overlay)
 expected: Ngay khi bắt đầu xử lý, panel Job Monitor mảnh (Floating Toast) xuất hiện ở góc dưới bên phải màn hình, không block thao tác (chuẩn batch processing). Hiển thị loading, tên bước và % tiến độ.
-result: pending
+result: pass
 
 ### 3. Tiến trình SSE - Transcribe & Translate
 expected: Overlay cập nhật tiến trình liên tục, chuyển mượt mà từ bước `transcribe` (Whisper) sang `translate` (DeepSeek/Argos) mà không bị kẹt hay crash trình duyệt.
@@ -37,9 +37,9 @@ result: pending
 ## Summary
 
 total: 6
-passed: 1
+passed: 2
 issues: 0
-pending: 5
+pending: 4
 skipped: 0
 
 ## Gaps
