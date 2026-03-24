@@ -4,7 +4,11 @@ import { ToggleControl } from '../controls/ToggleControl';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { usePipeline } from '../../hooks/usePipeline';
 
-export function OutTab() {
+interface OutTabProps {
+  onRender?: () => void;
+}
+
+export function OutTab({ onRender }: OutTabProps) {
   const config = useProjectStore();
   const { processing } = usePipeline();
 
@@ -68,7 +72,12 @@ export function OutTab() {
       </div>
 
       <div className="ps" style={{ borderBottom: 'none' }}>
-        <button className="expbtn" style={{ width: 'calc(100% - 24px)', opacity: processing ? 0.5 : 1 }}>
+        <button 
+          className="expbtn" 
+          style={{ width: 'calc(100% - 24px)', opacity: processing ? 0.5 : 1 }}
+          onClick={onRender}
+          disabled={processing}
+        >
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M8 2v9M4 7l4 4 4-4M2 14h12"/>
           </svg>

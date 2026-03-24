@@ -9,6 +9,7 @@ export type PropertiesTabID = 'style' | 'tts' | 'sub' | 'out';
 
 interface PropertiesPanelProps {
   sidebarFocus?: SidebarFocus;
+  onRender?: () => void;
 }
 
 const FOCUS_TAB_MAP: Record<SidebarFocus, PropertiesTabID> = {
@@ -26,7 +27,7 @@ const TABS: { id: PropertiesTabID; label: string }[] = [
   { id: 'out', label: 'OUT' },
 ];
 
-export function PropertiesPanel({ sidebarFocus }: PropertiesPanelProps) {
+export function PropertiesPanel({ sidebarFocus, onRender }: PropertiesPanelProps) {
   const [tab, setTab] = useState<PropertiesTabID>('style');
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export function PropertiesPanel({ sidebarFocus }: PropertiesPanelProps) {
       
       <div className={`tc ${tab === 'out' ? 'vis' : ''}`}>
         <div className="pbody">
-          <OutTab />
+          <OutTab onRender={onRender} />
         </div>
       </div>
     </div>

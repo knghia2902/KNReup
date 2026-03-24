@@ -39,15 +39,20 @@ function App() {
     (selectedPath: string) => {
       setFilePaths(prev => prev.includes(selectedPath) ? prev : [...prev, selectedPath]);
       setVideoSrc(convertFileSrc(selectedPath));
-      startPipeline(selectedPath, {
-        translation_engine: 'argos', // Argos is hardcoded in MVP backend API logic right now, or maybe not? Wait, let me check the target_lang.
-        target_lang: projectConfig.language === 'auto' ? 'vi' : projectConfig.language, // Fallback target
-        tts_engine: projectConfig.tts_engine,
-        voice: projectConfig.voice,
-      });
     },
-    [startPipeline, projectConfig.language, projectConfig.tts_engine, projectConfig.voice],
+    [],
   );
+
+  const handleRender = useCallback(() => {
+    if (filePaths.length === 0) return;
+    const activeFile = filePaths[filePaths.length - 1];
+    startPipeline(activeFile, {
+      translation_engine: 'argos',
+      target_lang: projectConfig.language === 'auto' ? 'vi' : projectConfig.language,
+      tts_engine: projectConfig.tts_engine,
+      voice: projectConfig.voice,
+    });
+  }, [filePaths, startPipeline, projectConfig.language, projectConfig.tts_engine, projectConfig.voice]);
 
   // Drag & drop video handler
   const handleVideoDrop = useCallback((e: React.DragEvent) => {
@@ -97,7 +102,7 @@ function App() {
               videoRatio={projectConfig.video_ratio as 'original' | '16:9' | '9:16'}
             />
           }
-          properties={<PropertiesPanel sidebarFocus={sidebarFocus} />}
+          properties={<PropertiesPanel sidebarFocus={sidebarFocus} onRender={handleRender} />}
           timeline={<TimelinePlaceholder filePaths={filePaths} />}
           onVideoDrop={handleVideoDrop}
           statusContent={
