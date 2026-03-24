@@ -15,6 +15,7 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 ### Validated
 
 - ✓ Pipeline 4 bước (Whisper → Translate → TTS → FFmpeg) — đã chứng minh trong VideoTransAI
+- ✓ Phase 3: NLE Editor UI — Layout 5-panel, WYSIWYG preview, timeline, properties tabs (Validated in Phase 03: nle-editor-ui)
 
 ### Active
 
@@ -28,10 +29,10 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 - [ ] Test cả 2 phương pháp hardsub: ASS via FFmpeg vs WYSIWYG Canvas → PNG overlay
 
 #### Giao diện (UI)
-- [ ] Tauri 2.0 + React/TypeScript + Vite
-- [ ] NLE 5-Panel layout (CapCut/Premiere Pro style)
-- [ ] Sử dụng taste-skill (https://github.com/Leonxlnx/taste-skill) cho design premium
-- [ ] WYSIWYG video preview, subtitle editor, multi-track timeline
+- [x] Tauri 2.0 + React/TypeScript + Vite
+- [x] NLE 5-Panel layout (CapCut/Premiere Pro style)
+- [x] Sử dụng taste-skill (https://github.com/Leonxlnx/taste-skill) cho design premium
+- [x] WYSIWYG video preview, subtitle editor, multi-track timeline
 - [ ] Dark/Light theme, glassmorphism, micro-animations
 - [ ] Keyboard shortcuts
 
@@ -98,4 +99,4 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 | First-run setup giống VideoTransAI | UX đã chứng minh, detect GPU → install | — Pending |
 
 ---
-*Last updated: 2026-03-23 after initialization*
+*Last updated: 2026-03-24 after Phase 03 completion*
