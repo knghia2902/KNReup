@@ -32,6 +32,7 @@
 
 ## Phase 4: Multi-Engine + Advanced Features
 > **Mục tiêu**: Đa dạng engine, audio FX, batch processing
+> **Requirements**: M2-01, M2-02, M2-03, M2-04, M2-05
 > **Output**: 4 engine dịch + 4 engine TTS + audio processing
 
 - Translation engine #3: Google Gemini API
@@ -51,6 +52,7 @@
 
 ## Phase 5: Output Advanced — Watermark + Blur + Crop + Audio Mix
 > **Mục tiêu**: Professional output với đầy đủ effects
+> **Requirements**: M2-06, M2-07, M2-08, M2-09, M2-10
 > **Output**: Video export chất lượng cao với mọi tùy chỉnh
 
 - Watermark text + logo (drag dot positioning trên preview — đã có từ layout)
@@ -68,6 +70,7 @@
 
 ## Phase 6: Multi-Track Timeline + Premium UI
 > **Mục tiêu**: Timeline 4 tracks, UI đẹp hoàn thiện
+> **Requirements**: M2-11, M2-12, M2-13, M2-14
 > **Output**: Timeline hoạt động + polished UI
 
 - 4-track timeline cố định: VIDEO / AUDIO / SUB / BGM
