@@ -3,20 +3,23 @@ import { StyleTab } from './StyleTab';
 import { TTSTab } from './TTSTab';
 import { SubTab } from './SubTab';
 import { OutTab } from './OutTab';
+import { QueueTab } from './QueueTab';
 import type { SidebarFocus } from '../layout/NLELayout';
 
-export type PropertiesTabID = 'style' | 'tts' | 'sub' | 'out';
+export type PropertiesTabID = 'style' | 'tts' | 'sub' | 'out' | 'queue';
 
 interface PropertiesPanelProps {
   sidebarFocus?: SidebarFocus;
   onRender?: () => void;
+  onAnalyze?: () => void;
+  processing?: boolean;
 }
 
 const FOCUS_TAB_MAP: Record<SidebarFocus, PropertiesTabID> = {
   preview: 'style',
   subtitle: 'sub',
   pipeline: 'tts',
-  'monitor-mini': 'style',
+  'monitor-mini': 'queue',
   'settings-mini': 'style',
 };
 
@@ -25,9 +28,10 @@ const TABS: { id: PropertiesTabID; label: string }[] = [
   { id: 'tts', label: 'TTS' },
   { id: 'sub', label: 'SUB' },
   { id: 'out', label: 'OUT' },
+  { id: 'queue', label: 'QUEUE' },
 ];
 
-export function PropertiesPanel({ sidebarFocus, onRender }: PropertiesPanelProps) {
+export function PropertiesPanel({ sidebarFocus, onRender, onAnalyze, processing }: PropertiesPanelProps) {
   const [tab, setTab] = useState<PropertiesTabID>('style');
 
   useEffect(() => {
@@ -64,13 +68,19 @@ export function PropertiesPanel({ sidebarFocus, onRender }: PropertiesPanelProps
       
       <div className={`tc ${tab === 'sub' ? 'vis' : ''}`}>
         <div className="pbody">
-          <SubTab />
+          <SubTab onAnalyze={onAnalyze} processing={processing} />
         </div>
       </div>
       
       <div className={`tc ${tab === 'out' ? 'vis' : ''}`}>
         <div className="pbody">
-          <OutTab onRender={onRender} />
+          <OutTab onRender={onRender} processing={processing} />
+        </div>
+      </div>
+      
+      <div className={`tc ${tab === 'queue' ? 'vis' : ''}`}>
+        <div className="pbody">
+          <QueueTab />
         </div>
       </div>
     </div>

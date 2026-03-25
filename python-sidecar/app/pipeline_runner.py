@@ -40,6 +40,7 @@ class PipelineConfig:
         dubbing_enabled: bool = True,
         # Audio mix
         original_volume: float = 0.1,
+        speed: float = 1.0,
         # Subtitle
         subtitle_enabled: bool = True,
         subtitle_config: Optional[dict] = None,
@@ -62,6 +63,7 @@ class PipelineConfig:
         self.pitch = pitch
         self.dubbing_enabled = dubbing_enabled
         self.original_volume = original_volume
+        self.speed = speed
         self.subtitle_enabled = subtitle_enabled
         self.subtitle_config = subtitle_config or {
             "font_size": 50,
@@ -214,7 +216,7 @@ class PipelineRunner:
                 # Merge all TTS audio into one file with correct timing
                 if audio_files:
                     dubbed_audio_path = os.path.join(output_dir, "dubbed_audio.wav")
-                    await self._merge_tts_audio(audio_files, dubbed_audio_path, duration)
+                    await self._merge_tts_audio(audio_files, dubbed_audio_path, duration, config.speed, config.pitch)
                 else:
                     dubbed_audio_path = None
 
@@ -255,6 +257,8 @@ class PipelineRunner:
         audio_files: list[dict],
         output_path: str,
         total_duration: float,
+        speed: float = 1.0,
+        pitch: float = 1.0,
     ):
         """Merge TTS audio files into one with correct timing using FFmpeg."""
         if not audio_files:
@@ -278,9 +282,25 @@ class PipelineRunner:
 
         # Mix all delayed streams
         mix_inputs = "".join(f"[a{i}]" for i in range(len(audio_files)))
-        filter_parts.append(
-            f"{mix_inputs}amix=inputs={len(audio_files)}:duration=longest[out]"
-        )
+        
+        if speed != 1.0 or pitch != 1.0:
+            # Route amix output to [mixed], then apply FX to [out]
+            filter_parts.append(f"{mix_inputs}amix=inputs={len(audio_files)}:duration=longest[mixed]")
+            
+            fx = []
+            if pitch != 1.0:
+                fx.append(f"asetrate=44100*{pitch}")
+            if speed != 1.0:
+                # Nếu đổi pitch -> speed cũng đổi thuận nghịch, cần dùng atempo để fix nếu muốn
+                # Dù sao thì cứ append atempo theo yêu cầu
+                fx.append(f"atempo={speed}")
+            
+            fx_chain = ",".join(fx)
+            filter_parts.append(f"[mixed]{fx_chain}[out]")
+        else:
+            filter_parts.append(
+                f"{mix_inputs}amix=inputs={len(audio_files)}:duration=longest[out]"
+            )
 
         filter_script_path = os.path.join(work_dir, "ff_filter.txt")
         with open(filter_script_path, "w", encoding="utf-8") as f:

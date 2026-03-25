@@ -2,9 +2,10 @@
  * KNReup — Main Application
  * Phase 3: Added VideoPreview, Zustand stores, Properties panel
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CheckCircle, XCircle, CircleNotch } from '@phosphor-icons/react';
 import { useSidecar } from './hooks/useSidecar';
+import { useQueueStore } from './stores/queueStore';
 import { usePipeline } from './hooks/usePipeline';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { NLELayout, type AppModule, type SidebarFocus } from './components/layout/NLELayout';
@@ -22,7 +23,7 @@ import './styles/design-system.css';
 
 function App() {
   const { connected, health, systemCheck, error, loading, retrySystemCheck } = useSidecar();
-  const { processing, progress, error: pipelineError, startPipeline, cancelPipeline, resetPipeline } = usePipeline();
+  const { processing, progress, error: pipelineError, analyzeVideo, renderVideo, cancelPipeline, resetPipeline } = usePipeline();
   const [showSetup, setShowSetup] = useState(true);
   const [activeModule, setActiveModule] = useState<AppModule>('editor');
   const [sidebarFocus, setSidebarFocus] = useState<SidebarFocus>('preview');
@@ -37,9 +38,11 @@ function App() {
   const handleSetupComplete = useCallback(() => setShowSetup(false), []);
 
   const handleFileSelected = useCallback(
-    (selectedPath: string) => {
+    async (selectedPath: string) => {
       setFilePaths(prev => prev.includes(selectedPath) ? prev : [...prev, selectedPath]);
       setActiveFile(selectedPath);
+      useSubtitleStore.getState().setActiveFile(selectedPath);
+      useProjectStore.getState().setActiveFile(selectedPath);
       setVideoSrc(convertFileSrc(selectedPath));
     },
     [],
@@ -47,6 +50,8 @@ function App() {
 
   const handleFileSwitch = useCallback((path: string) => {
     setActiveFile(path);
+    useSubtitleStore.getState().setActiveFile(path);
+    useProjectStore.getState().setActiveFile(path);
     setVideoSrc(convertFileSrc(path));
   }, []);
 
@@ -56,21 +61,127 @@ function App() {
       if (activeFile === path) {
         const nextActive = newPaths.length > 0 ? newPaths[0] : null;
         setActiveFile(nextActive);
+        useSubtitleStore.getState().setActiveFile(nextActive);
+        useProjectStore.getState().setActiveFile(nextActive);
         setVideoSrc(nextActive ? convertFileSrc(nextActive) : null);
       }
       return newPaths;
     });
   }, [activeFile]);
 
-  const handleRender = useCallback(() => {
+  const handleAnalyze = useCallback(async () => {
     if (!activeFile) return;
-    startPipeline(activeFile, {
-      translation_engine: 'argos',
-      target_lang: projectConfig.language === 'auto' ? 'vi' : projectConfig.language,
-      tts_engine: projectConfig.tts_engine,
-      voice: projectConfig.voice,
-    });
-  }, [filePaths, startPipeline, projectConfig.language, projectConfig.tts_engine, projectConfig.voice]);
+    try {
+      const result = await analyzeVideo(activeFile, {
+        translation_engine: projectConfig.translation_engine,
+        source_lang: projectConfig.language,
+        target_lang: 'vi',
+        api_key: projectConfig.translation_engine === 'gemini' ? projectConfig.gemini_api_key :
+                 projectConfig.translation_engine === 'deepl' ? projectConfig.deepl_api_key :
+                 projectConfig.translation_engine === 'deepseek' ? projectConfig.deepseek_api_key :
+                 projectConfig.translation_engine === 'ollama' ? projectConfig.ollama_url : '',
+      });
+      if (result.segments) {
+        const mappedSegments = result.segments.map((s: any, idx: number) => ({
+          id: s.id ?? idx + 1,
+          start: s.start,
+          end: s.end,
+          source_text: s.text || s.source_text || '',
+          translated_text: s.translated || s.translated_text || '',
+          confidence: s.confidence || 1.0,
+          tts_status: 'pending' as const
+        }));
+        useSubtitleStore.getState().setSegments(mappedSegments);
+      }
+    } catch (err) {
+      console.error("Analyze failed:", err);
+    }
+  }, [activeFile, analyzeVideo, projectConfig]);
+
+  const handleRender = useCallback(async () => {
+    if (!activeFile) return;
+
+    try {
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const defaultName = activeFile.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, "") + "_vi.mp4";
+      const savePath = await save({
+        title: "Xác nhận nơi lưu Video",
+        defaultPath: defaultName,
+        filters: [{
+          name: 'Video',
+          extensions: [projectConfig.codec === 'vp9' ? 'mkv' : 'mp4']
+        }]
+      });
+
+      if (!savePath) return; // Hủy lưu
+
+      useQueueStore.getState().addJob({
+        videoPath: activeFile,
+        outputPath: savePath,
+        segments: useSubtitleStore.getState().segments,
+        config: {
+          translation_engine: projectConfig.translation_engine,
+          source_lang: projectConfig.language,
+          target_lang: 'vi',
+          tts_engine: projectConfig.tts_engine,
+          voice: projectConfig.voice,
+          speed: projectConfig.speed,
+          pitch: projectConfig.pitch,
+          dubbing_enabled: projectConfig.dubbing_enabled,
+          subtitle_enabled: projectConfig.subtitle_enabled,
+          subtitle_config: {
+            font: projectConfig.subtitle_font,
+            font_size: projectConfig.subtitle_font_size,
+            color: projectConfig.subtitle_color,
+            outline_color: projectConfig.subtitle_outline_color,
+            position: projectConfig.subtitle_position,
+          },
+          codec: projectConfig.codec,
+          crf: projectConfig.crf,
+        }
+      });
+      setSidebarFocus('monitor-mini');
+    } catch (err) {
+      console.error("Save dialog failed:", err);
+    }
+  }, [activeFile, projectConfig]);
+
+  // Queue processor loop
+  const jobs = useQueueStore(state => state.jobs);
+
+  useEffect(() => {
+    // Start next job if pipeline is idle
+    const isIdle = !processing && (!progress || progress.stage === 'done' || progress.stage === 'error' || progress.stage === 'cancelled');
+    if (isIdle) {
+      const nextJob = jobs.find(j => j.status === 'pending');
+      if (nextJob) {
+        if (progress) resetPipeline();
+        
+        useQueueStore.getState().updateJobStatus(nextJob.id, 'processing');
+        renderVideo(
+          nextJob.videoPath,
+          nextJob.config,
+          nextJob.segments,
+          0,
+          nextJob.outputPath
+        ).then(() => {
+          useQueueStore.getState().updateJobStatus(nextJob.id, 'completed');
+        }).catch(() => {
+          useQueueStore.getState().updateJobStatus(nextJob.id, 'failed');
+        });
+      }
+    }
+  }, [jobs, processing, progress, renderVideo, resetPipeline]);
+
+  // Sync pipeline progress to active job
+  useEffect(() => {
+    if (processing && progress) {
+      const activeJob = jobs.find(j => j.status === 'processing');
+      if (activeJob) {
+        useQueueStore.getState().updateJobProgress(activeJob.id, progress.progress, progress.message);
+      }
+    }
+  }, [progress, processing, jobs]);
 
   // Drag & drop video handler
   const handleVideoDrop = useCallback((e: React.DragEvent) => {
@@ -127,7 +238,7 @@ function App() {
               videoRatio={projectConfig.video_ratio as 'original' | '16:9' | '9:16'}
             />
           }
-          properties={<PropertiesPanel sidebarFocus={sidebarFocus} onRender={handleRender} />}
+          properties={<PropertiesPanel sidebarFocus={sidebarFocus} onRender={handleRender} onAnalyze={handleAnalyze} processing={processing} />}
           timeline={<TimelinePlaceholder filePaths={filePaths} />}
           onVideoDrop={handleVideoDrop}
           statusContent={

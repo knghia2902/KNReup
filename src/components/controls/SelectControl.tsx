@@ -1,5 +1,3 @@
-import React from 'react';
-
 export interface SelectOption {
   value: string;
   label: string;

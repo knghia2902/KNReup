@@ -79,9 +79,43 @@ export function TTSTab() {
         <SliderControl 
           label="Pitch" 
           value={config.pitch} 
-          min={-50} max={50} step={1} unit="% (st)" 
+          min={0.5} max={2.0} step={0.1} unit="x" 
           onChange={(v) => config.updateConfig({ pitch: v })}
         />
+        
+        <div style={{ marginTop: 12 }}>
+          <button 
+            className="btn sm" 
+            style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}
+            onClick={async () => {
+              if (!config.activeFile) return alert("Select a video first to preview Audio FX");
+              try {
+                const res = await fetch(`http://localhost:8000/api/pipeline/preview-audio`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    audio_path: config.activeFile,
+                    speed: config.speed,
+                    pitch: config.pitch
+                  })
+                });
+                if (!res.ok) throw new Error("Preview failed");
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play();
+              } catch (e) {
+                alert("Audio FX Preview failed.");
+                console.error(e);
+              }
+            }}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+              <polygon points="5,3 13,8 5,13" fill="currentColor"/>
+            </svg>
+            Preview Audio FX
+          </button>
+        </div>
       </div>
 
       <div className="ps" style={{ borderBottom: 'none' }}>

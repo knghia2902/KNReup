@@ -184,6 +184,48 @@ async def tts_preview(req: TTSRequest):
         logger.error(f"TTS preview failed: {e}")
         raise HTTPException(500, f"TTS preview failed: {str(e)}")
 
+class AudioFXRequest(BaseModel):
+    audio_path: str
+    speed: float = 1.0
+    pitch: float = 1.0
+
+@router.post("/preview-audio")
+async def preview_audio_fx(req: AudioFXRequest):
+    """Áp dụng Audio FX (speed, pitch) lên file audio có sẵn."""
+    import subprocess
+    from fastapi.responses import FileResponse
+    try:
+        if not os.path.exists(req.audio_path):
+            raise HTTPException(400, f"Audio file not found: {req.audio_path}")
+            
+        output_path = tempfile.mktemp(suffix=".mp3")
+        
+        fx = []
+        if req.pitch != 1.0:
+            fx.append(f"asetrate=44100*{req.pitch}")
+        if req.speed != 1.0:
+            fx.append(f"atempo={req.speed}")
+            
+        cmd = ["ffmpeg", "-y", "-i", req.audio_path]
+        if fx:
+            cmd.extend(["-filter:a", ",".join(fx)])
+        cmd.append(output_path)
+        
+        proc = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, encoding="utf-8"
+        )
+        if proc.returncode != 0:
+            logger.error(f"Audio FX failed: {proc.stderr}")
+            raise RuntimeError(f"FFmpeg failed: {proc.stderr}")
+            
+        return FileResponse(output_path, media_type="audio/mpeg", filename="preview_fx.mp3")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Audio FX preview failed: {e}")
+        raise HTTPException(500, f"Audio FX failed: {str(e)}")
+
 
 # ─── Full Pipeline (SSE) ─────────────────────────────────
 @router.post("/analyze")
