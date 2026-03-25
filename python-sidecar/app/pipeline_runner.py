@@ -23,12 +23,14 @@ class PipelineConfig:
     def __init__(
         self,
         # Translation
-        translation_engine: str = "deepseek",
+        translation_engine: str = "argos",
         source_lang: str = "auto",
         target_lang: str = "vi",
         translation_style: str = "default",
         custom_prompt: str = "",
         api_key: str = "",
+        fallback_engine: Optional[str] = None,
+        fallback_api_key: str = "",
         # TTS
         tts_engine: str = "edge_tts",
         voice: str = "vi-VN-HoaiMyNeural",
@@ -51,6 +53,8 @@ class PipelineConfig:
         self.translation_style = translation_style
         self.custom_prompt = custom_prompt
         self.api_key = api_key
+        self.fallback_engine = fallback_engine
+        self.fallback_api_key = fallback_api_key
         self.tts_engine = tts_engine
         self.voice = voice
         self.rate = rate
@@ -72,35 +76,28 @@ class PipelineConfig:
 class PipelineRunner:
     """Run full pipeline: transcribe → translate → TTS → merge."""
 
-    async def run(
+    async def run_analyze(
         self,
         video_path: str,
         config: PipelineConfig,
-        output_dir: Optional[str] = None,
     ) -> AsyncGenerator[dict, None]:
-        """Run pipeline, yield progress events.
-
-        Each event: {"stage": str, "progress": float, "message": str}
-        """
-        if output_dir is None:
-            output_dir = tempfile.mkdtemp(prefix="knreup_")
-
-        output_path = os.path.join(
-            output_dir,
-            f"output_{Path(video_path).stem}.mp4",
-        )
-
+        """Chạy Analyze: Transcribe -> Translate -> return segments."""
         try:
             # ── Stage 1: Transcribe ──
             yield {"stage": "transcribe", "progress": 0, "message": "Loading Whisper model..."}
+            await asyncio.sleep(0.1)  # Flush SSE event before blocking calls
 
             model_size, device, compute_type = WhisperASR.detect_best_model()
             asr = WhisperASR(model_size=model_size, device=device, compute_type=compute_type)
 
             yield {"stage": "transcribe", "progress": 10, "message": f"Transcribing with {model_size}..."}
-            result = asr.transcribe(video_path, language=config.source_lang)
+            await asyncio.sleep(0.1)
+
+            # Run synchronous transcribe in a separate thread so it doesn't block FastAPI event loop
+            result = await asyncio.to_thread(asr.transcribe, video_path, language=config.source_lang)
             segments = result["segments"]
             detected_lang = result["language"]
+            duration = result["duration"]
 
             yield {
                 "stage": "transcribe", "progress": 25,
@@ -113,19 +110,76 @@ class PipelineRunner:
             from app.routes.pipeline import get_translation_engine
             engine = get_translation_engine(config.translation_engine, config.api_key)
 
-            translated_segments = await engine.translate_segments(
-                segments=segments,
-                source_lang=detected_lang,
-                target_lang=config.target_lang,
-                style=config.translation_style,
-                custom_prompt=config.custom_prompt,
-            )
+            translated_segments = []
+            current_engine = engine
+            using_fallback = False
+            
+            for i, seg in enumerate(segments):
+                try:
+                    translated = await current_engine.translate(
+                        seg["text"], detected_lang, config.target_lang,
+                        style=config.translation_style, custom_prompt=config.custom_prompt
+                    )
+                    translated_segments.append({**seg, "translated": translated})
+                except Exception as e:
+                    from app.engines.base import TranslationError
+                    # Nếu lỗi TranslationError và chưa fallback và có cấu hình fallback
+                    if isinstance(e, TranslationError) and not using_fallback and config.fallback_engine:
+                        yield {
+                            "stage": "translate",
+                            "progress": 25 + int((i / len(segments)) * 25),
+                            "message": f"Translation failed with {config.translation_engine}. Falling back to {config.fallback_engine}...",
+                            "type": "warning"
+                        }
+                        current_engine = get_translation_engine(config.fallback_engine, config.fallback_api_key)
+                        using_fallback = True
+                        
+                        # Retranslate the current segment
+                        translated = await current_engine.translate(
+                            seg["text"], detected_lang, config.target_lang,
+                            style=config.translation_style, custom_prompt=config.custom_prompt
+                        )
+                        translated_segments.append({**seg, "translated": translated})
+                    else:
+                        raise e
 
             yield {
                 "stage": "translate", "progress": 50,
                 "message": f"Translated {len(translated_segments)} segments"
             }
 
+            # ── Analyze Done ──
+            yield {
+                "stage": "done", "progress": 100,
+                "message": "Analyze complete!",
+                "segments": translated_segments,
+                "duration": duration,
+            }
+
+        except Exception as e:
+            logger.error(f"Analyze failed: {e}")
+            yield {
+                "stage": "error", "progress": -1,
+                "message": str(e),
+            }
+
+    async def run_render(
+        self,
+        video_path: str,
+        config: PipelineConfig,
+        segments: list[dict],
+        duration: float,
+        target_path: Optional[str] = None,
+    ) -> AsyncGenerator[dict, None]:
+        """Chạy Render: TTS -> Merge -> return output_path."""
+        if target_path:
+            output_dir = os.path.dirname(target_path)
+            output_path = target_path
+        else:
+            output_dir = tempfile.mkdtemp(prefix="knreup_")
+            output_path = os.path.join(output_dir, f"output_{Path(video_path).stem}.mp4")
+
+        try:
             # ── Stage 3: TTS ──
             dubbed_audio_path = None
             if config.dubbing_enabled:
@@ -136,9 +190,9 @@ class PipelineRunner:
 
                 # Synthesize each segment
                 audio_files = []
-                for i, seg in enumerate(translated_segments):
+                for i, seg in enumerate(segments):
                     audio_path = os.path.join(output_dir, f"tts_{i:04d}.mp3")
-                    text = seg.get("translated", seg.get("text", ""))
+                    text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
                     if text.strip():
                         await tts.synthesize(
                             text=text,
@@ -154,12 +208,15 @@ class PipelineRunner:
                             "end": seg["end"],
                         })
 
-                    progress = 50 + int((i + 1) / len(translated_segments) * 25)
-                    yield {"stage": "tts", "progress": progress, "message": f"TTS segment {i+1}/{len(translated_segments)}"}
+                    progress = 50 + int((i + 1) / len(segments) * 25)
+                    yield {"stage": "tts", "progress": progress, "message": f"TTS segment {i+1}/{len(segments)}"}
 
                 # Merge all TTS audio into one file with correct timing
-                dubbed_audio_path = os.path.join(output_dir, "dubbed_audio.wav")
-                await self._merge_tts_audio(audio_files, dubbed_audio_path, result["duration"])
+                if audio_files:
+                    dubbed_audio_path = os.path.join(output_dir, "dubbed_audio.wav")
+                    await self._merge_tts_audio(audio_files, dubbed_audio_path, duration)
+                else:
+                    dubbed_audio_path = None
 
             yield {"stage": "tts", "progress": 75, "message": "Speech generation complete"}
 
@@ -172,11 +229,13 @@ class PipelineRunner:
                 builder.add_dubbed_audio(dubbed_audio_path, config.original_volume)
 
             if config.subtitle_enabled:
-                builder.add_subtitles_ass(translated_segments, config.subtitle_config)
+                builder.add_subtitles_ass(segments, config.subtitle_config)
 
             # Run FFmpeg
             yield {"stage": "merge", "progress": 85, "message": "Running FFmpeg..."}
-            builder.build(codec=config.codec, crf=config.crf)
+            await asyncio.sleep(0.1)
+            
+            await asyncio.to_thread(builder.build, codec=config.codec, crf=config.crf)
 
             yield {
                 "stage": "done", "progress": 100,
@@ -185,7 +244,7 @@ class PipelineRunner:
             }
 
         except Exception as e:
-            logger.error(f"Pipeline failed: {e}")
+            logger.error(f"Render failed: {e}")
             yield {
                 "stage": "error", "progress": -1,
                 "message": str(e),
@@ -202,13 +261,18 @@ class PipelineRunner:
             return
 
         import subprocess
+        import tempfile
+        import os
+
+        work_dir = os.path.dirname(audio_files[0]["path"])
 
         # Build FFmpeg concat filter with delay
         inputs = []
         filter_parts = []
 
         for i, af in enumerate(audio_files):
-            inputs.extend(["-i", af["path"]])
+            # Rút ngắn đường dẫn tuyệt đối bằng cwd
+            inputs.extend(["-i", os.path.basename(af["path"])])
             delay_ms = int(af["start"] * 1000)
             filter_parts.append(f"[{i}:a]adelay={delay_ms}|{delay_ms}[a{i}]")
 
@@ -218,10 +282,22 @@ class PipelineRunner:
             f"{mix_inputs}amix=inputs={len(audio_files)}:duration=longest[out]"
         )
 
-        cmd = ["ffmpeg", "-y"] + inputs
-        cmd.extend(["-filter_complex", ";".join(filter_parts)])
-        cmd.extend(["-map", "[out]", "-t", str(total_duration), output_path])
+        filter_script_path = os.path.join(work_dir, "ff_filter.txt")
+        with open(filter_script_path, "w", encoding="utf-8") as f:
+            f.write(";".join(filter_parts))
 
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        cmd = ["ffmpeg", "-y"] + inputs
+        cmd.extend(["-filter_complex_script", "ff_filter.txt"])
+        
+        if total_duration > 0:
+            cmd.extend(["-map", "[out]", "-t", str(total_duration), output_path])
+        else:
+            cmd.extend(["-map", "[out]", output_path])
+
+        def run_merge():
+            return subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+            
+        proc = await asyncio.to_thread(run_merge)
         if proc.returncode != 0:
             logger.error(f"TTS audio merge failed: {proc.stderr}")
+            raise RuntimeError(f"FFmpeg audio merge failed: {proc.stderr}")

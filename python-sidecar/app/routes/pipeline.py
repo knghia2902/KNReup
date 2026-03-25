@@ -4,15 +4,28 @@ import tempfile
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/pipeline")
 
-
 # ─── Models ───────────────────────────────────────────────
+class TranscribeRequest(BaseModel):
+    video_path: str
+    language: Optional[str] = None
+
+class ProcessRequest(BaseModel):
+    video_path: str
+    config_json: str = "{}"
+
+class RenderRequest(ProcessRequest):
+    segments: list[dict]
+    duration: float
+    output_path: Optional[str] = None
+
 class TranslateRequest(BaseModel):
     segments: list[dict]
     source_lang: str = "auto"
@@ -34,29 +47,36 @@ def get_translation_engine(engine_name: str, api_key: str = ""):
         return DeepSeekTranslation(api_key=api_key)
     elif engine_name == "argos":
         from app.engines.translation.offline import ArgosTranslation
-
         return ArgosTranslation()
+    elif engine_name == "gemini":
+        from app.engines.translation.gemini import GeminiTranslation
+        if not api_key: raise HTTPException(400, "Gemini API key required")
+        return GeminiTranslation(api_key=api_key)
+    elif engine_name == "deepl":
+        from app.engines.translation.deepl_engine import DeepLTranslation
+        if not api_key: raise HTTPException(400, "DeepL API key required")
+        return DeepLTranslation(api_key=api_key)
+    elif engine_name == "ollama":
+        from app.engines.translation.ollama import OllamaTranslation
+        return OllamaTranslation(url=api_key)
+    elif engine_name == "nllb":
+        from app.engines.translation.nllb import NLLBTranslation
+        return NLLBTranslation()
+    elif engine_name == "openai":
+        from app.engines.translation.openai_engine import OpenAITranslation
+        if not api_key: raise HTTPException(400, "OpenAI API key required")
+        return OpenAITranslation(api_key=api_key)
     else:
         raise HTTPException(400, f"Unknown translation engine: {engine_name}")
 
 
 # ─── Transcribe ───────────────────────────────────────────
 @router.post("/transcribe")
-async def transcribe(
-    file: UploadFile = File(...),
-    language: Optional[str] = None,
-):
-    """Upload audio/video → Whisper ASR → segments."""
-    temp_path = None
+async def transcribe(req: TranscribeRequest):
+    """Whisper ASR → segments using local video path."""
     try:
-        # Save uploaded file to temp
-        suffix = os.path.splitext(file.filename or "upload.mp4")[1]
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=suffix, mode="wb"
-        ) as tmp:
-            content = await file.read()
-            tmp.write(content)
-            temp_path = tmp.name
+        if not os.path.exists(req.video_path):
+            raise HTTPException(400, f"File not found: {req.video_path}")
 
         # Transcribe
         from app.engines.asr import WhisperASR
@@ -68,15 +88,12 @@ async def transcribe(
             compute_type=compute_type,
         )
 
-        result = asr.transcribe(temp_path, language=language)
+        result = asr.transcribe(req.video_path, language=req.language)
         return result
 
     except Exception as e:
         logger.error(f"Transcription failed: {e}")
         raise HTTPException(500, f"Transcription failed: {str(e)}")
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            os.unlink(temp_path)
 
 
 # ─── Translate ────────────────────────────────────────────
@@ -169,32 +186,18 @@ async def tts_preview(req: TTSRequest):
 
 
 # ─── Full Pipeline (SSE) ─────────────────────────────────
-@router.post("/process")
-async def process_pipeline(
-    file: UploadFile = File(...),
-    config_json: str = "{}",
-):
-    """Full pipeline with SSE progress streaming."""
+@router.post("/analyze")
+async def analyze_pipeline(req: ProcessRequest):
+    """Analyze pipeline (Transcribe + Translate) with SSE progress streaming."""
     import json
-    from fastapi.responses import StreamingResponse
     from app.pipeline_runner import PipelineRunner, PipelineConfig
 
-    # Save uploaded file
-    temp_path = None
-    try:
-        suffix = os.path.splitext(file.filename or "upload.mp4")[1]
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=suffix, mode="wb"
-        ) as tmp:
-            content = await file.read()
-            tmp.write(content)
-            temp_path = tmp.name
-    except Exception as e:
-        raise HTTPException(500, f"File upload failed: {str(e)}")
+    if not os.path.exists(req.video_path):
+        raise HTTPException(400, f"File not found: {req.video_path}")
 
     # Parse config
     try:
-        cfg = json.loads(config_json)
+        cfg = json.loads(req.config_json)
     except json.JSONDecodeError:
         cfg = {}
 
@@ -202,11 +205,38 @@ async def process_pipeline(
 
     async def event_stream():
         runner = PipelineRunner()
-        async for event in runner.run(temp_path, pipeline_config):
+        async for event in runner.run_analyze(req.video_path, pipeline_config):
             yield f"data: {json.dumps(event)}\n\n"
-        # Cleanup temp file
-        if temp_path and os.path.exists(temp_path):
-            os.unlink(temp_path)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+@router.post("/render")
+async def render_pipeline(req: RenderRequest):
+    """Render pipeline (TTS + Merge) with SSE progress streaming."""
+    import json
+    from app.pipeline_runner import PipelineRunner, PipelineConfig
+
+    if not os.path.exists(req.video_path):
+        raise HTTPException(400, f"File not found: {req.video_path}")
+
+    try:
+        cfg = json.loads(req.config_json)
+    except json.JSONDecodeError:
+        cfg = {}
+
+    pipeline_config = PipelineConfig(**cfg)
+
+    async def event_stream():
+        runner = PipelineRunner()
+        async for event in runner.run_render(req.video_path, pipeline_config, req.segments, req.duration, target_path=req.output_path):
+            yield f"data: {json.dumps(event)}\n\n"
 
     return StreamingResponse(
         event_stream(),
@@ -220,30 +250,21 @@ async def process_pipeline(
 
 # ─── Simple (non-streaming) ──────────────────────────────
 @router.post("/process-simple")
-async def process_simple(
-    file: UploadFile = File(...),
-    config_json: str = "{}",
-):
+async def process_simple(req: ProcessRequest):
     """Non-streaming pipeline for testing."""
     import json
     from app.pipeline_runner import PipelineRunner, PipelineConfig
 
-    temp_path = None
-    try:
-        suffix = os.path.splitext(file.filename or "upload.mp4")[1]
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=suffix, mode="wb"
-        ) as tmp:
-            content = await file.read()
-            tmp.write(content)
-            temp_path = tmp.name
+    if not os.path.exists(req.video_path):
+        raise HTTPException(400, f"File not found: {req.video_path}")
 
-        cfg = json.loads(config_json) if config_json != "{}" else {}
+    try:
+        cfg = json.loads(req.config_json) if req.config_json != "{}" else {}
         pipeline_config = PipelineConfig(**cfg)
 
         runner = PipelineRunner()
         last_event = {}
-        async for event in runner.run(temp_path, pipeline_config):
+        async for event in runner.run_analyze(req.video_path, pipeline_config):
             last_event = event
 
         return last_event
@@ -251,7 +272,4 @@ async def process_simple(
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
         raise HTTPException(500, f"Pipeline failed: {str(e)}")
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            os.unlink(temp_path)
 
