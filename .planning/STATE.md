@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-03-24T03:33:47.507Z"
+status: completed
+last_updated: "2026-03-25T01:07:25.446Z"
 progress:
-  total_phases: 9
-  completed_phases: 1
-  total_plans: 15
-  completed_plans: 7
+  total_phases: 12
+  completed_phases: 2
+  total_plans: 16
+  completed_plans: 10
 ---
 
 # STATE.md — KNReup Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 
 - **Milestone:** 1 (Desktop App Hoàn Chỉnh)
 - **Phase:** 3 (NLE Editor UI)
-- **Status:** Ready to plan
+- **Status:** v1.0 milestone complete
 
 ## Context
 
@@ -55,6 +55,7 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 1 | Foundation (Tauri + Sidecar) | ✅ Complete |
 | 2 | Core Pipeline MVP | ✅ Complete |
 | 3 | NLE Editor UI | ✅ Complete |
+| 3.1| Tách luồng Pipeline thành Analyze và Render | ⏳ Ready |
 | 4 | Multi-Engine + Advanced | — |
 | 5 | Output Advanced | — |
 | 6 | Timeline + Premium UI | — |

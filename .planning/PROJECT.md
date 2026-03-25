@@ -12,29 +12,30 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 
 ## Requirements
 
-### Validated
+### Validated (v1.0 MVP)
 
-- ✓ Pipeline 4 bước (Whisper → Translate → TTS → FFmpeg) — đã chứng minh trong VideoTransAI
-- ✓ Phase 3: NLE Editor UI — Layout 5-panel, WYSIWYG preview, timeline, properties tabs (Validated in Phase 03: nle-editor-ui)
+- ✓ Pipeline 4 bước (Whisper → Translate → TTS → FFmpeg)
+- ✓ Phase 3: NLE Editor UI — Layout 5-panel, WYSIWYG preview, timeline, properties tabs
+- ✓ Phase 3.1: Tách luồng Pipeline Analyze và Render (Lưu lại file gốc, chỉnh phụ đề trước khi xuất)
+- ✓ 4 engine dịch thuật (DeepSeek, Gemini, DeepL, v.v...)
+- ✓ Chức năng tuỳ chỉnh output file qua Native OS Dialog
+- ✓ Rendering canvas WYSIWYG khớp hoàn hảo với FFmpeg ASS Render
 
 ### Active
 
-#### Core Pipeline
-- [ ] Whisper ASR với faster-whisper/CTranslate2, chọn model, VAD, chunked processing
-- [ ] PaddleOCR nhận dạng phụ đề cứng trên video
-- [ ] 4 engine dịch thuật (CTranslate2/Argos offline, Gemini, OpenAI, DeepSeek) với auto fallback + key rotation
-- [ ] 4 engine TTS (SmartVoice, Edge TTS, gTTS, Piper TTS offline) + Audio FX Pipeline
-- [ ] Kiểm tra khả năng tái sử dụng SmartVoice API từ ali33.site
-- [ ] Output builder: burn phụ đề, watermark, blur, audio mix, smart crop, encoding presets
-- [ ] Test cả 2 phương pháp hardsub: ASS via FFmpeg vs WYSIWYG Canvas → PNG overlay
+#### Đầu nối Multi-Engine (Cho Milestone 2)
+- [ ] OpenAI, CTranslate2/Argos offline (Vẫn còn thiếu).
+- [ ] Auto fallback + key rotation cho các model.
+- [ ] Multi TTS Engines (Piper, gTTS, SmartVoice).
+- [ ] Audio FX Pipeline.
 
-#### Giao diện (UI)
-- [x] Tauri 2.0 + React/TypeScript + Vite
-- [x] NLE 5-Panel layout (CapCut/Premiere Pro style)
-- [x] Sử dụng taste-skill (https://github.com/Leonxlnx/taste-skill) cho design premium
-- [x] WYSIWYG video preview, subtitle editor, multi-track timeline
-- [ ] Dark/Light theme, glassmorphism, micro-animations
-- [ ] Keyboard shortcuts
+#### Output Nâng Cao
+- [ ] PaddleOCR nhận dạng phụ đề cứng trên video.
+- [ ] Burn phụ đề watermark, blur, audio mix, smart crop.
+
+#### UI Pro
+- [ ] Dark/Light theme, glassmorphism, micro-animations.
+- [ ] Keyboard shortcuts.
 
 #### Video Downloader
 - [ ] Douyin no-watermark download (f2 + a_bogus)
@@ -51,15 +52,18 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 #### Hệ thống
 - [ ] First-run setup giống VideoTransAI: detect GPU → cài đặt dependencies
 - [ ] Multi API key management + rotation
-- [ ] License system
 - [ ] Batch processing + job queue
 
 ### Out of Scope
-
-- Web deployment (Docker/API Gateway) — Phase 9, defer sang milestone sau
+- Web deployment (Docker/API Gateway)
 - Mobile app — hoàn toàn ngoài scope
 - Voice cloning — quá phức tạp cho v1
 - Live streaming integration — không cần thiết
+
+## Current State
+**v1.0 MVP Released (2026-03-25)**: Hệ thống cơ bản hoạt động ổn định. Người dùng có thể Import video, app gọi API tự động Analyze bóc băng, dịch tiếng. Sau đó người dùng chỉnh sửa Layout (Properties Tabs, Timeline), đổi Name, và Render xuất Video bằng hộp thoại Save Native. Pipeline Backend + UI Frontend đã liên kết mạnh mẽ.
+
+**Next Milestone Goals (v2.0)**: Bắt đầu khai mở hàng loạt các Engine mới (Trí tuệ nhân tạo, Audio FX), Watermark/Blur phụ đề gốc, tích hợp Video Downloader.
 
 ## Context
 
