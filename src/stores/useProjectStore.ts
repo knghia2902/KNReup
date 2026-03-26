@@ -27,12 +27,30 @@ export interface ProjectConfig {
   pitch: number;
   original_volume: number;
   // Output
+  container: 'mp4' | 'mkv';
   codec: 'h264' | 'h265' | 'vp9';
   crf: number;
+  preset: string;
   resolution: string;
   audio_mix_mode: string;
   // Video Ratio
   video_ratio: 'original' | '16:9' | '9:16';
+  // Advanced Effects
+  blur_enabled: boolean;
+  blur_x: number;
+  blur_y: number;
+  blur_w: number;
+  blur_h: number;
+  watermark_enabled: boolean;
+  watermark_text: string;
+  watermark_x: number;
+  watermark_y: number;
+  watermark_opacity: number;
+  crop_enabled: boolean;
+  bgm_enabled: boolean;
+  bgm_file: string;
+  bgm_volume: number;
+  ducking_strength: number;
 }
 
 interface ProjectStore extends ProjectConfig {
@@ -67,11 +85,28 @@ const DEFAULT_CONFIG: ProjectConfig = {
   volume: 1.0,
   pitch: 1.0,
   original_volume: 0.1,
+  container: 'mp4',
   codec: 'h264',
   crf: 23,
+  preset: 'fast',
   resolution: '1080p',
   audio_mix_mode: 'mix',
   video_ratio: 'original',
+  blur_enabled: false,
+  blur_x: 0,
+  blur_y: 0,
+  blur_w: 200,
+  blur_h: 100,
+  watermark_enabled: false,
+  watermark_text: '',
+  watermark_x: 50,
+  watermark_y: 50,
+  watermark_opacity: 0.8,
+  crop_enabled: false,
+  bgm_enabled: false,
+  bgm_file: '',
+  bgm_volume: 0.5,
+  ducking_strength: 0.2,
 };
 
 export const useProjectStore = create<ProjectStore>()(
