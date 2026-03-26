@@ -47,6 +47,23 @@ class PipelineConfig:
         # Output
         codec: str = "libx264",
         crf: int = 23,
+        preset: str = "fast",
+        # Output Advanced
+        watermark_enabled: bool = False,
+        watermark_text: str = "",
+        watermark_x: int = 10,
+        watermark_y: int = 10,
+        watermark_opacity: float = 1.0,
+        blur_enabled: bool = False,
+        blur_x: int = 0,
+        blur_y: int = 0,
+        blur_w: int = 0,
+        blur_h: int = 0,
+        crop_enabled: bool = False,
+        bgm_enabled: bool = False,
+        bgm_file: str = "",
+        bgm_volume: float = 0.5,
+        ducking_strength: float = 0.2,
     ):
         self.translation_engine = translation_engine
         self.source_lang = source_lang
@@ -73,6 +90,22 @@ class PipelineConfig:
         }
         self.codec = codec
         self.crf = crf
+        self.preset = preset
+        self.watermark_enabled = watermark_enabled
+        self.watermark_text = watermark_text
+        self.watermark_x = watermark_x
+        self.watermark_y = watermark_y
+        self.watermark_opacity = watermark_opacity
+        self.blur_enabled = blur_enabled
+        self.blur_x = blur_x
+        self.blur_y = blur_y
+        self.blur_w = blur_w
+        self.blur_h = blur_h
+        self.crop_enabled = crop_enabled
+        self.bgm_enabled = bgm_enabled
+        self.bgm_file = bgm_file
+        self.bgm_volume = bgm_volume
+        self.ducking_strength = ducking_strength
 
 
 class PipelineRunner:
@@ -124,24 +157,37 @@ class PipelineRunner:
                     )
                     translated_segments.append({**seg, "translated": translated})
                 except Exception as e:
-                    from app.engines.base import TranslationError
-                    # Nếu lỗi TranslationError và chưa fallback và có cấu hình fallback
-                    if isinstance(e, TranslationError) and not using_fallback and config.fallback_engine:
+                    # Bắt mọi lỗi từ Engine cũ để fallback
+                    if not using_fallback:
+                        fallback_eng = config.fallback_engine
+                        if not fallback_eng:
+                            # Tên engine gọi offline là "argos", không phải "offline"
+                            fallback_eng = "gemini" if config.translation_engine != "gemini" else "argos"
+                            
                         yield {
                             "stage": "translate",
                             "progress": 25 + int((i / len(segments)) * 25),
-                            "message": f"Translation failed with {config.translation_engine}. Falling back to {config.fallback_engine}...",
+                            "message": f"Translation failed with {config.translation_engine}. Falling back to {fallback_eng}...",
                             "type": "warning"
                         }
-                        current_engine = get_translation_engine(config.fallback_engine, config.fallback_api_key)
+                        try:
+                            current_engine = get_translation_engine(fallback_eng, config.fallback_api_key)
+                        except Exception as eng_err:
+                            logger.error(f"Failed to init fallback engine {fallback_eng}: {eng_err}")
+                            raise e # Ném lại lỗi cũ nếu fallback engine cũng không load được
+                            
                         using_fallback = True
                         
                         # Retranslate the current segment
-                        translated = await current_engine.translate(
-                            seg["text"], detected_lang, config.target_lang,
-                            style=config.translation_style, custom_prompt=config.custom_prompt
-                        )
-                        translated_segments.append({**seg, "translated": translated})
+                        try:
+                            translated = await current_engine.translate(
+                                seg["text"], detected_lang, config.target_lang,
+                                style=config.translation_style, custom_prompt=config.custom_prompt
+                            )
+                            translated_segments.append({**seg, "translated": translated})
+                        except Exception as sub_e:
+                            logger.error(f"Fallback translation failed: {sub_e}")
+                            translated_segments.append({**seg, "translated": seg["text"]}) # Hard fallback: giữ nguyên text source
                     else:
                         raise e
 
@@ -200,7 +246,7 @@ class PipelineRunner:
                             text=text,
                             voice=config.voice,
                             output_path=audio_path,
-                            rate=config.rate,
+                            rate=config.speed,
                             volume=config.volume,
                             pitch=config.pitch,
                         )
@@ -232,6 +278,9 @@ class PipelineRunner:
 
             if config.subtitle_enabled:
                 builder.add_subtitles_ass(segments, config.subtitle_config)
+
+            # Pass advanced output config to builder
+            builder._config = config
 
             # Run FFmpeg
             yield {"stage": "merge", "progress": 85, "message": "Running FFmpeg..."}
@@ -278,29 +327,15 @@ class PipelineRunner:
             # Rút ngắn đường dẫn tuyệt đối bằng cwd
             inputs.extend(["-i", os.path.basename(af["path"])])
             delay_ms = int(af["start"] * 1000)
-            filter_parts.append(f"[{i}:a]adelay={delay_ms}|{delay_ms}[a{i}]")
+            # Ép cứng 48000Hz cho MỌI file TTS nhập vào lưới amix để chống lỗi tua nhanh (Sample Rate Drift)
+            filter_parts.append(f"[{i}:a]aresample=48000,adelay={delay_ms}|{delay_ms}[a{i}]")
 
         # Mix all delayed streams
         mix_inputs = "".join(f"[a{i}]" for i in range(len(audio_files)))
         
-        if speed != 1.0 or pitch != 1.0:
-            # Route amix output to [mixed], then apply FX to [out]
-            filter_parts.append(f"{mix_inputs}amix=inputs={len(audio_files)}:duration=longest[mixed]")
-            
-            fx = []
-            if pitch != 1.0:
-                fx.append(f"asetrate=44100*{pitch}")
-            if speed != 1.0:
-                # Nếu đổi pitch -> speed cũng đổi thuận nghịch, cần dùng atempo để fix nếu muốn
-                # Dù sao thì cứ append atempo theo yêu cầu
-                fx.append(f"atempo={speed}")
-            
-            fx_chain = ",".join(fx)
-            filter_parts.append(f"[mixed]{fx_chain}[out]")
-        else:
-            filter_parts.append(
-                f"{mix_inputs}amix=inputs={len(audio_files)}:duration=longest[out]"
-            )
+        filter_parts.append(
+            f"{mix_inputs}amix=inputs={len(audio_files)}:duration=longest[out]"
+        )
 
         filter_script_path = os.path.join(work_dir, "ff_filter.txt")
         with open(filter_script_path, "w", encoding="utf-8") as f:
