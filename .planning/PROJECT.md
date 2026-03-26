@@ -10,13 +10,25 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 
 **Tự động hoá pipeline lồng tiếng video end-to-end**: Upload video → Nhận diện giọng nói → Dịch → Tạo giọng đọc → Xuất video có phụ đề + lồng tiếng — tất cả trong một app duy nhất.
 
+## Current Milestone: v2.0 Pro Release
+
+**Goal:** Mở rộng sức mạnh công nghệ AI lõi (Multi-Engine Dịch/Giọng đọc + Fallback tự động), trang bị vũ khí đồ họa cho Output (Watermark/AI Blur), và giao diện Timeline Đa Track Nâng Cao.
+
+**Target features:**
+- Dịch tiếng đa dạng: CTranslate2 Offline, OpenAI API. Tích hợp Auto-Fallback.
+- Giọng đọc phong phú: Piper TTS, gTTS, SmartVoice + Audio FX.
+- Kỹ xảo hình ảnh OCR: Nhận diện chữ cứng PaddleOCR/EasyOCR, bôi mờ (Blur) phụ đề gốc.
+- Đóng dấu bản quyền: Watermark text/logo, Smart Crop.
+- Layout Advanced: 4-track timeline (Video/Audio/Sub/BGM), Dark/Light theme, phím tắt.
+
 ## Requirements
 
-### Validated (v1.0 MVP)
+### Validated
 
 - ✓ Pipeline 4 bước (Whisper → Translate → TTS → FFmpeg)
 - ✓ Phase 3: NLE Editor UI — Layout 5-panel, WYSIWYG preview, timeline, properties tabs
 - ✓ Phase 3.1: Tách luồng Pipeline Analyze và Render (Lưu lại file gốc, chỉnh phụ đề trước khi xuất)
+- ✓ Phase 5: Giao diện và API FFmpeg hỗ trợ Watermark, Blur thủ công, BGM Audio Mix Ducking và Smart Crop 9:16.
 - ✓ 4 engine dịch thuật (DeepSeek, Gemini, DeepL, v.v...)
 - ✓ Chức năng tuỳ chỉnh output file qua Native OS Dialog
 - ✓ Rendering canvas WYSIWYG khớp hoàn hảo với FFmpeg ASS Render
@@ -31,7 +43,6 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 
 #### Output Nâng Cao
 - [ ] PaddleOCR nhận dạng phụ đề cứng trên video.
-- [ ] Burn phụ đề watermark, blur, audio mix, smart crop.
 
 #### UI Pro
 - [ ] Dark/Light theme, glassmorphism, micro-animations.
@@ -63,7 +74,9 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 ## Current State
 **v1.0 MVP Released (2026-03-25)**: Hệ thống cơ bản hoạt động ổn định. Người dùng có thể Import video, app gọi API tự động Analyze bóc băng, dịch tiếng. Sau đó người dùng chỉnh sửa Layout (Properties Tabs, Timeline), đổi Name, và Render xuất Video bằng hộp thoại Save Native. Pipeline Backend + UI Frontend đã liên kết mạnh mẽ.
 
-**Next Milestone Goals (v2.0)**: Bắt đầu khai mở hàng loạt các Engine mới (Trí tuệ nhân tạo, Audio FX), Watermark/Blur phụ đề gốc, tích hợp Video Downloader.
+**Phase 5 Complete (2026-03-26)**: Đã tích hợp thành công cấu hình Output Advanced (Watermark, Text, Blur, Crop 9:16, Audio Mix BGM).
+
+**Next Milestone Goals (v2.0)**: Bắt đầu khai mở hàng loạt các Engine mới (Trí tuệ nhân tạo, Audio FX) và tích hợp Video Downloader.
 
 ## Context
 
@@ -103,4 +116,4 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 | First-run setup giống VideoTransAI | UX đã chứng minh, detect GPU → install | — Pending |
 
 ---
-*Last updated: 2026-03-24 after Phase 03 completion*
+*Last updated: 2026-03-26 after Phase 05 completion*
