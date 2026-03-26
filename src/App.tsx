@@ -91,7 +91,7 @@ function App() {
           confidence: s.confidence || 1.0,
           tts_status: 'pending' as const
         }));
-        useSubtitleStore.getState().setSegments(mappedSegments);
+        useSubtitleStore.getState().setSegments(mappedSegments, activeFile);
       }
     } catch (err) {
       console.error("Analyze failed:", err);
@@ -103,44 +103,37 @@ function App() {
 
     try {
       const { save } = await import('@tauri-apps/plugin-dialog');
-      const defaultName = activeFile.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, "") + "_vi.mp4";
+      const defaultName = activeFile 
+        ? `${activeFile.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '')}_translated.${projectConfig.container}`
+        : `output.${projectConfig.container}`;
+
       const savePath = await save({
         title: "Xác nhận nơi lưu Video",
         defaultPath: defaultName,
         filters: [{
           name: 'Video',
-          extensions: [projectConfig.codec === 'vp9' ? 'mkv' : 'mp4']
+          extensions: [projectConfig.container]
         }]
       });
 
-      if (!savePath) return; // Hủy lưu
-
-      useQueueStore.getState().addJob({
-        videoPath: activeFile,
-        outputPath: savePath,
-        segments: useSubtitleStore.getState().segments,
-        config: {
-          translation_engine: projectConfig.translation_engine,
-          source_lang: projectConfig.language,
-          target_lang: 'vi',
-          tts_engine: projectConfig.tts_engine,
-          voice: projectConfig.voice,
-          speed: projectConfig.speed,
-          pitch: projectConfig.pitch,
-          dubbing_enabled: projectConfig.dubbing_enabled,
-          subtitle_enabled: projectConfig.subtitle_enabled,
-          subtitle_config: {
-            font: projectConfig.subtitle_font,
-            font_size: projectConfig.subtitle_font_size,
-            color: projectConfig.subtitle_color,
-            outline_color: projectConfig.subtitle_outline_color,
-            position: projectConfig.subtitle_position,
+      if (savePath) {
+        useQueueStore.getState().addJob({
+          videoPath: activeFile,
+          outputPath: savePath,
+          segments: useSubtitleStore.getState().segments,
+          config: {
+            ...projectConfig,
+            subtitle_config: {
+              font: projectConfig.subtitle_font,
+              font_size: projectConfig.subtitle_font_size,
+              color: projectConfig.subtitle_color,
+              outline_color: projectConfig.subtitle_outline_color,
+              position: projectConfig.subtitle_position,
+            }
           },
-          codec: projectConfig.codec,
-          crf: projectConfig.crf,
-        }
-      });
-      setSidebarFocus('monitor-mini');
+        });
+        setSidebarFocus('monitor-mini'); // Assuming 'monitor-mini' is the correct focus for queue
+      }
     } catch (err) {
       console.error("Save dialog failed:", err);
     }
@@ -153,8 +146,11 @@ function App() {
     // Start next job if pipeline is idle
     const isIdle = !processing && (!progress || progress.stage === 'done' || progress.stage === 'error' || progress.stage === 'cancelled');
     if (isIdle) {
-      const nextJob = jobs.find(j => j.status === 'pending');
-      if (nextJob) {
+      const currentJobs = useQueueStore.getState().jobs;
+      const nextJob = currentJobs.find(j => j.status === 'pending');
+      const hasProcessing = currentJobs.some(j => j.status === 'processing');
+
+      if (nextJob && !hasProcessing) {
         if (progress) resetPipeline();
         
         useQueueStore.getState().updateJobStatus(nextJob.id, 'processing');
@@ -176,12 +172,13 @@ function App() {
   // Sync pipeline progress to active job
   useEffect(() => {
     if (processing && progress) {
-      const activeJob = jobs.find(j => j.status === 'processing');
+      const currentJobs = useQueueStore.getState().jobs;
+      const activeJob = currentJobs.find(j => j.status === 'processing');
       if (activeJob) {
         useQueueStore.getState().updateJobProgress(activeJob.id, progress.progress, progress.message);
       }
     }
-  }, [progress, processing, jobs]);
+  }, [progress, processing]);
 
   // Drag & drop video handler
   const handleVideoDrop = useCallback((e: React.DragEvent) => {
@@ -236,6 +233,8 @@ function App() {
               segments={segments}
               subtitleConfig={subtitleConfig}
               videoRatio={projectConfig.video_ratio as 'original' | '16:9' | '9:16'}
+              isEditingSub={sidebarFocus === 'subtitle'}
+              onPositionChange={(pos) => projectConfig.updateConfig({ subtitle_position: pos })}
             />
           }
           properties={<PropertiesPanel sidebarFocus={sidebarFocus} onRender={handleRender} onAnalyze={handleAnalyze} processing={processing} />}

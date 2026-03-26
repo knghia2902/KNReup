@@ -2,6 +2,7 @@ import { SelectControl } from '../controls/SelectControl';
 import { SliderControl } from '../controls/SliderControl';
 import { ToggleControl } from '../controls/ToggleControl';
 import { useProjectStore } from '../../stores/useProjectStore';
+import { open } from '@tauri-apps/plugin-dialog';
 
 interface OutTabProps {
   onRender?: () => void;
@@ -79,14 +80,27 @@ export function OutTab({ onRender }: OutTabProps) {
           {config.bgm_enabled && (
             <>
               <div className="pr" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                <div className="plbl" style={{ width: '100%' }}>BGM File (Absolute Path)</div>
-                <input 
-                  type="text" 
-                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--c-bg2)', border: '1px solid var(--c-bg3)', color: 'white', padding: '4px 8px', borderRadius: '4px', pointerEvents: 'auto' }}
-                  value={config.bgm_file} 
-                  onChange={(e) => config.updateConfig({ bgm_file: e.target.value })}
-                  placeholder="e.g. C:/music/bgm.mp3"
-                />
+                <div className="plbl" style={{ width: '100%' }}>BGM File</div>
+                <div style={{ display: 'flex', width: '100%', gap: '4px' }}>
+                  <button 
+                    className="btn" 
+                    style={{ flex: 1, padding: '4px 8px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    onClick={async () => {
+                      const selected = await open({
+                        multiple: false,
+                        filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'aac', 'flac'] }]
+                      });
+                      if (selected && typeof selected === 'string') {
+                        config.updateConfig({ bgm_file: selected });
+                      }
+                    }}
+                  >
+                    {config.bgm_file ? config.bgm_file.split(/[/\\]/).pop() : "Select audio file..."}
+                  </button>
+                  {config.bgm_file && (
+                    <button className="btn" style={{ padding: '4px 8px' }} onClick={() => config.updateConfig({ bgm_file: '' })}>×</button>
+                  )}
+                </div>
               </div>
               <SliderControl 
                 label="BGM Vol" 

@@ -4,10 +4,35 @@ Model strategy: base (CPU) / large-v3 (GPU), dựa trên VRAM detect.
 VAD Silero + chunked processing.
 """
 import logging
+import os
+import site
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+def _inject_nvidia_dll_paths():
+    """Tự động tiêm đường dẫn DLL của các gói nvidia-* (cu12) cài qua pip vào Windows.
+    Giúp CTranslate2 tải được cublas64_12.dll mà user không cần cài nguyên bộ CUDA Toolkit.
+    """
+    if os.name != "nt":
+        return
+    try:
+        packages = site.getsitepackages()
+        for sp in packages:
+            # Danh sách các thư viện nvidia thường chứa DLL
+            for lib in ["cublas", "cudnn", "cufft", "curand", "cusolver", "cusparse"]:
+                bin_path = os.path.join(sp, "nvidia", lib, "bin")
+                if os.path.exists(bin_path):
+                    try:
+                        os.add_dll_directory(bin_path)
+                    except AttributeError:
+                        pass
+                    if bin_path not in os.environ.get("PATH", ""):
+                        os.environ["PATH"] = bin_path + os.pathsep + os.environ.get("PATH", "")
+                    logger.debug(f"Added DLL directory: {bin_path}")
+    except Exception as e:
+        logger.warning(f"Failed to inject NVIDIA DLL paths: {e}")
 
 
 class WhisperASR:
@@ -27,17 +52,37 @@ class WhisperASR:
     def _load_model(self):
         """Lazy-load model khi lần đầu transcribe."""
         if self._model is None:
-            from faster_whisper import WhisperModel
+            _inject_nvidia_dll_paths()
+            try:
+                import torch
+            except ImportError:
+                pass
 
-            logger.info(
-                f"Loading Whisper model: {self.model_size} "
-                f"(device={self.device}, compute={self.compute_type})"
-            )
-            self._model = WhisperModel(
-                self.model_size,
-                device=self.device,
-                compute_type=self.compute_type,
-            )
+            try:
+                from faster_whisper import WhisperModel
+
+                logger.info(
+                    f"Loading Whisper model: {self.model_size} "
+                    f"(device={self.device}, compute={self.compute_type})"
+                )
+                self._model = WhisperModel(
+                    self.model_size,
+                    device=self.device,
+                    compute_type=self.compute_type,
+                )
+            except Exception as e:
+                logger.error(f"Failed to load model on {self.device} (error: {e}).")
+                # Fallback to CPU
+                logger.warning("Rơi vào Fallback CPU (tháo gỡ CUDA lỗi).")
+                self.device = "cpu"
+                self.compute_type = "int8"
+                self.model_size = "base"
+                from faster_whisper import WhisperModel
+                self._model = WhisperModel(
+                    self.model_size,
+                    device=self.device,
+                    compute_type=self.compute_type,
+                )
         return self._model
 
     @classmethod
@@ -47,22 +92,16 @@ class WhisperASR:
         Returns:
             (model_size, device, compute_type)
         """
+        gpu_available = False
         try:
             from app.utils.gpu_detect import detect_gpu
-
             gpu = detect_gpu()
-            if gpu["gpu_available"]:
-                # Ước lượng VRAM từ GPU name (không có API trực tiếp)
-                # large-v3 cần ~4GB VRAM
-                vram_enough = True  # Default assume đủ nếu có GPU
-                if vram_enough:
-                    return ("large-v3", "cuda", "float16")
-                else:
-                    return ("medium", "cuda", "int8_float16")
+            gpu_available = gpu.get("gpu_available", False)
         except Exception as e:
             logger.warning(f"GPU detection failed: {e}")
 
-        return ("base", "cpu", "int8")
+        # Fallback hoặc Override tạm để test UAT nhanh chóng
+        return ("base", "cuda" if gpu_available else "cpu", "int8_float16" if gpu_available else "int8")
 
     def transcribe(
         self,

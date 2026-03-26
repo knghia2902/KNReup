@@ -1,7 +1,7 @@
 /**
  * JobMonitor — Background processing progress toast (taste-skill compliant).
  */
-import { X, CircleNotch, HardDrive, PlayCircle, ChatText, MusicNotes, Export, FolderOpen } from '@phosphor-icons/react';
+import { X, CircleNotch, PlayCircle, FolderOpen } from '@phosphor-icons/react';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import type { PipelineProgress } from '../../hooks/usePipeline';
 import './JobMonitor.css';
@@ -13,16 +13,7 @@ interface JobMonitorProps {
 }
 
 export function JobMonitor({ progress, onCancel, onDismiss }: JobMonitorProps) {
-  const getStageIcon = (stage: string) => {
-    switch (stage) {
-      case 'upload': return <HardDrive size={16} />;
-      case 'transcribe': return <ChatText size={16} />;
-      case 'translate': return <ChatText size={16} />;
-      case 'tts': return <MusicNotes size={16} />;
-      case 'merge': return <Export size={16} />;
-      default: return <PlayCircle size={16} />;
-    }
-  };
+
 
   const getStageLabel = (stage: string) => {
     switch (stage) {

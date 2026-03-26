@@ -29,16 +29,18 @@ class EdgeTTSEngine(TTSEngine):
         try:
             import edge_tts
 
-            rate_str = self._format_rate(rate)
-            volume_str = self._format_volume(volume)
-            pitch_str = self._format_pitch(pitch)
+            kwargs = {}
+            if rate != 1.0:
+                kwargs["rate"] = self._format_rate(rate)
+            if volume != 1.0:
+                kwargs["volume"] = self._format_volume(volume)
+            if pitch != 1.0:
+                kwargs["pitch"] = self._format_pitch(pitch)
 
             communicate = edge_tts.Communicate(
                 text,
                 voice,
-                rate=rate_str,
-                volume=volume_str,
-                pitch=pitch_str,
+                **kwargs
             )
 
             await communicate.save(output_path)
@@ -94,6 +96,6 @@ class EdgeTTSEngine(TTSEngine):
 
     @staticmethod
     def _format_pitch(pitch: float) -> str:
-        """Convert pitch float (0.5 = default) to Edge TTS Hz format."""
-        hz = int((pitch - 0.5) * 20)
+        """Convert pitch float (1.0 = normal) to Edge TTS format."""
+        hz = int((pitch - 1.0) * 50)
         return f"+{hz}Hz" if hz >= 0 else f"{hz}Hz"

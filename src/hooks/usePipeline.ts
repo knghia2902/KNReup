@@ -22,6 +22,8 @@ export interface PipelineConfig {
   subtitle_config?: Record<string, unknown>;
   codec?: string;
   crf?: number;
+  preset?: string;
+  container?: string;
 }
 
 export interface PipelineProgress {
@@ -29,6 +31,8 @@ export interface PipelineProgress {
   progress: number;
   message: string;
   output_path?: string;
+  segments?: any[];
+  duration?: number;
 }
 
 export function usePipeline() {
@@ -37,85 +41,106 @@ export function usePipeline() {
   const [error, setError] = useState<string | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  const startPipeline = useCallback(
-    async (videoPath: string, config: PipelineConfig = {}) => {
+  const runStream = useCallback(
+    async (endpoint: string, body: any): Promise<PipelineProgress> => {
       setProcessing(true);
       setError(null);
-      setProgress({ stage: 'upload', progress: 0, message: 'Processing local file...' });
+      setProgress({ stage: 'init', progress: 0, message: 'Starting...' });
 
       const controller = new AbortController();
       setAbortController(controller);
 
-      try {
-        // Detect sidecar port
-        const port = localStorage.getItem('sidecar_port') || '8008';
-        const baseUrl = `http://127.0.0.1:${port}`;
+      return new Promise(async (resolve, reject) => {
+        try {
+          const port = localStorage.getItem('sidecar_port') || '8008';
+          const baseUrl = `http://127.0.0.1:${port}`;
 
-        // POST JSON to SSE endpoint
-        const response = await fetch(`${baseUrl}/api/pipeline/process`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            video_path: videoPath,
-            config_json: JSON.stringify(config),
-          }),
-          signal: controller.signal,
-        });
+          const response = await fetch(`${baseUrl}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
 
-        if (!response.ok) {
-          throw new Error(`Pipeline failed: ${response.status}`);
-        }
+          if (!response.ok) {
+            throw new Error(`Pipeline failed: ${response.status}`);
+          }
 
-        // Parse SSE stream
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          if (!reader) throw new Error('No response body');
 
-        if (!reader) throw new Error('No response body');
+          let buffer = '';
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
 
-        let buffer = '';
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const event = JSON.parse(line.slice(6)) as PipelineProgress;
+                  setProgress(event);
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const event = JSON.parse(line.slice(6)) as PipelineProgress;
-                setProgress(event);
+                  if (event.stage === 'error') {
+                    setError(event.message);
+                    setProcessing(false);
+                    reject(new Error(event.message));
+                    return;
+                  }
 
-                if (event.stage === 'error') {
-                  setError(event.message);
-                  // Bỏ setProcessing(false) để UI Job Monitor báo đỏ thay vì biến mất
-                  return;
+                  if (event.stage === 'done') {
+                    setProcessing(false);
+                    resolve(event);
+                    return;
+                  }
+                } catch {
+                  // Skip invalid JSON
                 }
-
-                if (event.stage === 'done') {
-                  // Keep processing true to show 'Finished' state until dismissed
-                  return;
-                }
-              } catch {
-                // Skip invalid JSON
               }
             }
           }
+          setProcessing(false);
+          resolve({ stage: 'done', progress: 100, message: 'Completed' });
+        } catch (err) {
+          if ((err as Error).name === 'AbortError') {
+            setProgress({ stage: 'cancelled', progress: 0, message: 'Cancelled by user' });
+            reject(err);
+          } else {
+            setError((err as Error).message);
+            setProgress({ stage: 'error', progress: -1, message: (err as Error).message });
+            reject(err);
+          }
         }
-
-        setProcessing(false);
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') {
-          setProgress({ stage: 'cancelled', progress: 0, message: 'Cancelled by user' });
-        } else {
-          setError((err as Error).message);
-          setProgress({ stage: 'error', progress: -1, message: (err as Error).message });
-        }
-        // Tương tự, nếu lỗi mạng cũng không nên tắt popup ngay
-      }
+      });
     },
     [],
+  );
+
+  const analyzeVideo = useCallback(
+    (videoPath: string, config: PipelineConfig = {}) => {
+      return runStream('/api/pipeline/analyze', {
+        video_path: videoPath,
+        config_json: JSON.stringify(config),
+      });
+    },
+    [runStream]
+  );
+
+  const renderVideo = useCallback(
+    (videoPath: string, config: PipelineConfig = {}, segments: any[] = [], duration: number = 0, outputPath?: string) => {
+      return runStream('/api/pipeline/render', {
+        video_path: videoPath,
+        config_json: JSON.stringify(config),
+        segments,
+        duration,
+        output_path: outputPath,
+      });
+    },
+    [runStream]
   );
 
   const cancelPipeline = useCallback(() => {
@@ -138,7 +163,8 @@ export function usePipeline() {
     processing,
     progress,
     error,
-    startPipeline,
+    analyzeVideo,
+    renderVideo,
     cancelPipeline,
     resetPipeline,
   };

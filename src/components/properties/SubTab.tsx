@@ -1,5 +1,5 @@
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
-import { useSidecar } from '../../hooks/useSidecar';
+import { sidecar } from '../../lib/sidecar';
 import { useProjectStore } from '../../stores/useProjectStore';
 
 function formatTc(seconds: number) {
@@ -9,24 +9,30 @@ function formatTc(seconds: number) {
   return `00:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}:${ms.toString().padStart(2, '0')}`;
 }
 
-export function SubTab() {
+interface SubTabProps {
+  onAnalyze?: () => void;
+  processing?: boolean;
+}
+
+export function SubTab({ onAnalyze, processing }: SubTabProps) {
   const { segments, updateSegment, deleteSegment } = useSubtitleStore();
   const config = useProjectStore();
-  const { emitTask } = useSidecar();
-
   const handleReTTS = async (segId: number, text: string) => {
     updateSegment(segId, { tts_status: 'pending' });
     try {
-      await emitTask('tts:generate', {
-        text,
-        segment_id: segId,
-        engine: config.tts_engine,
-        voice: config.voice,
-        speed: config.speed,
-        volume: config.volume,
-        pitch: config.pitch
+      const res = await sidecar.fetch<{audio_path: string}>('/api/pipeline/tts-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          engine: config.tts_engine,
+          voice: config.voice,
+          rate: config.speed,
+          volume: config.volume,
+          pitch: config.pitch
+        })
       });
-      // Sidecar listener (setup in pipeline usually) sets to generated
+      updateSegment(segId, { tts_status: 'generated', tts_audio_path: res.audio_path });
     } catch {
       updateSegment(segId, { tts_status: 'error' });
     }
@@ -52,7 +58,17 @@ export function SubTab() {
 
       <div className="slist">
         {segments.length === 0 ? (
-          <div style={{ padding: 12, fontSize: 10, color: 'var(--i4)' }}>No segments. Run Pipeline to extract subtitles.</div>
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--i4)' }}>No segments. Configure settings and run Pipeline.</div>
+            <button 
+              className="btn pri" 
+              style={{ padding: '8px 24px', background: 'var(--ac)', color: 'var(--bg)' }}
+              onClick={onAnalyze} 
+              disabled={processing}
+            >
+              {processing ? 'Analyzing...' : 'Auto Translate'}
+            </button>
+          </div>
         ) : (
           segments.map((seg, idx) => (
             <div key={seg.id} className="srow">

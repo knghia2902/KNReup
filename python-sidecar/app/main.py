@@ -7,7 +7,7 @@ import sys
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import health, system, pipeline
+from app.routes import health, system, pipeline, subtitles
 
 
 def find_free_port() -> int:
@@ -36,6 +36,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api")
 app.include_router(system.router, prefix="/api")
 app.include_router(pipeline.router)
+app.include_router(subtitles.router)
 
 
 if __name__ == "__main__":

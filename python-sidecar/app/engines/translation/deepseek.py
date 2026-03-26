@@ -63,9 +63,22 @@ class DeepSeekTranslation(TranslationEngine):
         base_url: str = "https://api.deepseek.com/v1",
         model: str = "deepseek-chat",
     ):
-        self.api_key = api_key
+        self.api_keys = [k.strip() for k in api_key.split(",") if k.strip()]
+        self.current_key_idx = 0
+        if not self.api_keys:
+            raise ValueError("DeepSeek API key required")
         self.base_url = base_url.rstrip("/")
         self.model = model
+
+    @property
+    def api_key(self):
+        return self.api_keys[self.current_key_idx]
+
+    def rotate_key(self):
+        """Rotate to the next API key."""
+        if len(self.api_keys) > 1:
+            self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
+            logger.info(f"Rotated DeepSeek API key, using key index {self.current_key_idx}")
 
     async def translate(
         self,
@@ -128,39 +141,47 @@ class DeepSeekTranslation(TranslationEngine):
         max_retries: int = 3,
         initial_delay: float = 1.0,
     ):
-        """Retry với exponential backoff cho API errors."""
+        """Retry với exponential backoff cho API errors và key rotation."""
         delay = initial_delay
         last_error = None
+        
+        total_attempts = (max_retries + 1) * len(self.api_keys)
 
-        for attempt in range(max_retries + 1):
+        for attempt in range(total_attempts):
             try:
                 return await func()
             except httpx.HTTPStatusError as e:
                 last_error = e
                 status = e.response.status_code
-                if status in (429, 500, 502, 503) and attempt < max_retries:
-                    logger.warning(
-                        f"DeepSeek API error {status}, "
-                        f"retry {attempt + 1}/{max_retries} "
-                        f"in {delay:.1f}s"
-                    )
-                    await asyncio.sleep(delay)
-                    delay = min(delay * 2, 30.0)
+                if status in (429, 401, 500, 502, 503):
+                    if status in (429, 401) and len(self.api_keys) > 1:
+                        self.rotate_key()
+
+                    if attempt < total_attempts - 1:
+                        logger.warning(
+                            f"DeepSeek API error {status}, "
+                            f"retry {attempt + 1}/{total_attempts} "
+                            f"in {delay:.1f}s"
+                        )
+                        await asyncio.sleep(delay)
+                        delay = min(delay * 2, 30.0)
+                    else:
+                        raise TranslationError(f"DeepSeek API failed after {total_attempts} attempts: {e}")
                 else:
                     raise
             except httpx.ConnectError as e:
                 last_error = e
-                if attempt < max_retries:
+                if attempt < total_attempts - 1:
                     logger.warning(
                         f"DeepSeek connection error, "
-                        f"retry {attempt + 1}/{max_retries} "
+                        f"retry {attempt + 1}/{total_attempts} "
                         f"in {delay:.1f}s"
                     )
                     await asyncio.sleep(delay)
                     delay = min(delay * 2, 30.0)
                 else:
-                    raise
+                    raise TranslationError(f"DeepSeek connection failed: {e}")
 
         raise TranslationError(
-            f"DeepSeek API failed after {max_retries} retries: {last_error}"
+            f"DeepSeek API failed after {total_attempts} attempts: {last_error}"
         )

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
 
 /* =========================================
    KNREUP · MINIMALIST WARM MONOCHROME
@@ -17,17 +17,40 @@
   --fsr: 'Instrument Serif', serif;
   --tr:.13s;
 }
+
+body.dark {
+  --w0:#121110; --w1:#1a1918; --w2:#242220;
+  --w3:#32302e; --w4:#484542; --w5:#605c58;
+  --i0:#f5f4f1; --i1:#e6e4df; --i2:#ccc8c2;
+  --i3:#a39e98; --i4:#75716c;
+  --ac:#d67a54; --ac-p:rgba(214,122,84,.15); --ac-m:rgba(214,122,84,.3);
+  --green:#6abf8a; --green-p:rgba(106,191,138,.15);
+}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-body{
+body,#root{
   font-family:var(--fs);background:var(--w1);color:var(--i0);
   display:flex;flex-direction:column;overflow:hidden;font-size:12px;
   -webkit-font-smoothing:antialiased;
+  height:100%;
 }
 /* ── scrollbars ── */
-::-webkit-scrollbar{width:3px;height:3px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--w4);border-radius:2px;}
+::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
 /* ── selection ── */
 *{user-select:none;}
 textarea,input[type=text],input[type=number],input[type=password]{user-select:text;}
@@ -201,9 +224,11 @@ textarea,input[type=text],input[type=number],input[type=password]{user-select:te
 .pvbody{
   flex:1;display:flex;align-items:center;justify-content:center;
   padding:18px;position:relative;
+  container-type: size;
 }
 .vframe{
-  aspect-ratio:16/9;max-width:100%;max-height:100%;
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  height: min(100cqh, calc(100cqw * 9 / 16));
   background:var(--i0);border-radius:var(--r12);
   position:relative;overflow:hidden;
 }
@@ -369,6 +394,8 @@ textarea,input[type=text],input[type=number],input[type=password]{user-select:te
 .toglbl{font-size:10px;color:var(--i3);}
 /* color */
 .cinp{width:20px;height:20px;border:1px solid var(--w3);border-radius:3px;padding:0;cursor:pointer;flex-shrink:0;}
+.cinp::-webkit-color-swatch-wrapper{padding:0;}
+.cinp::-webkit-color-swatch{border:none;border-radius:2px;}
 .chex{font-family:var(--fm);font-size:9px;color:var(--i3);}
 /* position grid */
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:60px;flex-shrink:0;}
@@ -464,7 +491,7 @@ textarea,input[type=text],input[type=number],input[type=password]{user-select:te
   cursor:pointer;color:var(--i3);font-size:11px;transition:all var(--tr);
 }
 .snb:hover{background:var(--w2);color:var(--i1);}
-.slist{height:108px;overflow-y:auto;border-bottom:1px solid var(--w2);flex-shrink:0;}
+.slist{flex:1;overflow-y:auto;border-bottom:1px solid var(--w2);min-height:100px;}
 .srow{
   display:grid;grid-template-columns:22px 1fr;border-bottom:1px solid var(--w2);
   cursor:pointer;transition:background var(--tr);
@@ -480,7 +507,7 @@ textarea,input[type=text],input[type=number],input[type=password]{user-select:te
 .stc{font-family:var(--fm);font-size:7px;color:var(--i4);margin-bottom:1px;}
 .so{font-size:10px;color:var(--i3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;}
 .st{font-size:10px;color:var(--i1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sedit{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.sedit{height:160px;display:flex;flex-direction:column;flex-shrink:0;border-top:1px solid var(--w3);}
 .stcbar{
   height:28px;background:var(--w1);border-bottom:1px solid var(--w2);
   display:flex;align-items:center;padding:0 10px;gap:5px;flex-shrink:0;

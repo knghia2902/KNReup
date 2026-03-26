@@ -49,11 +49,14 @@ export function TTSTab() {
             <select 
               className="psel" 
               value={config.voice}
-              onChange={(e) => config.updateConfig({ voice: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value;
+                const engine = val.includes('Neural') ? 'edge_tts' : 'piper';
+                config.updateConfig({ voice: val, tts_engine: engine });
+              }}
             >
               <optgroup label="Edge TTS - Female">
                 <option value="vi-VN-HoaiMyNeural">Hoài My</option>
-                <option value="vi-VN-BichNgocNeural">Bích Ngọc</option>
               </optgroup>
               <optgroup label="Edge TTS - Male">
                 <option value="vi-VN-NamMinhNeural">Nam Minh</option>
@@ -83,37 +86,41 @@ export function TTSTab() {
           onChange={(v) => config.updateConfig({ pitch: v })}
         />
         
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
           <button 
             className="btn sm" 
-            style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}
+            style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}
             onClick={async () => {
-              if (!config.activeFile) return alert("Select a video first to preview Audio FX");
               try {
-                const res = await fetch(`http://localhost:8000/api/pipeline/preview-audio`, {
+                const port = localStorage.getItem('sidecar_port') || '8008';
+                const text = "Xin chào, đây là giọng đọc thử nghiệm của hệ thống lồng tiếng AI.";
+                const res = await fetch(`http://127.0.0.1:${port}/api/pipeline/tts-demo`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    audio_path: config.activeFile,
-                    speed: config.speed,
+                    text: text,
+                    engine: config.tts_engine,
+                    voice: config.voice,
+                    rate: config.speed,
+                    volume: config.volume,
                     pitch: config.pitch
                   })
                 });
-                if (!res.ok) throw new Error("Preview failed");
+                if (!res.ok) throw new Error("TTS Demo failed");
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 const audio = new Audio(url);
                 audio.play();
               } catch (e) {
-                alert("Audio FX Preview failed.");
+                alert("Voice Preview failed.");
                 console.error(e);
               }
             }}
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
-              <polygon points="5,3 13,8 5,13" fill="currentColor"/>
+              <path d="M8 2 C4 2 1 5 1 9 C1 13 4 16 8 16 C12 16 15 13 15 9 M3 9h2 M11 9h2" strokeLinecap="round"/>
             </svg>
-            Preview Audio FX
+            Preview Voice
           </button>
         </div>
       </div>

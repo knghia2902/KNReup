@@ -195,19 +195,26 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             # 2. Blur
             if getattr(config, "blur_enabled", False):
-                bx, by = getattr(config, "blur_x", 0), getattr(config, "blur_y", 0)
-                bw, bh = getattr(config, "blur_w", 0), getattr(config, "blur_h", 0)
-                if bw > 0 and bh > 0:
-                    filter_complex_parts.append(f"[{v_current}]delogo=x={bx}:y={by}:w={bw}:h={bh}[vblur]")
-                    v_current = "vblur"
+                regions = getattr(config, "blur_regions", [])
+                for i, r in enumerate(regions):
+                    try:
+                        bx, by = int(float(r.get("x", 0))), int(float(r.get("y", 0)))
+                        bw, bh = int(float(r.get("w", 0))), int(float(r.get("h", 0)))
+                        if bw > 0 and bh > 0:
+                            # delogo requires integers and coordinates within frame
+                            filter_complex_parts.append(f"[{v_current}]delogo=x={bx}:y={by}:w={bw}:h={bh}[vblur{i}]")
+                            v_current = f"vblur{i}"
+                    except (ValueError, TypeError):
+                        pass
 
             # 3. Watermark Text
             if getattr(config, "watermark_enabled", False) and getattr(config, "watermark_text", ""):
                 text = getattr(config, "watermark_text", "").replace("'", "\\'")
-                wx, wy = getattr(config, "watermark_x", 10), getattr(config, "watermark_y", 10)
+                wx, wy = int(float(getattr(config, "watermark_x", 10))), int(float(getattr(config, "watermark_y", 10)))
                 alpha = getattr(config, "watermark_opacity", 1.0)
+                # Use font='Arial' to support Vietnamese characters in Windows FFmpeg
                 filter_complex_parts.append(
-                    f"[{v_current}]drawtext=text='{text}':fontcolor=white@{alpha}:fontsize=40:x={wx}:y={wy}:shadowcolor=black@{alpha}:shadowx=2:shadowy=2[vwm]"
+                    f"[{v_current}]drawtext=text='{text}':font='Arial':fontcolor=white@{alpha}:fontsize=40:x={wx}:y={wy}:shadowcolor=black@{alpha}:shadowx=2:shadowy=2[vwm]"
                 )
                 v_current = "vwm"
 
@@ -241,11 +248,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             cmd.extend(["-stream_loop", "-1", "-i", bgm_file])
             a_bgm = f"{input_index}:a"
             bgm_vol = getattr(config, "bgm_volume", 0.5)
-            duck_str = getattr(config, "ducking_strength", 0.2)
+            duck_str = float(getattr(config, "ducking_strength", 0.2))
+            
+            # Map duck_str (0.0-1.0) to ratio (1.0-20.0)
+            ratio_val = max(1.0, min(20.0, duck_str * 20.0))
+            
             # Apply sidechain ducking if dubbed audio exists
             if self._dubbed_audio:
                 filter_complex_parts.append(f"[{a_bgm}]aresample=48000,volume={bgm_vol}[abgm_base]")
-                filter_complex_parts.append(f"[abgm_base][adub]sidechaincompress=threshold=0.1:ratio={duck_str}:attack=5:release=50:pre_min_amp=0[abgm]")
+                filter_complex_parts.append(f"[abgm_base][adub]sidechaincompress=threshold=0.1:ratio={ratio_val:.1f}:attack=5:release=50[abgm]")
                 audio_streams_to_mix.append("[abgm]")
             else:
                 filter_complex_parts.append(f"[{a_bgm}]aresample=48000,volume={bgm_vol}[abgm]")

@@ -55,15 +55,13 @@ class PipelineConfig:
         watermark_y: int = 10,
         watermark_opacity: float = 1.0,
         blur_enabled: bool = False,
-        blur_x: int = 0,
-        blur_y: int = 0,
-        blur_w: int = 0,
-        blur_h: int = 0,
+        blur_regions: Optional[list] = None,
         crop_enabled: bool = False,
         bgm_enabled: bool = False,
         bgm_file: str = "",
         bgm_volume: float = 0.5,
         ducking_strength: float = 0.2,
+        **kwargs
     ):
         self.translation_engine = translation_engine
         self.source_lang = source_lang
@@ -83,10 +81,11 @@ class PipelineConfig:
         self.speed = speed
         self.subtitle_enabled = subtitle_enabled
         self.subtitle_config = subtitle_config or {
+            "font": "Be Vietnam Pro",
             "font_size": 50,
+            "position": 90,
             "color": "#FFFF00",
             "outline_color": "#000000",
-            "position": 3,
         }
         self.codec = codec
         self.crf = crf
@@ -97,10 +96,15 @@ class PipelineConfig:
         self.watermark_y = watermark_y
         self.watermark_opacity = watermark_opacity
         self.blur_enabled = blur_enabled
-        self.blur_x = blur_x
-        self.blur_y = blur_y
-        self.blur_w = blur_w
-        self.blur_h = blur_h
+        self.blur_regions = blur_regions or []
+        # Map old blur properties from kwargs for backward compatibility
+        if "blur_x" in kwargs and "blur_y" in kwargs and "blur_w" in kwargs and "blur_h" in kwargs:
+            self.blur_regions.append({
+                "x": kwargs["blur_x"],
+                "y": kwargs["blur_y"],
+                "w": kwargs["blur_w"],
+                "h": kwargs["blur_h"],
+            })
         self.crop_enabled = crop_enabled
         self.bgm_enabled = bgm_enabled
         self.bgm_file = bgm_file
