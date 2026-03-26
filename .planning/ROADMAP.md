@@ -158,8 +158,7 @@
 | 1 | Foundation (Tauri + Sidecar + Layout) | Không |
 | 2 | 0/5 | Planned    |  | 3 | NLE Editor UI (4 tabs, sidebar states) | Phase 2 |
 | 4 | Multi-Engine + Advanced | Phase 2 |
-| 5 | Output Advanced | Phase 3, 4 |
-| 6 | Timeline + Premium UI | Phase 3 |
+| 5 | Output Advanced | Complete    | 2026-03-26 | 6 | Timeline + Premium UI | Phase 3 |
 | 7 | Video Downloader | Phase 1 |
 | 8 | Auto-Monitor + AI | Phase 7 |
 | 9 | Polish + License | All |
