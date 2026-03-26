@@ -5,10 +5,9 @@ import { useProjectStore } from '../../stores/useProjectStore';
 
 interface OutTabProps {
   onRender?: () => void;
-  processing?: boolean;
 }
 
-export function OutTab({ onRender, processing }: OutTabProps) {
+export function OutTab({ onRender }: OutTabProps) {
   const config = useProjectStore();
 
   return (
@@ -71,7 +70,7 @@ export function OutTab({ onRender, processing }: OutTabProps) {
           min={0} max={200} unit="%" 
           onChange={(v) => config.updateConfig({ volume: v / 100 })}
         />
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ padding: '12px 0 0 0', marginTop: '12px', borderTop: '1px solid var(--c-bg3)', pointerEvents: 'auto' }}>
           <ToggleControl 
             label="Enable custom BGM" 
             checked={config.bgm_enabled} 
@@ -83,8 +82,7 @@ export function OutTab({ onRender, processing }: OutTabProps) {
                 <div className="plbl" style={{ width: '100%' }}>BGM File (Absolute Path)</div>
                 <input 
                   type="text" 
-                  className="psel" 
-                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--c-bg2)', border: '1px solid var(--c-bg3)', color: 'white', padding: '4px 8px', borderRadius: '4px' }}
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--c-bg2)', border: '1px solid var(--c-bg3)', color: 'white', padding: '4px 8px', borderRadius: '4px', pointerEvents: 'auto' }}
                   value={config.bgm_file} 
                   onChange={(e) => config.updateConfig({ bgm_file: e.target.value })}
                   placeholder="e.g. C:/music/bgm.mp3"
@@ -105,57 +103,6 @@ export function OutTab({ onRender, processing }: OutTabProps) {
             </>
           )}
         </div>
-      </div>
-
-      <div className="ps">
-        <div className="pshd">Video Effects</div>
-        <ToggleControl 
-          label="Smart Crop (9:16)" 
-          checked={config.crop_enabled} 
-          onChange={(v) => config.updateConfig({ crop_enabled: v, video_ratio: v ? '9:16' : 'original' })}
-        />
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <ToggleControl 
-            label="Enable Blur" 
-            checked={config.blur_enabled} 
-            onChange={(v) => config.updateConfig({ blur_enabled: v })}
-          />
-          {config.blur_enabled && (
-            <div style={{ padding: '8px 0', fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
-              (Adjust blur box in Preview)
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="ps">
-        <div className="pshd">Watermark</div>
-        <ToggleControl 
-          label="Enable Watermark" 
-          checked={config.watermark_enabled} 
-          onChange={(v) => config.updateConfig({ watermark_enabled: v })}
-        />
-        {config.watermark_enabled && (
-          <>
-            <div className="pr" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', marginTop: '8px' }}>
-              <div className="plbl" style={{ width: '100%' }}>Text</div>
-              <input 
-                type="text" 
-                className="psel" 
-                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--c-bg2)', border: '1px solid var(--c-bg3)', color: 'white', padding: '4px 8px', borderRadius: '4px' }}
-                value={config.watermark_text} 
-                onChange={(e) => config.updateConfig({ watermark_text: e.target.value })}
-                placeholder="Your Watermark"
-              />
-            </div>
-            <SliderControl 
-              label="Opacity" 
-              value={Math.round(config.watermark_opacity * 100)} 
-              min={0} max={100} unit="%" 
-              onChange={(v) => config.updateConfig({ watermark_opacity: v / 100 })}
-            />
-          </>
-        )}
       </div>
 
       <div className="ps" style={{ borderBottom: 'none' }}>
