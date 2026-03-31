@@ -58,7 +58,7 @@ skipped: 0
 ## Gaps
 
 - truth: "Bật \"Enable custom BGM\" trong tab OUT. Có nút báo \"Select audio file\" và khi click mởi được dialog chọn file nhạc MP3. Chỉnh được BGM Vol và Ducking. Nút Toggle và Slider không bị lỗi click. (UAT cũ đã báo lỗi unclickable được fix). Có thể điều khiển mượt mà."
-  status: failed
+  status: resolved
   reason: "User reported: Chưa có phần nghe thử âm thanh. Sub không có nghe thấy. Output khi có audio thì voice góc bị nhỏ. Các file âm thanh đầy ở phần download."
   severity: major
   test: 2
@@ -68,7 +68,7 @@ skipped: 0
   debug_session: ""
 
 - truth: "Bật \"TEXT LOGO\" trong tab OUT. Nhập đoạn Text (ví dụ: @knreup) vào thẻ Text, gõ được chữ bình thường (Lỗi cũ: Không điền chữ được - đã fix). Điều khiển được XY vị trí và Opacity. Frame text nằm chung ở OutTab."
-  status: failed
+  status: resolved
   reason: "User reported: Phần Text logo xem phần sub để setup vị trí thì có được không?"
   severity: minor
   test: 3
@@ -78,10 +78,30 @@ skipped: 0
   debug_session: ""
 
 - truth: "Bật \"Enable Blur\" trong tab OUT. Di chuyển kéo các Slider Blur X, Y, W, H một cách bình thường (Lỗi cũ: không điều khiển được - đã fix)."
-  status: failed
+  status: resolved
   reason: "User reported: Blur bị lem, với giống phần logo luôn xem giống subtext được không"
   severity: major
   test: 4
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "Tại tab OUT (Video ratio), chọn \"9:16 · portrait\". Khung hình trong trình Editor sẽ giả định hình dáng 9:16 nằm giữa màn. Mọi setting được ghi nhận trong Store."
+  status: resolved
+  reason: "User reported: Để 9:16 thì Blur và Logo bị lệch"
+  severity: major
+  test: 5
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "Video Preview hiển thị overlay (ví dụ: khối chữ nhật mờ mô phỏng vị trí watermark/blur tương đối) khớp với tỉ lệ màn hình bên khung Edit lúc kéo thả sliders."
+  status: resolved
+  reason: "User reported: Logo và Blur chưa ổn đâu như nãy đã nói"
+  severity: major
+  test: 6
   root_cause: ""
   artifacts: []
   missing: []

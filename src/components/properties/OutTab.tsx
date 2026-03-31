@@ -3,6 +3,7 @@ import { SliderControl } from '../controls/SliderControl';
 import { ToggleControl } from '../controls/ToggleControl';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { open } from '@tauri-apps/plugin-dialog';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 interface OutTabProps {
   onRender?: () => void;
@@ -101,6 +102,9 @@ export function OutTab({ onRender }: OutTabProps) {
                     <button className="btn" style={{ padding: '4px 8px' }} onClick={() => config.updateConfig({ bgm_file: '' })}>×</button>
                   )}
                 </div>
+                {config.bgm_file && (
+                  <audio controls style={{ width: '100%', height: '32px', marginTop: '4px' }} src={convertFileSrc(config.bgm_file)} />
+                )}
               </div>
               <SliderControl 
                 label="BGM Vol" 

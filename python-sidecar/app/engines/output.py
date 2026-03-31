@@ -188,12 +188,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         # Check Advanced Effects
         if config:
-            # 1. Crop 16:9 to 9:16
-            if getattr(config, "crop_enabled", False):
-                filter_complex_parts.append(f"[{v_current}]crop=ih*9/16:ih[vcrop]")
-                v_current = "vcrop"
-
-            # 2. Blur
+            # 1. Blur
             if getattr(config, "blur_enabled", False):
                 regions = getattr(config, "blur_regions", [])
                 for i, r in enumerate(regions):
@@ -201,13 +196,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         bx, by = int(float(r.get("x", 0))), int(float(r.get("y", 0)))
                         bw, bh = int(float(r.get("w", 0))), int(float(r.get("h", 0)))
                         if bw > 0 and bh > 0:
-                            # delogo requires integers and coordinates within frame
-                            filter_complex_parts.append(f"[{v_current}]delogo=x={bx}:y={by}:w={bw}:h={bh}[vblur{i}]")
+                            # Use boxblur with split and overlay to avoid delogo edge smudging
+                            filter_complex_parts.append(f"[{v_current}]split=2[bm{i}][bb{i}];[bb{i}]crop={bw}:{bh}:{bx}:{by},boxblur=20:5[bp{i}];[bm{i}][bp{i}]overlay={bx}:{by}[vblur{i}]")
                             v_current = f"vblur{i}"
                     except (ValueError, TypeError):
                         pass
 
-            # 3. Watermark Text
+            # 2. Watermark Text
             if getattr(config, "watermark_enabled", False) and getattr(config, "watermark_text", ""):
                 text = getattr(config, "watermark_text", "").replace("'", "\\'")
                 wx, wy = int(float(getattr(config, "watermark_x", 10))), int(float(getattr(config, "watermark_y", 10)))
@@ -217,6 +212,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     f"[{v_current}]drawtext=text='{text}':font='Arial':fontcolor=white@{alpha}:fontsize=40:x={wx}:y={wy}:shadowcolor=black@{alpha}:shadowx=2:shadowy=2[vwm]"
                 )
                 v_current = "vwm"
+
+            # 3. Crop 16:9 to 9:16
+            if getattr(config, "crop_enabled", False):
+                filter_complex_parts.append(f"[{v_current}]crop=ih*9/16:ih[vcrop]")
+                v_current = "vcrop"
 
         # 4. Add ASS subtitles
         if self._ass_file:
@@ -263,7 +263,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 audio_streams_to_mix.append("[abgm]")
 
         mix_inputs = "".join(audio_streams_to_mix)
-        filter_complex_parts.append(f"{mix_inputs}amix=inputs={len(audio_streams_to_mix)}:duration=first[aout]")
+        filter_complex_parts.append(f"{mix_inputs}amix=inputs={len(audio_streams_to_mix)}:duration=first:normalize=0[aout]")
 
         if filter_complex_parts:
             cmd.extend(["-filter_complex", ";".join(filter_complex_parts)])
@@ -304,6 +304,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     pass
 
         proc.wait()
+
+        # Cleanup temp ASS file
+        if self._ass_file and os.path.exists(self._ass_file):
+            import contextlib
+            with contextlib.suppress(OSError):
+                os.remove(self._ass_file)
 
         if proc.returncode != 0:
             full_error = "".join(stderr_lines)

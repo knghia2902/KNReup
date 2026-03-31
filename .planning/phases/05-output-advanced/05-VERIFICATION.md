@@ -2,7 +2,7 @@
 status: passed
 nyquist_compliant: true
 wave_0_complete: false
-updated: 2026-03-26
+updated: 2026-03-31
 ---
 
 # Phase 05 — Verification
@@ -28,5 +28,9 @@ updated: 2026-03-26
 
 All must_haves and requirements are successfully implemented bridging backend and frontend. No regressions.
 
-## Human Verification Required
-None required for automated milestone. Developer asserts logic runs reliably.
+## Gaps Found via UAT
+5 major gaps discovered during conversational UAT:
+- Audio Mix (BGM, Ducking) lacks proper preview handling and generates temp file bloat.
+- Watermark and Blur features lack proper alignment preview and exhibit visual regressions (lem, lệch coordinates).
+- Smart Crop functionally shifts downstream coordinates (Logo/Blur).
+- Preview Overlay interaction incomplete.

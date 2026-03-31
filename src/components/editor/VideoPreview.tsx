@@ -114,9 +114,11 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
       (s) => currentTime >= s.start && currentTime <= s.end
     );
 
-    if (currentSeg || isEditingSub) {
-      const text = currentSeg ? (currentSeg.translated_text || currentSeg.source_text || "") : "Vùng hiển thị Phụ đề (Kéo thả)";
-      if (!text && !isEditingSub) return;
+    const forceShowDummy = projectConfig.watermark_enabled || projectConfig.blur_enabled;
+
+    if (currentSeg || isEditingSub || forceShowDummy) {
+      const text = currentSeg ? (currentSeg.translated_text || currentSeg.source_text || "") : "Vùng hiển thị Phụ đề (Tham khảo)";
+      if (!text && !isEditingSub && !forceShowDummy) return;
 
       let fontFamily = subtitleConfig.font;
       if (!fontReady && !document.fonts.check(`12px "${fontFamily}"`)) {
@@ -217,7 +219,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
     if (!video.paused && !isDragging) {
       rafRef.current = requestAnimationFrame(renderSubtitles);
     }
-  }, [segments, subtitleConfig, fontReady, isEditingSub, isDragging]);
+  }, [segments, subtitleConfig, fontReady, isEditingSub, isDragging, projectConfig.blur_enabled, projectConfig.watermark_enabled]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -272,6 +274,28 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
     };
   };
 
+  const getOverlayContainerStyle = (): React.CSSProperties => {
+    if (videoRatio === '9:16') {
+       return {
+         gridArea: '1 / 1',
+         height: '100%',
+         aspectRatio: videoDimensions.w && videoDimensions.h ? `${videoDimensions.w} / ${videoDimensions.h}` : '16 / 9',
+         position: 'absolute',
+         top: 0,
+         left: '50%',
+         transform: 'translateX(-50%)',
+         pointerEvents: 'none'
+       };
+    }
+    return {
+      gridArea: '1 / 1',
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+      pointerEvents: 'none'
+    };
+  };
+
   const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -299,7 +323,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
         <div className="vframe" style={getVframeStyle()}>
           <div
             className="vinner"
-            style={{ display: 'grid', placeItems: 'center', position: 'relative' }}
+            style={{ display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}
           >
             <video
               ref={videoRef}
@@ -311,7 +335,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
                 width: '100%', height: '100%',
                 minWidth: 0, minHeight: 0,
                 maxWidth: '100%', maxHeight: '100%',
-                objectFit: 'contain'
+                objectFit: videoRatio === '9:16' ? 'cover' : 'contain'
               }}
             />
             <canvas
@@ -321,9 +345,9 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
                 width: '100%', height: '100%',
                 minWidth: 0, minHeight: 0,
                 maxWidth: '100%', maxHeight: '100%',
+                objectFit: videoRatio === '9:16' ? 'cover' : 'contain',
                 pointerEvents: 'auto',
                 zIndex: 10,
-                objectFit: 'contain',
                 cursor: isDragging ? 'grabbing' : (isEditingSub ? 'grab' : 'default')
               }}
               onPointerDown={handlePointerDown}
@@ -332,35 +356,33 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
               onPointerCancel={handlePointerUp}
               onPointerLeave={handlePointerUp}
             />
-            {projectConfig.blur_enabled && videoDimensions.w > 0 && (
-              <div style={{
-                gridArea: '1 / 1',
-                zIndex: 20,
-                position: 'absolute',
-                border: '2px dashed red',
-                backdropFilter: 'blur(10px)',
-                background: 'rgba(255,255,255,0.1)',
-                left: `${(projectConfig.blur_x / videoDimensions.w) * 100}%`,
-                top: `${(projectConfig.blur_y / videoDimensions.h) * 100}%`,
-                width: `${(projectConfig.blur_w / videoDimensions.w) * 100}%`,
-                height: `${(projectConfig.blur_h / videoDimensions.h) * 100}%`,
-                pointerEvents: 'none'
-              }} />
-            )}
-            {projectConfig.watermark_enabled && projectConfig.watermark_text && videoDimensions.w > 0 && (
-              <div style={{
-                gridArea: '1 / 1',
-                zIndex: 20,
-                position: 'absolute',
-                color: 'white',
-                fontSize: '2vw',
-                textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
-                opacity: projectConfig.watermark_opacity,
-                left: `${(projectConfig.watermark_x / videoDimensions.w) * 100}%`,
-                top: `${(projectConfig.watermark_y / videoDimensions.h) * 100}%`,
-                pointerEvents: 'none'
-              }}>
-                {projectConfig.watermark_text}
+            {(projectConfig.blur_enabled || projectConfig.watermark_enabled) && videoDimensions.w > 0 && (
+              <div style={getOverlayContainerStyle()}>
+                {projectConfig.blur_enabled && (
+                  <div style={{
+                    position: 'absolute',
+                    border: '2px dashed red',
+                    backdropFilter: 'blur(10px)',
+                    background: 'rgba(255,255,255,0.1)',
+                    left: `${(projectConfig.blur_x / videoDimensions.w) * 100}%`,
+                    top: `${(projectConfig.blur_y / videoDimensions.h) * 100}%`,
+                    width: `${(projectConfig.blur_w / videoDimensions.w) * 100}%`,
+                    height: `${(projectConfig.blur_h / videoDimensions.h) * 100}%`,
+                  }} />
+                )}
+                {projectConfig.watermark_enabled && projectConfig.watermark_text && (
+                  <div style={{
+                    position: 'absolute',
+                    color: 'white',
+                    fontSize: '2vw',
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                    opacity: projectConfig.watermark_opacity,
+                    left: `${(projectConfig.watermark_x / videoDimensions.w) * 100}%`,
+                    top: `${(projectConfig.watermark_y / videoDimensions.h) * 100}%`,
+                  }}>
+                    {projectConfig.watermark_text}
+                  </div>
+                )}
               </div>
             )}
           </div>
