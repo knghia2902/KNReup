@@ -7,9 +7,10 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 
 interface OutTabProps {
   onRender?: () => void;
+  processing?: boolean;
 }
 
-export function OutTab({ onRender }: OutTabProps) {
+export function OutTab({ onRender, processing }: OutTabProps) {
   const config = useProjectStore();
 
   return (
@@ -128,6 +129,7 @@ export function OutTab({ onRender }: OutTabProps) {
           className="expbtn" 
           style={{ width: 'calc(100% - 24px)' }}
           onClick={onRender}
+          disabled={processing}
         >
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M8 2v9M4 7l4 4 4-4M2 14h12"/>

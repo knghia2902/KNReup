@@ -234,16 +234,23 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         audio_streams_to_mix.append("[aorig]")
 
         # Dubbed Audio
+        bgm_file = getattr(config, "bgm_file", "") if config else ""
+        has_bgm = getattr(config, "bgm_enabled", False) and bgm_file and os.path.exists(bgm_file)
+        
         if self._dubbed_audio:
             input_index += 1
             cmd.extend(["-i", self._dubbed_audio])
             a_dub = f"{input_index}:a"
-            filter_complex_parts.append(f"[{a_dub}]aresample=48000,volume=1.0[adub]")
-            audio_streams_to_mix.append("[adub]")
+            if has_bgm:
+                # Split dubbed audio: one for final mix, one for BGM sidechain ducking trigger
+                filter_complex_parts.append(f"[{a_dub}]aresample=48000,volume=1.0,asplit=2[adub_mix][adub_sc]")
+                audio_streams_to_mix.append("[adub_mix]")
+            else:
+                filter_complex_parts.append(f"[{a_dub}]aresample=48000,volume=1.0[adub]")
+                audio_streams_to_mix.append("[adub]")
 
         # BGM Audio
-        bgm_file = getattr(config, "bgm_file", "") if config else ""
-        if getattr(config, "bgm_enabled", False) and bgm_file and os.path.exists(bgm_file):
+        if has_bgm:
             input_index += 1
             cmd.extend(["-stream_loop", "-1", "-i", bgm_file])
             a_bgm = f"{input_index}:a"
@@ -256,7 +263,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Apply sidechain ducking if dubbed audio exists
             if self._dubbed_audio:
                 filter_complex_parts.append(f"[{a_bgm}]aresample=48000,volume={bgm_vol}[abgm_base]")
-                filter_complex_parts.append(f"[abgm_base][adub]sidechaincompress=threshold=0.1:ratio={ratio_val:.1f}:attack=5:release=50[abgm]")
+                filter_complex_parts.append(f"[abgm_base][adub_sc]sidechaincompress=threshold=0.1:ratio={ratio_val:.1f}:attack=5:release=50[abgm]")
                 audio_streams_to_mix.append("[abgm]")
             else:
                 filter_complex_parts.append(f"[{a_bgm}]aresample=48000,volume={bgm_vol}[abgm]")
