@@ -195,9 +195,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     try:
                         bx, by = int(float(r.get("x", 0))), int(float(r.get("y", 0)))
                         bw, bh = int(float(r.get("w", 0))), int(float(r.get("h", 0)))
-                        if bw > 0 and bh > 0:
-                            # Use boxblur with split and overlay to avoid delogo edge smudging
-                            filter_complex_parts.append(f"[{v_current}]split=2[bm{i}][bb{i}];[bb{i}]crop={bw}:{bh}:{bx}:{by},boxblur=20:5[bp{i}];[bm{i}][bp{i}]overlay={bx}:{by}[vblur{i}]")
+                        if bw > 4 and bh > 4:
+                            # Use gblur with split and overlay to avoid delogo edge smudging
+                            filter_complex_parts.append(f"[{v_current}]split=2[bm{i}][bb{i}];[bb{i}]crop={bw}:{bh}:{bx}:{by},gblur=sigma=20[bp{i}];[bm{i}][bp{i}]overlay={bx}:{by}[vblur{i}]")
                             v_current = f"vblur{i}"
                     except (ValueError, TypeError):
                         pass
