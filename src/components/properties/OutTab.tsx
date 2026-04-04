@@ -4,6 +4,7 @@ import { ToggleControl } from '../controls/ToggleControl';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { open } from '@tauri-apps/plugin-dialog';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { useEffect, useRef } from 'react';
 
 interface OutTabProps {
   onRender?: () => void;
@@ -12,6 +13,13 @@ interface OutTabProps {
 
 export function OutTab({ onRender, processing }: OutTabProps) {
   const config = useProjectStore();
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = config.bgm_volume;
+    }
+  }, [config.bgm_volume]);
 
   return (
     <>
@@ -104,7 +112,7 @@ export function OutTab({ onRender, processing }: OutTabProps) {
                   )}
                 </div>
                 {config.bgm_file && (
-                  <audio controls style={{ width: '100%', height: '32px', marginTop: '4px' }} src={convertFileSrc(config.bgm_file)} />
+                  <audio ref={audioRef} controls style={{ width: '100%', height: '32px', marginTop: '4px' }} src={convertFileSrc(config.bgm_file)} />
                 )}
               </div>
               <SliderControl 
