@@ -8,15 +8,18 @@ import { useSidecar } from './hooks/useSidecar';
 import { useQueueStore } from './stores/queueStore';
 import { usePipeline } from './hooks/usePipeline';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { NLELayout, type AppModule, type SidebarFocus } from './components/layout/NLELayout';
 import { Titlebar } from './components/layout/Titlebar';
 import { Sidebar } from './components/layout/Sidebar';
-import { TimelinePlaceholder } from './components/layout/TimelinePlaceholder';
+import { Timeline } from './components/editor/Timeline';
 import { DependencyChecker } from './components/setup/DependencyChecker';
 import { UploadPanel } from './components/editor/UploadPanel';
 import { JobMonitor } from './components/editor/JobMonitor';
 import { VideoPreview } from './components/editor/VideoPreview';
 import { PropertiesPanel } from './components/properties/PropertiesPanel';
+import { SettingsTab } from './components/properties/SettingsTab';
 import { useProjectStore } from './stores/useProjectStore';
 import { useSubtitleStore } from './stores/useSubtitleStore';
 import './styles/design-system.css';
@@ -181,10 +184,57 @@ function App() {
   }, [progress, processing]);
 
   // Drag & drop video handler
+  useEffect(() => {
+    let unlistenFile: (() => void) | undefined;
+    let unlistenDrag: (() => void) | undefined;
+
+    listen('tauri://file-drop', (event) => {
+      const paths = event.payload as string[];
+      if (paths && paths.length > 0) {
+        handleFileSelected(paths[0]);
+      }
+    }).then(f => unlistenFile = f);
+
+    listen('tauri://drag-drop', (event) => {
+      const payload = event.payload as any;
+      if (payload && payload.paths && payload.paths.length > 0) {
+        handleFileSelected(payload.paths[0]);
+      }
+    }).then(f => unlistenDrag = f);
+
+    return () => {
+      if (unlistenFile) unlistenFile();
+      if (unlistenDrag) unlistenDrag();
+    };
+  }, [handleFileSelected]);
+
   const handleVideoDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    /* Bỏ dùng HTML5 DataTransfer cho file cứng trên desktop 
-       Mọi thứ xử lý trực tiếp bởi Tauri drop trong UploadPanel/App global */
+  }, []);
+
+  // Keyboard Shortcuts (Ctrl+S Save Project)
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        const { save } = await import('@tauri-apps/plugin-dialog');
+        const savePath = await save({
+          title: "Lưu Project",
+          defaultPath: "project.kn",
+          filters: [{ name: 'KN Project', extensions: ['kn'] }]
+        });
+        if (savePath) {
+          const projectData = {
+            config: useProjectStore.getState(),
+            subtitles: useSubtitleStore.getState().segments
+          };
+          await writeTextFile(savePath, JSON.stringify(projectData, null, 2));
+          console.log("Saved project to", savePath);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const subtitleConfig = {
@@ -238,7 +288,8 @@ function App() {
             />
           }
           properties={<PropertiesPanel sidebarFocus={sidebarFocus} onRender={handleRender} onAnalyze={handleAnalyze} processing={processing} />}
-          timeline={<TimelinePlaceholder filePaths={filePaths} />}
+          timeline={<Timeline filePaths={filePaths} />}
+          settingsContent={<SettingsTab />}
           onVideoDrop={handleVideoDrop}
           statusContent={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
