@@ -8,7 +8,11 @@ export interface ProjectConfig {
   gemini_api_key: string;
   deepl_api_key: string;
   deepseek_api_key: string;
+  openai_api_key: string;
+  openai_base_url: string;
+  openai_model: string;
   ollama_url: string;
+  ollama_model: string;
   translation_style: string;
   custom_prompt: string;
   // Subtitle Style
@@ -18,6 +22,11 @@ export interface ProjectConfig {
   subtitle_font: string;
   subtitle_color: string;
   subtitle_outline_color: string;
+  ocr_enabled: boolean;
+  ocr_x: number;
+  ocr_y: number;
+  ocr_w: number;
+  ocr_h: number;
   // TTS
   dubbing_enabled: boolean;
   tts_engine: string;
@@ -43,14 +52,27 @@ export interface ProjectConfig {
   blur_h: number;
   watermark_enabled: boolean;
   watermark_text: string;
+  watermark_image: string;
   watermark_x: number;
   watermark_y: number;
   watermark_opacity: number;
+  watermark_fontsize: number;
+  // Image Logo (tách riêng)
+  image_logo_enabled: boolean;
+  image_logo_file: string;
+  image_logo_x: number;
+  image_logo_y: number;
+  image_logo_w: number;
+  image_logo_h: number;
+  image_logo_opacity: number;
   crop_enabled: boolean;
   bgm_enabled: boolean;
   bgm_file: string;
   bgm_volume: number;
   ducking_strength: number;
+  // Timeline State
+  timelineZoom: number;
+  timelineScrollX: number;
 }
 
 interface ProjectStore extends ProjectConfig {
@@ -69,7 +91,11 @@ const DEFAULT_CONFIG: ProjectConfig = {
   gemini_api_key: '',
   deepl_api_key: '',
   deepseek_api_key: '',
+  openai_api_key: 'sk-569e687ef4aae4e1-h1vmyh-217baa1c',
+  openai_base_url: 'https://9router.khacnghia.xyz/v1',
+  openai_model: 'knghia-v1',
   ollama_url: 'http://localhost:11434',
+  ollama_model: 'gemma4:e4b',
   translation_style: 'default',
   custom_prompt: '',
   subtitle_enabled: true,
@@ -78,6 +104,11 @@ const DEFAULT_CONFIG: ProjectConfig = {
   subtitle_font: 'Be Vietnam Pro',
   subtitle_color: '#FFFF00',
   subtitle_outline_color: '#000000',
+  ocr_enabled: false,
+  ocr_x: 50,
+  ocr_y: 50,
+  ocr_w: 300,
+  ocr_h: 150,
   dubbing_enabled: true,
   tts_engine: 'edge_tts',
   voice: 'vi-VN-HoaiMyNeural',
@@ -99,14 +130,25 @@ const DEFAULT_CONFIG: ProjectConfig = {
   blur_h: 100,
   watermark_enabled: false,
   watermark_text: '',
+  watermark_image: '',
   watermark_x: 50,
   watermark_y: 50,
   watermark_opacity: 0.8,
+  watermark_fontsize: 40,
+  image_logo_enabled: false,
+  image_logo_file: '',
+  image_logo_x: 50,
+  image_logo_y: 50,
+  image_logo_w: 150,
+  image_logo_h: 150,
+  image_logo_opacity: 0.8,
   crop_enabled: false,
   bgm_enabled: false,
   bgm_file: '',
   bgm_volume: 0.5,
   ducking_strength: 0.2,
+  timelineZoom: 1,
+  timelineScrollX: 0,
 };
 
 export const useProjectStore = create<ProjectStore>()(
@@ -124,7 +166,11 @@ export const useProjectStore = create<ProjectStore>()(
         delete targetConfig.gemini_api_key;
         delete targetConfig.deepl_api_key;
         delete targetConfig.deepseek_api_key;
+        delete targetConfig.openai_api_key;
+        delete targetConfig.openai_base_url;
+        delete targetConfig.openai_model;
         delete targetConfig.ollama_url;
+        delete targetConfig.ollama_model;
 
         return {
           activeFile: path,
@@ -141,7 +187,11 @@ export const useProjectStore = create<ProjectStore>()(
         delete newFileConfig.gemini_api_key;
         delete newFileConfig.deepl_api_key;
         delete newFileConfig.deepseek_api_key;
+        delete newFileConfig.openai_api_key;
+        delete newFileConfig.openai_base_url;
+        delete newFileConfig.openai_model;
         delete newFileConfig.ollama_url;
+        delete newFileConfig.ollama_model;
 
         return {
           ...partial,
@@ -158,7 +208,11 @@ export const useProjectStore = create<ProjectStore>()(
         delete resetData.gemini_api_key;
         delete resetData.deepl_api_key;
         delete resetData.deepseek_api_key;
+        delete resetData.openai_api_key;
+        delete resetData.openai_base_url;
+        delete resetData.openai_model;
         delete resetData.ollama_url;
+        delete resetData.ollama_model;
 
         return {
           ...resetData,
@@ -177,7 +231,11 @@ export const useProjectStore = create<ProjectStore>()(
         delete newFileConfig.gemini_api_key;
         delete newFileConfig.deepl_api_key;
         delete newFileConfig.deepseek_api_key;
+        delete newFileConfig.openai_api_key;
+        delete newFileConfig.openai_base_url;
+        delete newFileConfig.openai_model;
         delete newFileConfig.ollama_url;
+        delete newFileConfig.ollama_model;
 
         return {
           ...preset,

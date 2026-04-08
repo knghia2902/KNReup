@@ -1,6 +1,7 @@
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { sidecar } from '../../lib/sidecar';
 import { useProjectStore } from '../../stores/useProjectStore';
+import { ToggleControl } from '../controls/ToggleControl';
 
 function formatTc(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -35,11 +36,20 @@ export function SubTab({ onAnalyze, processing }: SubTabProps) {
       updateSegment(segId, { tts_status: 'generated', tts_audio_path: res.audio_path });
     } catch {
       updateSegment(segId, { tts_status: 'error' });
-    }
-  };
-
   return (
     <>
+      <div className="ps" style={{ padding: '16px', borderBottom: '1px solid var(--c-bg3)' }}>
+        <div className="pshd" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--i1)', marginBottom: '8px' }}>Hardsub Extraction (OCR)</div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', paddingBottom: '8px' }}>
+          Chuột trái vào Video để resize khung màu xanh OCR Region. Giúp OCR không quét tốn CPU.
+        </div>
+        <ToggleControl 
+          label="Enable OCR Smart Merge" 
+          checked={config.ocr_enabled} 
+          onChange={(v: boolean) => config.updateConfig({ ocr_enabled: v })}
+        />
+      </div>
+
       <div className="subhd">
         <span className="subsid">Segment Editor ({segments.length})</span>
         <div className="subnav">

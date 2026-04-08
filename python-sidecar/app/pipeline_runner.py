@@ -54,13 +54,29 @@ class PipelineConfig:
         watermark_x: int = 10,
         watermark_y: int = 10,
         watermark_opacity: float = 1.0,
+        watermark_fontsize: int = 40,
         blur_enabled: bool = False,
         blur_regions: Optional[list] = None,
         crop_enabled: bool = False,
+        video_ratio: str = "original",
         bgm_enabled: bool = False,
         bgm_file: str = "",
         bgm_volume: float = 0.5,
         ducking_strength: float = 0.2,
+        # Image Logo
+        image_logo_enabled: bool = False,
+        image_logo_file: str = "",
+        image_logo_x: int = 50,
+        image_logo_y: int = 50,
+        image_logo_w: int = 150,
+        image_logo_h: int = 150,
+        image_logo_opacity: float = 0.8,
+        # OCR
+        ocr_enabled: bool = False,
+        ocr_x: int = 50,
+        ocr_y: int = 50,
+        ocr_w: int = 300,
+        ocr_h: int = 150,
         **kwargs
     ):
         self.translation_engine = translation_engine
@@ -95,6 +111,7 @@ class PipelineConfig:
         self.watermark_x = watermark_x
         self.watermark_y = watermark_y
         self.watermark_opacity = watermark_opacity
+        self.watermark_fontsize = watermark_fontsize
         self.blur_enabled = blur_enabled
         self.blur_regions = blur_regions or []
         # Map old blur properties from kwargs for backward compatibility
@@ -106,10 +123,27 @@ class PipelineConfig:
                 "h": kwargs["blur_h"],
             })
         self.crop_enabled = crop_enabled
+        self.video_ratio = video_ratio
         self.bgm_enabled = bgm_enabled
         self.bgm_file = bgm_file
         self.bgm_volume = bgm_volume
         self.ducking_strength = ducking_strength
+        self.image_logo_enabled = image_logo_enabled
+        self.image_logo_file = image_logo_file
+        self.image_logo_x = image_logo_x
+        self.image_logo_y = image_logo_y
+        self.image_logo_w = image_logo_w
+        self.image_logo_h = image_logo_h
+        self.image_logo_opacity = image_logo_opacity
+        self.ocr_enabled = ocr_enabled
+        self.ocr_x = ocr_x
+        self.ocr_y = ocr_y
+        self.ocr_w = ocr_w
+        self.ocr_h = ocr_h
+        
+        # Additional fields from kwargs (e.g., openai_base_url)
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 class PipelineRunner:
@@ -138,6 +172,46 @@ class PipelineRunner:
             detected_lang = result["language"]
             duration = result["duration"]
 
+            if getattr(config, "ocr_enabled", False):
+                yield {"stage": "transcribe", "progress": 20, "message": "Extracting hardsubs with OCR..."}
+                await asyncio.sleep(0.1)
+                
+                from app.engines.ocr_extractor import VideoOcrExtractor
+                ocr_engine = VideoOcrExtractor(lang=config.source_lang)
+                region = {
+                    "x": getattr(config, "ocr_x", 0),
+                    "y": getattr(config, "ocr_y", 0),
+                    "w": getattr(config, "ocr_w", 0),
+                    "h": getattr(config, "ocr_h", 0)
+                }
+                ocr_segments = await asyncio.to_thread(ocr_engine.extract_hardsubs, video_path, region, config.source_lang)
+                
+                # Smart Merge
+                merged_segments = list(segments)
+                for oseg in ocr_segments:
+                    os_start, os_end = oseg["start"], oseg["end"]
+                    os_dur = os_end - os_start
+                    if os_dur <= 0: continue
+                    
+                    overlap_violation = False
+                    for wseg in segments:
+                        ws_start, ws_end = wseg["start"], wseg["end"]
+                        overlap_start = max(os_start, ws_start)
+                        overlap_end = min(os_end, ws_end)
+                        overlap_dur = max(0, overlap_end - overlap_start)
+                        if overlap_dur / os_dur > 0.2:
+                            overlap_violation = True
+                            break
+                            
+                    if not overlap_violation:
+                        merged_segments.append(oseg)
+                        
+                # Sort and reassign ID
+                merged_segments.sort(key=lambda x: x["start"])
+                for idx, seg in enumerate(merged_segments):
+                    seg["id"] = idx
+                segments = merged_segments
+
             yield {
                 "stage": "transcribe", "progress": 25,
                 "message": f"Transcribed {len(segments)} segments ({detected_lang})"
@@ -147,7 +221,8 @@ class PipelineRunner:
             yield {"stage": "translate", "progress": 25, "message": f"Translating with {config.translation_engine}..."}
 
             from app.routes.pipeline import get_translation_engine
-            engine = get_translation_engine(config.translation_engine, config.api_key)
+            base_url = getattr(config, f"{config.translation_engine}_base_url", "")
+            engine = get_translation_engine(config.translation_engine, config.api_key, base_url=base_url)
 
             translated_segments = []
             current_engine = engine
@@ -175,7 +250,8 @@ class PipelineRunner:
                             "type": "warning"
                         }
                         try:
-                            current_engine = get_translation_engine(fallback_eng, config.fallback_api_key)
+                            fallback_base_url = getattr(config, f"{fallback_eng}_base_url", "")
+                            current_engine = get_translation_engine(fallback_eng, config.fallback_api_key, base_url=fallback_base_url)
                         except Exception as eng_err:
                             logger.error(f"Failed to init fallback engine {fallback_eng}: {eng_err}")
                             raise e # Ném lại lỗi cũ nếu fallback engine cũng không load được
@@ -225,11 +301,13 @@ class PipelineRunner:
     ) -> AsyncGenerator[dict, None]:
         """Chạy Render: TTS -> Merge -> return output_path."""
         if target_path:
-            output_dir = os.path.dirname(target_path)
             output_path = target_path
         else:
-            output_dir = tempfile.mkdtemp(prefix="knreup_")
-            output_path = os.path.join(output_dir, f"output_{Path(video_path).stem}.mp4")
+            output_path = os.path.join(tempfile.mkdtemp(prefix="knreup_"), f"output_{Path(video_path).stem}.mp4")
+
+        # Tao folder tam cho am thanh
+        temp_dir_obj = tempfile.TemporaryDirectory(prefix="knreup_tts_")
+        temp_dir = temp_dir_obj.name
 
         try:
             # ── Stage 3: TTS ──
@@ -243,7 +321,7 @@ class PipelineRunner:
                 # Synthesize each segment
                 audio_files = []
                 for i, seg in enumerate(segments):
-                    audio_path = os.path.join(output_dir, f"tts_{i:04d}.mp3")
+                    audio_path = os.path.join(temp_dir, f"tts_{i:04d}.mp3")
                     text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
                     if text.strip():
                         await tts.synthesize(
@@ -265,7 +343,7 @@ class PipelineRunner:
 
                 # Merge all TTS audio into one file with correct timing
                 if audio_files:
-                    dubbed_audio_path = os.path.join(output_dir, "dubbed_audio.wav")
+                    dubbed_audio_path = os.path.join(temp_dir, "dubbed_audio.wav")
                     await self._merge_tts_audio(audio_files, dubbed_audio_path, duration, config.speed, config.pitch)
                 else:
                     dubbed_audio_path = None
@@ -304,7 +382,10 @@ class PipelineRunner:
                 "stage": "error", "progress": -1,
                 "message": str(e),
             }
-
+        
+        finally:
+            if 'temp_dir_obj' in locals():
+                temp_dir_obj.cleanup()
     async def _merge_tts_audio(
         self,
         audio_files: list[dict],
