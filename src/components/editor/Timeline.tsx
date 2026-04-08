@@ -76,7 +76,7 @@ export function Timeline({ filePaths }: TimelineProps) {
       
       const rect = tlbody.getBoundingClientRect();
       const pointerX = e.clientX - rect.left + tlbody.scrollLeft;
-      const newTime = Math.max(0, pointerX / pixelsPerSecond);
+      const newTime = Math.max(0, (pointerX - 4) / pixelsPerSecond);
       
       setCurrentTime(newTime);
       if (playheadRef.current) {
@@ -138,12 +138,25 @@ export function Timeline({ filePaths }: TimelineProps) {
         </div>
 
         {/* RIGHT PANE: TIMELINE TRACKS */}
-        <div className="tlbody" ref={containerRef} style={{ display: 'block', position: 'relative', overflowX: 'auto', overflowY: 'hidden', flex: 1, background: '#ffffff' }}>
+        <div className="tlbody" ref={containerRef} style={{ display: 'block', position: 'relative', overflowX: 'auto', overflowY: 'hidden', flex: 1, background: '#ffffff' }}
+             onPointerDown={(e) => {
+               const tlbody = containerRef.current;
+               if (!tlbody) return;
+               const rect = tlbody.getBoundingClientRect();
+               const pointerX = e.clientX - rect.left + tlbody.scrollLeft;
+               const newTime = Math.max(0, (pointerX - 4) / pixelsPerSecond);
+               const video = document.querySelector('video');
+               if (video) video.currentTime = newTime;
+               setCurrentTime(newTime);
+               if (playheadRef.current) {
+                 playheadRef.current.style.transform = `translateX(${newTime * pixelsPerSecond}px)`;
+               }
+             }}>
            <div style={{ width: `${timelineWidthPx}px`, minWidth: '100%', height: '100%', position: 'relative', flexShrink: 0 }}>
              
              {/* Playhead */}
-             <div className="playhead" ref={playheadRef} style={{ 
-               position: 'absolute', top: 0, bottom: 0, width: 14, marginLeft: -7, zIndex: 100,
+             <div className="playhead-fixed" ref={playheadRef} style={{ 
+               position: 'absolute', top: 0, bottom: 0, left: 4, width: 14, marginLeft: -7, zIndex: 100,
                transform: 'translateX(0px)', transition: isDraggingPlayhead ? 'none' : 'transform 0.05s linear',
                cursor: 'ew-resize', pointerEvents: 'auto', display: 'flex', justifyContent: 'center'
              }} onPointerDown={(e) => { e.stopPropagation(); setIsDraggingPlayhead(true); }}>
