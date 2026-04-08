@@ -8,3 +8,5 @@ piper-tts>=1.2.0
 argostranslate>=1.9.0
 easyocr>=1.7.0
 opencv-python-headless>=4.0.0
+transformers>=4.0.0
+huggingface-hub>=0.14.0

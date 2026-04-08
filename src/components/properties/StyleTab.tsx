@@ -37,13 +37,13 @@ export function StyleTab() {
           value={config.translation_engine} 
           onChange={(v) => config.updateConfig({ translation_engine: v })}
           options={[
-            { value: 'argos', label: 'Argos (Offline)' },
-            { value: 'nllb', label: 'NLLB (Offline)' },
+            { value: 'nllb', label: 'NLLB (Offline Local)' },
+            { value: 'argos', label: 'Argos (Offline Local)' },
+            { value: 'ollama', label: 'Ollama (Offline Model)' },
             { value: 'deepseek', label: 'DeepSeek (API)' },
             { value: 'gemini', label: 'Gemini (API)' },
             { value: 'deepl', label: 'DeepL (API)' },
             { value: 'openai', label: 'OpenAI / 9Router (API)' },
-            { value: 'ollama', label: 'Ollama (Local)' },
           ]} 
         />
 

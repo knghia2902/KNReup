@@ -63,7 +63,7 @@ def get_translation_engine(engine_name: str, api_key: str = "", base_url: str = 
             return OllamaTranslation(url=api_key, model=model)
         return OllamaTranslation(url=api_key)
     elif engine_name == "nllb":
-        from app.engines.translation.nllb import NLLBTranslation
+        from app.engines.translation.nllb_engine import NLLBTranslation
         return NLLBTranslation()
     elif engine_name == "openai":
         from app.engines.translation.openai_engine import OpenAITranslation
