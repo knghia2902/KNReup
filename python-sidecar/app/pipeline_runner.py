@@ -192,14 +192,14 @@ class PipelineRunner:
                 await asyncio.sleep(0.1)
                 
                 from app.engines.ocr_extractor import VideoOcrExtractor
-                ocr_engine = VideoOcrExtractor(lang=config.source_lang)
+                ocr_engine = VideoOcrExtractor(lang=detected_lang)
                 region = {
                     "x": getattr(config, "ocr_x", 0),
                     "y": getattr(config, "ocr_y", 0),
                     "w": getattr(config, "ocr_w", 0),
                     "h": getattr(config, "ocr_h", 0)
                 }
-                ocr_segments = await asyncio.to_thread(ocr_engine.extract_hardsubs, video_path, region, config.source_lang)
+                ocr_segments = await asyncio.to_thread(ocr_engine.extract_hardsubs, video_path, region, detected_lang)
                 
                 if getattr(config, "asr_enabled", True):
                     # Smart Merge

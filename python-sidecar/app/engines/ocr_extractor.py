@@ -9,7 +9,7 @@ class VideoOcrExtractor:
     def __init__(self, lang: str = "vi"):
         try:
             ocr_lang = 'en'
-            if lang in ['zh', 'zh-CN', 'ch']: ocr_lang = 'ch_sim'
+            if lang in ['zh', 'zh-CN', 'ch', 'auto']: ocr_lang = 'ch_sim'
             elif lang == 'ja': ocr_lang = 'ja'
             elif lang == 'ko': ocr_lang = 'ko'
             elif lang == 'vi': ocr_lang = 'vi'
