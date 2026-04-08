@@ -187,9 +187,8 @@ class PipelineRunner:
                     duration = frame_count / fps
                 cap.release()
                 
-                # If skipping ASR and language is still auto, default to Chinese
-                if detected_lang == "auto":
-                    detected_lang = "zh"
+                # Ngôn ngữ sẽ được detect tự động dựa trên chữ lấy ra được từ OCR
+                pass
                     
             if getattr(config, "ocr_enabled", False):
                 yield {"stage": "transcribe", "progress": 20, "message": "Extracting hardsubs with OCR..."}
@@ -204,6 +203,17 @@ class PipelineRunner:
                     "h": getattr(config, "ocr_h", 0)
                 }
                 ocr_segments = await asyncio.to_thread(ocr_engine.extract_hardsubs, video_path, region, detected_lang)
+                
+                # Dynamic Language Detection based on extracted text (if Auto and ASR bypassed)
+                if not getattr(config, "asr_enabled", True) and detected_lang == "auto":
+                    import re
+                    full_text = " ".join(s["text"] for s in ocr_segments)
+                    if re.search(r'[\u4e00-\u9fff]', full_text):
+                        detected_lang = "zh"
+                        logger.info("Auto-detected language from OCR: Chinese (zh)")
+                    else:
+                        detected_lang = "en"
+                        logger.info("Auto-detected language from OCR: English (en)")
                 
                 if getattr(config, "asr_enabled", True):
                     # Smart Merge
