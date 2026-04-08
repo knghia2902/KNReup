@@ -186,7 +186,11 @@ class PipelineRunner:
                 if fps > 0:
                     duration = frame_count / fps
                 cap.release()
-
+                
+                # If skipping ASR and language is still auto, default to Chinese
+                if detected_lang == "auto":
+                    detected_lang = "zh"
+                    
             if getattr(config, "ocr_enabled", False):
                 yield {"stage": "transcribe", "progress": 20, "message": "Extracting hardsubs with OCR..."}
                 await asyncio.sleep(0.1)
