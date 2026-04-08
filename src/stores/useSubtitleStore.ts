@@ -15,14 +15,16 @@ interface SubtitleStore {
   fileSegments: Record<string, SubtitleSegment[]>;
   activeFile: string | null;
   segments: SubtitleSegment[]; // mirrors fileSegments[activeFile]
+  videoDuration: number;
   selectedId: number | null;
-  // Actions
   setActiveFile: (path: string | null) => void;
+  setVideoDuration: (duration: number) => void;
   setSegments: (segments: SubtitleSegment[], targetPath?: string) => void;
   selectSegment: (id: number | null) => void;
   updateSegment: (id: number, partial: Partial<SubtitleSegment>) => void;
   splitSegment: (id: number, splitTime: number) => void;
   mergeSegments: (id1: number, id2: number) => void;
+  trimSegment: (id: number, newStart: number, newEnd: number) => void;
   deleteSegment: (id: number) => void;
   clearAll: () => void;
 }
@@ -31,6 +33,7 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
   fileSegments: {},
   activeFile: null,
   segments: [],
+  videoDuration: 30, // Default fallback
   selectedId: null,
 
   setActiveFile: (path) => set((state) => ({
@@ -38,6 +41,8 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
     segments: path && state.fileSegments[path] ? state.fileSegments[path] : [],
     selectedId: null
   })),
+
+  setVideoDuration: (duration) => set({ videoDuration: duration }),
 
   setSegments: (segs, targetPath) => set((state) => {
     const path = targetPath || state.activeFile;
@@ -79,14 +84,31 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
       const idx = state.segments.findIndex((s) => s.id === id);
       if (idx === -1) return state;
       const seg = state.segments[idx];
-      const maxId = Math.max(...state.segments.map((s) => s.id));
-      const seg1: SubtitleSegment = { ...seg, end: splitTime };
+      
+      const duration = seg.end - seg.start;
+      if (duration <= 0) return state;
+      const ratio = (splitTime - seg.start) / duration;
+      
+      const splitText = (text: string) => {
+         if (!text) return ["", ""];
+         const pos = Math.floor(text.length * ratio);
+         return [text.substring(0, pos), text.substring(pos)];
+      };
+
+      const [src1, src2] = splitText(seg.source_text);
+      const [trans1, trans2] = splitText(seg.translated_text);
+
+      const maxId = Math.max(...state.segments.map((s) => s.id), 0);
+      const seg1: SubtitleSegment = { ...seg, end: splitTime, source_text: src1.trim(), translated_text: trans1.trim() };
       const seg2: SubtitleSegment = {
         ...seg,
         id: maxId + 1,
         start: splitTime,
+        source_text: src2.trim(),
+        translated_text: trans2.trim(),
         tts_status: 'pending',
       };
+      
       const newSegs = [...state.segments];
       newSegs.splice(idx, 1, seg1, seg2);
       return { 
@@ -105,13 +127,25 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
         ...s1,
         end: Math.max(s1.end, s2.end),
         start: Math.min(s1.start, s2.start),
-        source_text: s1.source_text + ' ' + s2.source_text,
-        translated_text: s1.translated_text + ' ' + s2.translated_text,
+        source_text: s1.source_text + '\n' + s2.source_text,
+        translated_text: s1.translated_text + '\n' + s2.translated_text,
         tts_status: 'pending',
       };
       const newSegs = state.segments
           .filter((s) => s.id !== id2)
           .map((s) => (s.id === id1 ? merged : s));
+      return {
+        segments: newSegs,
+        fileSegments: { ...state.fileSegments, [state.activeFile]: newSegs }
+      };
+    }),
+
+  trimSegment: (id, newStart, newEnd) =>
+    set((state) => {
+      if (!state.activeFile) return state;
+      const newSegs = state.segments.map((s) =>
+        s.id === id ? { ...s, start: newStart, end: newEnd } : s
+      );
       return {
         segments: newSegs,
         fileSegments: { ...state.fileSegments, [state.activeFile]: newSegs }

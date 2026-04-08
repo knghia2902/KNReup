@@ -4,6 +4,8 @@ import { ToggleControl } from '../controls/ToggleControl';
 import { ColorPickerControl } from '../controls/ColorPickerControl';
 import { ChipGroup } from '../controls/ChipGroup';
 import { useProjectStore } from '../../stores/useProjectStore';
+import { open } from '@tauri-apps/plugin-dialog';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 export function StyleTab() {
   const config = useProjectStore();
@@ -40,21 +42,11 @@ export function StyleTab() {
             { value: 'deepseek', label: 'DeepSeek (API)' },
             { value: 'gemini', label: 'Gemini (API)' },
             { value: 'deepl', label: 'DeepL (API)' },
+            { value: 'openai', label: 'OpenAI / 9Router (API)' },
             { value: 'ollama', label: 'Ollama (Local)' },
           ]} 
         />
-        {config.translation_engine === 'gemini' && (
-          <div className="pr"><div className="plbl" style={{flex: 0.3}}>API Key</div><input type="text" className="pinput" value={config.gemini_api_key} onChange={e => config.updateConfig({gemini_api_key: e.target.value})} placeholder="AIza..." style={{flex: 0.7, padding: '2px 6px', background: 'var(--bg)', border: '1px solid var(--bdr)', borderRadius: 4, color: 'var(--fg)', fontSize: 11}}/></div>
-        )}
-        {config.translation_engine === 'deepl' && (
-          <div className="pr"><div className="plbl" style={{flex: 0.3}}>API Key</div><input type="text" className="pinput" value={config.deepl_api_key} onChange={e => config.updateConfig({deepl_api_key: e.target.value})} placeholder="DeepL Auth Key" style={{flex: 0.7, padding: '2px 6px', background: 'var(--bg)', border: '1px solid var(--bdr)', borderRadius: 4, color: 'var(--fg)', fontSize: 11}}/></div>
-        )}
-        {config.translation_engine === 'deepseek' && (
-          <div className="pr"><div className="plbl" style={{flex: 0.3}}>API Key</div><input type="text" className="pinput" value={config.deepseek_api_key} onChange={e => config.updateConfig({deepseek_api_key: e.target.value})} placeholder="sk-..." style={{flex: 0.7, padding: '2px 6px', background: 'var(--bg)', border: '1px solid var(--bdr)', borderRadius: 4, color: 'var(--fg)', fontSize: 11}}/></div>
-        )}
-        {config.translation_engine === 'ollama' && (
-          <div className="pr"><div className="plbl" style={{flex: 0.3}}>URL</div><input type="text" className="pinput" value={config.ollama_url} onChange={e => config.updateConfig({ollama_url: e.target.value})} placeholder="http://localhost:11434" style={{flex: 0.7, padding: '2px 6px', background: 'var(--bg)', border: '1px solid var(--bdr)', borderRadius: 4, color: 'var(--fg)', fontSize: 11}}/></div>
-        )}
+
         <ChipGroup 
           value={config.translation_style}
           onChange={(v) => config.updateConfig({ translation_style: v })}
@@ -111,7 +103,35 @@ export function StyleTab() {
         <SelectControl 
           label="Ratio" 
           value={config.video_ratio} 
-          onChange={(v) => config.updateConfig({ video_ratio: v as any, crop_enabled: v === '9:16' })}
+          onChange={(v) => {
+            // Tính effectiveDimensions mới để clamp overlay positions (chuẩn hóa tỷ lệ)
+            const videoEl = document.querySelector('video');
+            if (videoEl && videoEl.videoWidth && videoEl.videoHeight) {
+              const vw = videoEl.videoWidth;
+              const vh = videoEl.videoHeight;
+              let effW = vw, effH = vh;
+              if (v === '16:9') { effW = 1920; effH = 1080; }
+              else if (v === '9:16') { effW = 1080; effH = 1920; }
+              
+              // Clamp all overlay positions
+              const updates: Record<string, any> = {
+                video_ratio: v,
+                crop_enabled: v === '9:16',
+                watermark_x: Math.min(config.watermark_x, Math.max(0, effW - 50)),
+                watermark_y: Math.min(config.watermark_y, Math.max(0, effH - 30)),
+                image_logo_x: Math.min(config.image_logo_x, Math.max(0, effW - 50)),
+                image_logo_y: Math.min(config.image_logo_y, Math.max(0, effH - 30)),
+              };
+              // Clamp blur region
+              if (config.blur_enabled) {
+                updates.blur_x = Math.min(config.blur_x, Math.max(0, effW - config.blur_w));
+                updates.blur_y = Math.min(config.blur_y, Math.max(0, effH - config.blur_h));
+              }
+              config.updateConfig(updates);
+            } else {
+              config.updateConfig({ video_ratio: v as any, crop_enabled: v === '9:16' });
+            }
+          }}
           options={[
             { value: 'original', label: 'original · keep' },
             { value: '16:9', label: '16:9 · landscape' },
@@ -122,26 +142,20 @@ export function StyleTab() {
 
       <div className="ps">
         <div className="pshd">Blur regions</div>
-        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', paddingBottom: '8px' }}>Draw on the preview to mark regions</div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', paddingBottom: '8px' }}>🖱️ Kéo thả khung Blur trực tiếp trên Video Preview</div>
         <ToggleControl 
           label="Enable Blur" 
           checked={config.blur_enabled} 
           onChange={(v) => config.updateConfig({ blur_enabled: v })}
         />
-        {config.blur_enabled && (
-          <div style={{ marginTop: '8px' }}>
-            <SliderControl label="X Pos" value={Math.round(config.blur_x)} min={0} max={1920} onChange={(v) => config.updateConfig({ blur_x: v })} />
-            <SliderControl label="Y Pos" value={Math.round(config.blur_y)} min={0} max={1080} onChange={(v) => config.updateConfig({ blur_y: v })} />
-            <SliderControl label="Width" value={Math.round(config.blur_w)} min={10} max={1920} onChange={(v) => config.updateConfig({ blur_w: v })} />
-            <SliderControl label="Height" value={Math.round(config.blur_h)} min={10} max={1080} onChange={(v) => config.updateConfig({ blur_h: v })} />
-          </div>
-        )}
+        {/* Sliders (X, Y, Width, Height) for Blur are removed because they are now controlled via direct drag & drop on the Video Preview */}
       </div>
 
       <div className="ps">
-        <div className="pshd">Logo & watermark</div>
+        <div className="pshd">Text Logo</div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', paddingBottom: '8px' }}>🖱️ Kéo thả trực tiếp trên Video Preview</div>
         <ToggleControl 
-          label="TEXT LOGO" 
+          label="Enable" 
           checked={config.watermark_enabled} 
           onChange={(v) => config.updateConfig({ watermark_enabled: v })}
         />
@@ -157,9 +171,54 @@ export function StyleTab() {
                 placeholder="@mychannel"
               />
             </div>
-            <SliderControl label="X Pos" value={config.watermark_x} min={0} max={1920} onChange={(v) => config.updateConfig({ watermark_x: v })} />
-            <SliderControl label="Y Pos" value={config.watermark_y} min={0} max={1080} onChange={(v) => config.updateConfig({ watermark_y: v })} />
+            {/* Position sliders removed, handled by drag & drop on Video Preview */}
             <SliderControl label="Opacity" value={Math.round(config.watermark_opacity * 100)} min={0} max={100} unit="%" onChange={(v) => config.updateConfig({ watermark_opacity: v / 100 })} />
+          </div>
+        )}
+      </div>
+
+      <div className="ps">
+        <div className="pshd">Image Logo</div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', paddingBottom: '8px' }}>🖱️ Kéo thả trực tiếp trên Video Preview</div>
+        <ToggleControl 
+          label="Enable" 
+          checked={config.image_logo_enabled} 
+          onChange={(v) => config.updateConfig({ image_logo_enabled: v })}
+        />
+        {config.image_logo_enabled && (
+          <div style={{ marginTop: '8px' }}>
+            <div className="pr" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', marginBottom: '8px' }}>
+              <div className="plbl" style={{ width: '100%' }}>Image File</div>
+              <div style={{ display: 'flex', width: '100%', gap: '4px' }}>
+                <button 
+                  className="btn" 
+                  style={{ flex: 1, padding: '4px 8px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  onClick={async () => {
+                    const selected = await open({
+                      multiple: false,
+                      filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'] }]
+                    });
+                    if (selected && typeof selected === 'string') {
+                      config.updateConfig({ image_logo_file: selected });
+                    }
+                  }}
+                >
+                  {config.image_logo_file ? config.image_logo_file.split(/[/\\]/).pop() : "Select image..."}
+                </button>
+                {config.image_logo_file && (
+                  <button className="btn" style={{ padding: '4px 8px' }} onClick={() => config.updateConfig({ image_logo_file: '' })}>×</button>
+                )}
+              </div>
+              {config.image_logo_file && (
+                <img 
+                  src={convertFileSrc(config.image_logo_file)} 
+                  alt="logo preview" 
+                  style={{ maxWidth: '100%', maxHeight: 60, objectFit: 'contain', marginTop: 4, borderRadius: 4, border: '1px solid var(--c-bg3)' }} 
+                />
+              )}
+            </div>
+            {/* Position sliders removed, handled by drag & drop on Video Preview */}
+            <SliderControl label="Opacity" value={Math.round(config.image_logo_opacity * 100)} min={0} max={100} unit="%" onChange={(v) => config.updateConfig({ image_logo_opacity: v / 100 })} />
           </div>
         )}
       </div>

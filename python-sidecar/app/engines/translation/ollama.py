@@ -8,18 +8,23 @@ class OllamaTranslation(TranslationEngine):
     engine_name = "ollama"
     is_online = False
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, model: str = ""):
         self.url = url.rstrip('/')
+        self.preset_model = model
 
     def _get_model(self) -> str:
+        if self.preset_model:
+            return self.preset_model
         try:
             resp = requests.get(f"{self.url}/api/tags", timeout=5)
             resp.raise_for_status()
             models = [m["name"] for m in resp.json().get("models", [])]
             if not models:
                 raise TranslationError("No downloaded models found in Ollama.")
-            # Prefer qwen or llama
-            chosen = next((m for m in models if "qwen" in m.lower()), None)
+            # Prefer gemma4:e4b explicit user request
+            chosen = next((m for m in models if "gemma4:e4b" in m), None)
+            if not chosen:
+                chosen = next((m for m in models if "qwen" in m.lower()), None)
             if not chosen:
                 chosen = next((m for m in models if "llama" in m.lower()), models[0])
             return chosen

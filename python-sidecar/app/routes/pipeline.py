@@ -38,7 +38,7 @@ class TranslateRequest(BaseModel):
 
 
 # ─── Engine factories ─────────────────────────────────────
-def get_translation_engine(engine_name: str, api_key: str = ""):
+def get_translation_engine(engine_name: str, api_key: str = "", base_url: str = "", model: str = ""):
     """Factory: tạo translation engine instance."""
     if engine_name == "deepseek":
         from app.engines.translation.deepseek import DeepSeekTranslation
@@ -59,6 +59,8 @@ def get_translation_engine(engine_name: str, api_key: str = ""):
         return DeepLTranslation(api_key=api_key)
     elif engine_name == "ollama":
         from app.engines.translation.ollama import OllamaTranslation
+        if model:
+            return OllamaTranslation(url=api_key, model=model)
         return OllamaTranslation(url=api_key)
     elif engine_name == "nllb":
         from app.engines.translation.nllb import NLLBTranslation
@@ -66,7 +68,10 @@ def get_translation_engine(engine_name: str, api_key: str = ""):
     elif engine_name == "openai":
         from app.engines.translation.openai_engine import OpenAITranslation
         if not api_key: raise HTTPException(400, "OpenAI API key required")
-        return OpenAITranslation(api_key=api_key)
+        kwargs = {"api_key": api_key}
+        if base_url: kwargs["base_url"] = base_url
+        if model: kwargs["model"] = model
+        return OpenAITranslation(**kwargs)
     else:
         raise HTTPException(400, f"Unknown translation engine: {engine_name}")
 
@@ -206,6 +211,45 @@ async def tts_demo(req: TTSRequest):
         raise HTTPException(500, f"TTS Demo failed: {str(e)}")
 
 # ─── Full Pipeline (SSE) ─────────────────────────────────
+from fastapi.responses import FileResponse
+from pathlib import Path
+import hashlib
+import subprocess
+
+thumb_semaphore = asyncio.Semaphore(2)
+
+@router.get("/thumbnail")
+async def get_thumbnail(video_path: str, time: float):
+    """Lấy thumbnail ngẫu nhiên tại {time} của video có cache an toàn."""
+    if not os.path.exists(video_path):
+        raise HTTPException(400, "Video not found")
+        
+    cache_dir = Path(video_path).parent / ".thumbs"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    vhash = hashlib.md5(video_path.encode()).hexdigest()[:8]
+    cache_path = cache_dir / f"{vhash}_{time:.1f}.jpg"
+    
+    if cache_path.exists():
+        return FileResponse(cache_path)
+        
+    async with thumb_semaphore:
+        if cache_path.exists():
+            return FileResponse(cache_path)
+            
+        proc = await asyncio.create_subprocess_exec(
+            'ffmpeg', '-y', '-ss', str(time), '-i', video_path, 
+            '-vframes', '1', '-q:v', '5', '-s', '160x90', str(cache_path),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        await proc.communicate()
+        
+    if not cache_path.exists():
+        raise HTTPException(500, "Thumbnail extraction failed")
+        
+    return FileResponse(cache_path)
+
 @router.post("/analyze")
 async def analyze_pipeline(req: ProcessRequest):
     """Analyze pipeline (Transcribe + Translate) with SSE progress streaming."""

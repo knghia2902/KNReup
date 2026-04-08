@@ -36,6 +36,9 @@ export function SubTab({ onAnalyze, processing }: SubTabProps) {
       updateSegment(segId, { tts_status: 'generated', tts_audio_path: res.audio_path });
     } catch {
       updateSegment(segId, { tts_status: 'error' });
+    }
+  };
+
   return (
     <>
       <div className="ps" style={{ padding: '16px', borderBottom: '1px solid var(--c-bg3)' }}>

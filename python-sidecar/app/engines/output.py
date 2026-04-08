@@ -183,40 +183,103 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         map_args = []
         input_index = 0
 
+        # Get original video dimensions for proportional coordinate mapping
+        try:
+            probe = subprocess.run(
+                ["ffprobe", "-v", "error", "-select_streams", "v:0",
+                 "-show_entries", "stream=width,height", "-of", "csv=p=0",
+                 self.input_video],
+                capture_output=True, text=True, timeout=10
+            )
+            parts = probe.stdout.strip().split(",")
+            orig_w, orig_h = int(parts[0]), int(parts[1])
+        except Exception:
+            orig_w, orig_h = 1920, 1080  # fallback
+
         # Video stream input parsing
         v_current = f"{input_index}:v"
 
+        # Compute effective dimensions (target standard frame)
+        video_ratio = getattr(config, "video_ratio", "original") if config else "original"
+        if video_ratio == "16:9":
+            eff_w, eff_h = 1920, 1080
+        elif video_ratio == "9:16":
+            eff_w, eff_h = 1080, 1920
+        else:
+            eff_w = orig_w
+            eff_h = orig_h
+
         # Check Advanced Effects
         if config:
-            # 1. Blur
+            # 1. Scale to fit target bounding box, then Pad to final format
+            if video_ratio in ("16:9", "9:16"):
+                # Compute exact scale dimensions matching object-fit: contain (allowing upscaling)
+                scale_ratio = min(eff_w / orig_w, eff_h / orig_h) if orig_w > 0 and orig_h > 0 else 1.0
+                scale_w = int(orig_w * scale_ratio)
+                scale_h = int(orig_h * scale_ratio)
+                
+                # Make sure scale dimensions are even
+                scale_w = scale_w if scale_w % 2 == 0 else scale_w + 1
+                scale_h = scale_h if scale_h % 2 == 0 else scale_h + 1
+
+                filter_complex_parts.append(
+                    f"[{v_current}]scale={scale_w}:{scale_h},"
+                    f"pad={eff_w}:{eff_h}:(ow-iw)/2:(oh-ih)/2:black[vpad]"
+                )
+                v_current = "vpad"
+
+            # 2. Blur (use proportional coordinates: ratio * current frame size)
             if getattr(config, "blur_enabled", False):
                 regions = getattr(config, "blur_regions", [])
                 for i, r in enumerate(regions):
                     try:
-                        bx, by = int(float(r.get("x", 0))), int(float(r.get("y", 0)))
-                        bw, bh = int(float(r.get("w", 0))), int(float(r.get("h", 0)))
-                        if bw > 4 and bh > 4:
-                            # Use gblur with split and overlay to avoid delogo edge smudging
-                            filter_complex_parts.append(f"[{v_current}]split=2[bm{i}][bb{i}];[bb{i}]crop={bw}:{bh}:{bx}:{by},gblur=sigma=20[bp{i}];[bm{i}][bp{i}]overlay={bx}:{by}[vblur{i}]")
+                        # Convert pixel coords to ratios and clamp strictly within [0, 1] bounds
+                        rx = max(0.0, min(1.0, float(r.get("x", 0)) / eff_w))
+                        ry = max(0.0, min(1.0, float(r.get("y", 0)) / eff_h))
+                        rw = max(0.01, min(1.0 - rx, float(r.get("w", 0)) / eff_w))
+                        rh = max(0.01, min(1.0 - ry, float(r.get("h", 0)) / eff_h))
+                        if rw > 0.01 and rh > 0.01:
+                            # Use expression-based coordinates relative to current frame
+                            filter_complex_parts.append(
+                                f"[{v_current}]split=2[bm{i}][bb{i}];"
+                                f"[bb{i}]crop='iw*{rw}':'ih*{rh}':'iw*{rx}':'ih*{ry}',gblur=sigma=20[bp{i}];"
+                                f"[bm{i}][bp{i}]overlay='W*{rx}':'H*{ry}'[vblur{i}]"
+                            )
                             v_current = f"vblur{i}"
                     except (ValueError, TypeError):
                         pass
 
-            # 2. Watermark Text
+            # 3. Watermark Text (proportional coordinates)
             if getattr(config, "watermark_enabled", False) and getattr(config, "watermark_text", ""):
                 text = getattr(config, "watermark_text", "").replace("'", "\\'")
-                wx, wy = int(float(getattr(config, "watermark_x", 10))), int(float(getattr(config, "watermark_y", 10)))
+                rx = float(getattr(config, "watermark_x", 10)) / eff_w
+                ry = float(getattr(config, "watermark_y", 10)) / eff_h
                 alpha = getattr(config, "watermark_opacity", 1.0)
-                # Use font='Arial' to support Vietnamese characters in Windows FFmpeg
+                fontsize = int(getattr(config, "watermark_fontsize", 40))
                 filter_complex_parts.append(
-                    f"[{v_current}]drawtext=text='{text}':font='Arial':fontcolor=white@{alpha}:fontsize=40:x={wx}:y={wy}:shadowcolor=black@{alpha}:shadowx=2:shadowy=2[vwm]"
+                    f"[{v_current}]drawtext=text='{text}':font='Arial':fontcolor=white@{alpha}:fontsize={fontsize}:x='w*{rx}':y='h*{ry}':shadowcolor=black@{alpha}:shadowx=2:shadowy=2[vwm]"
                 )
                 v_current = "vwm"
 
-            # 3. Crop 16:9 to 9:16
-            if getattr(config, "crop_enabled", False):
-                filter_complex_parts.append(f"[{v_current}]crop=ih*9/16:ih[vcrop]")
-                v_current = "vcrop"
+            # 4. Image Logo Overlay (proportional coordinates + scale)
+            image_logo_file = getattr(config, "image_logo_file", "")
+            if getattr(config, "image_logo_enabled", False) and image_logo_file and os.path.exists(image_logo_file):
+                input_index += 1
+                cmd.extend(["-i", image_logo_file])
+                logo_input = f"{input_index}:v"
+                rx = float(getattr(config, "image_logo_x", 10)) / eff_w
+                ry = float(getattr(config, "image_logo_y", 10)) / eff_h
+                lalpha = float(getattr(config, "image_logo_opacity", 0.8))
+                lw = int(getattr(config, "image_logo_w", 150))
+                lh = int(getattr(config, "image_logo_h", 150))
+                # Scale logo proportional to explicit box matching object-fit: contain
+                filter_complex_parts.append(
+                    f"[{logo_input}]scale='{lw}':'{lh}':force_original_aspect_ratio=decrease,format=rgba,colorchannelmixer=aa={lalpha}[logo_ready]"
+                )
+                filter_complex_parts.append(
+                    f"[{v_current}][logo_ready]overlay='W*{rx}':'H*{ry}'[vlogo]"
+                )
+                v_current = "vlogo"
 
         # 4. Add ASS subtitles
         if self._ass_file:
@@ -224,8 +287,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             filter_complex_parts.append(f"[{v_current}]ass='{ass_escaped}'[vout]")
             v_current = "vout"
 
-        # Audio stream inputs parsing
-        a_orig = f"{input_index}:a"
+        # Audio stream inputs parsing (audio gốc LUÔN ở input 0 = video file)
+        a_orig = "0:a"
         audio_streams_to_mix = []
         
         # Original Audio
@@ -292,7 +355,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         proc = subprocess.Popen(
             cmd,
             stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
             universal_newlines=True,
             encoding="utf-8",
             errors="replace"
@@ -311,6 +374,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     pass
 
         proc.wait()
+        if proc.returncode != 0:
+            error_log = "".join(stderr_lines[-10:])  # Lấy 10 dòng log lỗi cuối
+            raise RuntimeError(f"FFmpeg failed with exit code {proc.returncode}. Log: {error_log}")
 
         # Cleanup temp ASS file
         if self._ass_file and os.path.exists(self._ass_file):
