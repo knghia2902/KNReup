@@ -88,6 +88,16 @@
 
 ---
 
+### Phase 06.1: OCR Subtitle Extraction (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 6
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] TBD (run /gsd-plan-phase 06.1 to break down) (completed 2026-04-08)
+
 ## Phase 7: Video Downloader
 > **Mục tiêu**: Download video đa nền tảng, no-watermark
 > **Output**: Module Downloader trong titlebar tab

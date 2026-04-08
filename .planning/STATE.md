@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-last_updated: "2026-04-04T05:11:30.007Z"
-last_activity: 2026-03-26
+last_updated: "2026-04-08T09:52:54.641Z"
+last_activity: 2026-04-08
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 7
+  total_phases: 7
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 9
 ---
 
 # STATE.md — KNReup Project State
@@ -19,14 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-23)
 
 **Core value:** Nâng tầm dự án lên cấp độ Pro với sức mạnh AI đa luồng và Kỹ xảo Output 4 Track.
-**Current focus:** Phase 5 — Output Advanced
+**Current focus:** Phase 06.1 — ocr-subtitle-extraction
 
 ## Current Status
 
 - **Milestone:** 2 (Pro Release)
 - **Phase:** 04 Completed
 - **Status:** Ready to plan
-- **Last activity:** 2026-03-26
+- **Last activity:** 2026-04-08
 
 ## Context
 
@@ -50,6 +50,10 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 2026-03-23 | Circuit breaker cho API fallback | Tech review feedback |
 | 2026-03-23 | Canvas=preview, ASS=export | Hardsub strategy |
 
+### Roadmap Evolution
+
+- Phase 6.1 inserted after Phase 6: OCR Subtitle Extraction (URGENT)
+
 ## Phase Progress
 
 | Phase | Name | Status |
@@ -61,6 +65,7 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 4 | Multi-Engine + Advanced | ✅ Complete |
 | 5 | Output Advanced | — |
 | 6 | Timeline + Premium UI | — |
+| 6.1 | OCR Subtitle Extraction | — |
 | 7 | Video Downloader | — |
 | 8 | Auto-Monitor + AI | — |
 | 9 | Polish + License | — |
