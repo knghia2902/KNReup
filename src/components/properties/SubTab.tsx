@@ -1,7 +1,7 @@
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { sidecar } from '../../lib/sidecar';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { ToggleControl } from '../controls/ToggleControl';
+import { SelectControl } from '../controls/SelectControl';
 
 function formatTc(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -46,10 +46,19 @@ export function SubTab({ onAnalyze, processing }: SubTabProps) {
         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', paddingBottom: '8px' }}>
           Chuột trái vào Video để resize khung màu xanh OCR Region. Giúp OCR không quét tốn CPU.
         </div>
-        <ToggleControl 
-          label="Enable OCR Smart Merge" 
-          checked={config.ocr_enabled} 
-          onChange={(v: boolean) => config.updateConfig({ ocr_enabled: v })}
+        <SelectControl 
+          label="Analyze Source" 
+          value={(config.asr_enabled ? 'audio' : '') + (config.ocr_enabled ? '_ocr' : '')} 
+          onChange={(v) => {
+            if (v === 'audio') config.updateConfig({ asr_enabled: true, ocr_enabled: false });
+            if (v === '_ocr') config.updateConfig({ asr_enabled: false, ocr_enabled: true });
+            if (v === 'audio_ocr') config.updateConfig({ asr_enabled: true, ocr_enabled: true });
+          }}
+          options={[
+            { value: 'audio', label: 'Audio Only (Whisper)' },
+            { value: '_ocr', label: 'Hardsub Only (OCR)' },
+            { value: 'audio_ocr', label: 'Smart Merge (Audio + Hardsub)' },
+          ]} 
         />
       </div>
 

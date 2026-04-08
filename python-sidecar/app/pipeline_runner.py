@@ -156,21 +156,36 @@ class PipelineRunner:
     ) -> AsyncGenerator[dict, None]:
         """Chạy Analyze: Transcribe -> Translate -> return segments."""
         try:
-            # ── Stage 1: Transcribe ──
-            yield {"stage": "transcribe", "progress": 0, "message": "Loading Whisper model..."}
-            await asyncio.sleep(0.1)  # Flush SSE event before blocking calls
+            segments = []
+            detected_lang = config.source_lang
+            duration = 0.0
 
-            model_size, device, compute_type = WhisperASR.detect_best_model()
-            asr = WhisperASR(model_size=model_size, device=device, compute_type=compute_type)
+            if getattr(config, "asr_enabled", True):
+                # ── Stage 1: Transcribe ──
+                yield {"stage": "transcribe", "progress": 0, "message": "Loading Whisper model..."}
+                await asyncio.sleep(0.1)  # Flush SSE event before blocking calls
 
-            yield {"stage": "transcribe", "progress": 10, "message": f"Transcribing with {model_size}..."}
-            await asyncio.sleep(0.1)
+                model_size, device, compute_type = WhisperASR.detect_best_model()
+                asr = WhisperASR(model_size=model_size, device=device, compute_type=compute_type)
 
-            # Run synchronous transcribe in a separate thread so it doesn't block FastAPI event loop
-            result = await asyncio.to_thread(asr.transcribe, video_path, language=config.source_lang)
-            segments = result["segments"]
-            detected_lang = result["language"]
-            duration = result["duration"]
+                yield {"stage": "transcribe", "progress": 10, "message": f"Transcribing with {model_size}..."}
+                await asyncio.sleep(0.1)
+
+                # Run synchronous transcribe in a separate thread so it doesn't block FastAPI event loop
+                result = await asyncio.to_thread(asr.transcribe, video_path, language=config.source_lang)
+                segments = result["segments"]
+                detected_lang = result["language"]
+                duration = result["duration"]
+            else:
+                yield {"stage": "transcribe", "progress": 10, "message": "Skipping audio transcribe (Hardsub OCR Only)..."}
+                await asyncio.sleep(0.1)
+                import cv2
+                cap = cv2.VideoCapture(video_path)
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                if fps > 0:
+                    duration = frame_count / fps
+                cap.release()
 
             if getattr(config, "ocr_enabled", False):
                 yield {"stage": "transcribe", "progress": 20, "message": "Extracting hardsubs with OCR..."}
@@ -186,31 +201,37 @@ class PipelineRunner:
                 }
                 ocr_segments = await asyncio.to_thread(ocr_engine.extract_hardsubs, video_path, region, config.source_lang)
                 
-                # Smart Merge
-                merged_segments = list(segments)
-                for oseg in ocr_segments:
-                    os_start, os_end = oseg["start"], oseg["end"]
-                    os_dur = os_end - os_start
-                    if os_dur <= 0: continue
-                    
-                    overlap_violation = False
-                    for wseg in segments:
-                        ws_start, ws_end = wseg["start"], wseg["end"]
-                        overlap_start = max(os_start, ws_start)
-                        overlap_end = min(os_end, ws_end)
-                        overlap_dur = max(0, overlap_end - overlap_start)
-                        if overlap_dur / os_dur > 0.2:
-                            overlap_violation = True
-                            break
-                            
-                    if not overlap_violation:
-                        merged_segments.append(oseg)
+                if getattr(config, "asr_enabled", True):
+                    # Smart Merge
+                    merged_segments = list(segments)
+                    for oseg in ocr_segments:
+                        os_start, os_end = oseg["start"], oseg["end"]
+                        os_dur = os_end - os_start
+                        if os_dur <= 0: continue
                         
-                # Sort and reassign ID
-                merged_segments.sort(key=lambda x: x["start"])
-                for idx, seg in enumerate(merged_segments):
-                    seg["id"] = idx
-                segments = merged_segments
+                        overlap_violation = False
+                        for wseg in segments:
+                            ws_start, ws_end = wseg["start"], wseg["end"]
+                            overlap_start = max(os_start, ws_start)
+                            overlap_end = min(os_end, ws_end)
+                            overlap_dur = max(0, overlap_end - overlap_start)
+                            if overlap_dur / os_dur > 0.2:
+                                overlap_violation = True
+                                break
+                                
+                        if not overlap_violation:
+                            merged_segments.append(oseg)
+                            
+                    # Sort and reassign ID
+                    merged_segments.sort(key=lambda x: x["start"])
+                    for idx, seg in enumerate(merged_segments):
+                        seg["id"] = idx
+                    segments = merged_segments
+                else:
+                    # Hardsub (OCR) Only
+                    for idx, seg in enumerate(ocr_segments):
+                        seg["id"] = idx
+                    segments = ocr_segments
 
             yield {
                 "stage": "transcribe", "progress": 25,

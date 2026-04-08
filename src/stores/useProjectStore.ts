@@ -22,6 +22,7 @@ export interface ProjectConfig {
   subtitle_font: string;
   subtitle_color: string;
   subtitle_outline_color: string;
+  asr_enabled: boolean;
   ocr_enabled: boolean;
   ocr_x: number;
   ocr_y: number;
@@ -104,6 +105,7 @@ const DEFAULT_CONFIG: ProjectConfig = {
   subtitle_font: 'Be Vietnam Pro',
   subtitle_color: '#FFFF00',
   subtitle_outline_color: '#000000',
+  asr_enabled: true,
   ocr_enabled: false,
   ocr_x: 50,
   ocr_y: 50,
