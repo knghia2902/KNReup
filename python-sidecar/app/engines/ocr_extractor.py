@@ -8,7 +8,14 @@ logger = logging.getLogger(__name__)
 class VideoOcrExtractor:
     def __init__(self, lang: str = "vi"):
         try:
-            self.reader = easyocr.Reader([lang])
+            ocr_lang = 'en'
+            if lang in ['zh', 'zh-CN', 'ch']: ocr_lang = 'ch_sim'
+            elif lang == 'ja': ocr_lang = 'ja'
+            elif lang == 'ko': ocr_lang = 'ko'
+            elif lang == 'vi': ocr_lang = 'vi'
+            
+            logger.info(f"Initializing EasyOCR with language: {ocr_lang}")
+            self.reader = easyocr.Reader([ocr_lang, 'en']) if ocr_lang != 'en' else easyocr.Reader(['en'])
         except Exception as e:
             logger.error(f"Failed to load easyocr: {e}")
             self.reader = None

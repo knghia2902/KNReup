@@ -76,6 +76,7 @@ function App() {
     if (!activeFile) return;
     try {
       const result = await analyzeVideo(activeFile, {
+        ...projectConfig,
         translation_engine: projectConfig.translation_engine,
         source_lang: projectConfig.language,
         target_lang: 'vi',
