@@ -37,7 +37,8 @@ export function StyleTab() {
           value={config.translation_engine} 
           onChange={(v) => config.updateConfig({ translation_engine: v })}
           options={[
-            { value: 'nllb', label: 'NLLB (Offline Local)' },
+            { value: 'opus', label: 'Helsinki OPUS-MT (Siêu nhẹ & Nhanh)' },
+            { value: 'nllb', label: 'NLLB (Nặng & Đa Ngữ)' },
             { value: 'argos', label: 'Argos (Offline Local)' },
             { value: 'ollama', label: 'Ollama (Offline Model)' },
             { value: 'deepseek', label: 'DeepSeek (API)' },

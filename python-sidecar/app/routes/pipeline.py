@@ -65,6 +65,9 @@ def get_translation_engine(engine_name: str, api_key: str = "", base_url: str = 
     elif engine_name == "nllb":
         from app.engines.translation.nllb_engine import NLLBTranslation
         return NLLBTranslation()
+    elif engine_name == "opus":
+        from app.engines.translation.opus_engine import HelsinkiOPUSTranslation
+        return HelsinkiOPUSTranslation()
     elif engine_name == "openai":
         from app.engines.translation.openai_engine import OpenAITranslation
         if not api_key: raise HTTPException(400, "OpenAI API key required")

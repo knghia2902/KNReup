@@ -1,5 +1,4 @@
 import cv2
-import easyocr
 import logging
 from typing import List, Dict
 
@@ -8,16 +7,16 @@ logger = logging.getLogger(__name__)
 class VideoOcrExtractor:
     def __init__(self, lang: str = "vi"):
         try:
-            ocr_lang = 'en'
-            if lang in ['zh', 'zh-CN', 'ch', 'auto']: ocr_lang = 'ch_sim'
-            elif lang == 'ja': ocr_lang = 'ja'
-            elif lang == 'ko': ocr_lang = 'ko'
-            elif lang == 'vi': ocr_lang = 'vi'
-            
-            logger.info(f"Initializing EasyOCR with language: {ocr_lang}")
-            self.reader = easyocr.Reader([ocr_lang, 'en']) if ocr_lang != 'en' else easyocr.Reader(['en'])
+            # RapidOCR (PaddleOCR v4 ONNX) is SOTA for handling multiline & English/Chinese mixes.
+            # Using onnxruntime-gpu ensures this runs insanely fast on CUDA.
+            from rapidocr_onnxruntime import RapidOCR
+            logger.info("Initializing RapidOCR (ONNX GPU) Engine")
+            self.reader = RapidOCR(print_verbose=True)
+        except ImportError:
+            logger.error("RapidOCR not installed. Run: pip install rapidocr-onnxruntime onnxruntime-gpu")
+            self.reader = None
         except Exception as e:
-            logger.error(f"Failed to load easyocr: {e}")
+            logger.error(f"Failed to load RapidOCR: {e}")
             self.reader = None
 
     def extract_hardsubs(self, video_path: str, region: dict, lang: str = "vi") -> List[Dict]:
@@ -25,7 +24,7 @@ class VideoOcrExtractor:
         region: {"x": x, "y": y, "w": w, "h": h} in pixels
         """
         if not self.reader:
-            logger.error("EasyOCR reader not initialized")
+            logger.error("RapidOCR reader not initialized")
             return []
             
         logger.info(f"Extracting OCR from region {region} in {video_path}...")
@@ -39,6 +38,9 @@ class VideoOcrExtractor:
         current_text = None
         current_start = 0
         current_end = 0
+
+        # We keep a bit of padding to ensure the text isn't tightly cropped
+        pad = 10
 
         sec = 0
         while cap.isOpened():
@@ -54,10 +56,10 @@ class VideoOcrExtractor:
             x, y, w, h = int(region.get("x", 0)), int(region.get("y", 0)), int(region.get("w", 0)), int(region.get("h", 0))
             if w > 0 and h > 0:
                 h_f, w_f = frame.shape[:2]
-                y1 = min(max(0, y), h_f)
-                y2 = min(max(0, y + h), h_f)
-                x1 = min(max(0, x), w_f)
-                x2 = min(max(0, x + w), w_f)
+                y1 = min(max(0, y - pad), h_f)
+                y2 = min(max(0, y + h + pad), h_f)
+                x1 = min(max(0, x - pad), w_f)
+                x2 = min(max(0, x + w + pad), w_f)
                 crop = frame[y1:y2, x1:x2]
             else:
                 crop = frame
@@ -66,8 +68,12 @@ class VideoOcrExtractor:
                 sec += 1
                 continue
 
-            results = self.reader.readtext(crop, detail=0, paragraph=True)
-            text = " ".join(results).strip()
+            results, _ = self.reader(crop)
+            
+            text = ""
+            if results:
+                # Merge multiple lines layout
+                text = " ".join([res[1] for res in results if res[1]]).strip()
 
             if text:
                 if current_text == text:
@@ -104,5 +110,5 @@ class VideoOcrExtractor:
             })
             
         cap.release()
-        logger.info(f"Extracted {len(extracted_segments)} OCR segments")
+        logger.info(f"Extracted {len(extracted_segments)} OCR segments using RapidOCR")
         return extracted_segments
