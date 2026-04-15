@@ -6,7 +6,7 @@ interface SubtitleTrackProps {
 }
 
 export function SubtitleTrack({ pixelsPerSecond }: SubtitleTrackProps) {
-  const { segments, selectSegment, selectedId, splitSegment, trimSegment } = useSubtitleStore();
+  const { segments, selectSegment, selectedId, splitSegment, trimSegment, deleteSegment } = useSubtitleStore();
   const trackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,20 +23,27 @@ export function SubtitleTrack({ pixelsPerSecond }: SubtitleTrackProps) {
           }
         }
       }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId !== null) {
+        deleteSegment(selectedId);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, splitSegment]);
+  }, [selectedId, splitSegment, deleteSegment]);
 
   return (
-    <div ref={trackRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+    <div ref={trackRef} style={{ position: 'relative', top: 0, left: 0, width: '100%', height: '100%' }}>
       {segments.map(s => (
         <SubtitleBlock 
            key={s.id} 
            segment={s} 
            pixelsPerSecond={pixelsPerSecond} 
            isSelected={s.id === selectedId}
-           onClick={() => selectSegment(s.id)}
+           onClick={() => {
+             selectSegment(s.id);
+             window.dispatchEvent(new CustomEvent('focus-subtitle-panel', { detail: s.id }));
+           }}
            onTrim={(newStart, newEnd) => trimSegment(s.id, newStart, newEnd)}
         />
       ))}

@@ -1,7 +1,5 @@
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
-import { sidecar } from '../../lib/sidecar';
-import { useProjectStore } from '../../stores/useProjectStore';
-import { SelectControl } from '../controls/SelectControl';
+import { useEffect, useRef } from 'react';
 
 function formatTc(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -16,157 +14,124 @@ interface SubTabProps {
 }
 
 export function SubTab({ onAnalyze, processing }: SubTabProps) {
-  const { segments, updateSegment, deleteSegment } = useSubtitleStore();
-  const config = useProjectStore();
-  const handleReTTS = async (segId: number, text: string) => {
-    updateSegment(segId, { tts_status: 'pending' });
-    try {
-      const res = await sidecar.fetch<{audio_path: string}>('/api/pipeline/tts-preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          engine: config.tts_engine,
-          voice: config.voice,
-          rate: config.speed,
-          volume: config.volume,
-          pitch: config.pitch
-        })
-      });
-      updateSegment(segId, { tts_status: 'generated', tts_audio_path: res.audio_path });
-    } catch {
-      updateSegment(segId, { tts_status: 'error' });
-    }
-  };
+  const { segments, updateSegment } = useSubtitleStore();
+  const listRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const segId = (e as CustomEvent).detail;
+      if (!listRef.current) return;
+      const el = listRef.current.querySelector(`[data-seg-id="${segId}"]`) as HTMLTextAreaElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Just flash the background to indicate selection without stealing keyboard focus
+        const parent = el.closest('div[data-seg-row="true"]') as HTMLDivElement;
+        if (parent) {
+          parent.style.transition = 'none';
+          parent.style.backgroundColor = 'var(--ac)';
+          setTimeout(() => {
+            parent.style.transition = 'background-color 0.5s ease';
+            parent.style.backgroundColor = 'var(--bg-surface)';
+          }, 100);
+        }
+      }
+    };
+    window.addEventListener('focus-subtitle-panel', handler);
+    return () => window.removeEventListener('focus-subtitle-panel', handler);
+  }, []);
   return (
     <>
-      <div className="ps" style={{ padding: '16px', borderBottom: '1px solid var(--c-bg3)' }}>
-        <div className="pshd" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--i1)', marginBottom: '8px' }}>Hardsub Extraction (OCR)</div>
-        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', paddingBottom: '8px' }}>
-          Chuột trái vào Video để resize khung màu xanh OCR Region. Giúp OCR không quét tốn CPU.
-        </div>
-        <SelectControl 
-          label="Analyze Source" 
-          value={(config.asr_enabled ? 'audio' : '') + (config.ocr_enabled ? '_ocr' : '')} 
-          onChange={(v) => {
-            if (v === 'audio') config.updateConfig({ asr_enabled: true, ocr_enabled: false });
-            if (v === '_ocr') config.updateConfig({ asr_enabled: false, ocr_enabled: true });
-            if (v === 'audio_ocr') config.updateConfig({ asr_enabled: true, ocr_enabled: true });
-          }}
-          options={[
-            { value: 'audio', label: 'Audio Only (Whisper)' },
-            { value: '_ocr', label: 'Hardsub Only (OCR)' },
-            { value: 'audio_ocr', label: 'Smart Merge (Audio + Hardsub)' },
-          ]} 
-        />
-      </div>
 
-      <div className="subhd">
+      <div className="subhd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '8px' }}>
         <span className="subsid">Segment Editor ({segments.length})</span>
-        <div className="subnav">
-          <button className="snb">
-            <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M8 2v12M2 8h12"/>
-            </svg>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button 
+            className="btn" 
+            style={{ padding: '2px 8px', fontSize: '10px', height: '20px', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            onClick={() => useSubtitleStore.getState().autoSplitLongSegments()} 
+            disabled={processing || segments.length === 0}
+          >
+            Auto Split
           </button>
-          <button className="snb">
-            <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M4 8h8M2 3h12M2 13h12"/>
-            </svg>
+          <button 
+            className="btn" 
+            style={{ padding: '2px 8px', fontSize: '10px', height: '20px', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            onClick={onAnalyze} 
+            disabled={processing}
+          >
+            {processing ? 'Analyzing...' : 'Auto Translate'}
           </button>
         </div>
       </div>
 
-      <div className="slist">
+      <div className="slist" ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
         {segments.length === 0 ? (
           <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ fontSize: 13, color: 'var(--i4)' }}>No segments. Configure settings and run Pipeline.</div>
-            <button 
-              className="btn pri" 
-              style={{ padding: '8px 24px', background: 'var(--ac)', color: 'var(--bg)' }}
-              onClick={onAnalyze} 
-              disabled={processing}
-            >
-              {processing ? 'Analyzing...' : 'Auto Translate'}
-            </button>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: '20px' }}>Chưa có phụ đề, hãy nhấn Auto Translate để quét AI.</div>
           </div>
         ) : (
-          segments.map((seg, idx) => (
-            <div key={seg.id} className="srow">
-              <div className="snum">{idx + 1}</div>
-              <div className="scnt">
-                <div className="stc">{formatTc(seg.start)} · {formatTc(seg.end)}</div>
-                <div className="so">{seg.source_text}</div>
-                <div className="st">{seg.translated_text}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+            {segments.map((seg, idx) => (
+              <div key={seg.id} data-seg-row="true" style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '6px 8px',
+                display: 'flex',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+              >
+                <div style={{
+                  fontSize: '9px', fontWeight: 700, color: 'var(--text-disabled)',
+                  width: '20px', textAlign: 'center', paddingTop: '2px'
+                }}>{idx + 1}</div>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      {formatTc(seg.start)} <span style={{ color: 'var(--border)' }}>→</span> {formatTc(seg.end)}
+                    </span>
+                    {seg.tts_audio_path && <span style={{ fontSize: '8px', background: 'var(--accent-subtle)', color: 'var(--accent)', padding: '2px 4px', borderRadius: '4px' }}>TTS DONE</span>}
+                  </div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginBottom: '2px' }}>{seg.source_text}</div>
+                  <textarea
+                    data-seg-id={seg.id}
+                    style={{ 
+                      fontSize: '11px', color: 'var(--text-primary)', fontWeight: 500, 
+                      background: 'var(--bg)', border: '1px solid transparent', borderRadius: '4px',
+                      padding: '2px 4px', width: '100%', resize: 'none', minHeight: '20px', height: 'auto', overflow: 'hidden',
+                      outline: 'none', transition: 'border-color 0.2s, background 0.2s',
+                      lineHeight: '1.4',
+                      // Prevent giant scrollbars when typing a lot, but auto-grow based on scroll height
+                      boxSizing: 'border-box'
+                    }}
+                    value={seg.translated_text}
+                    onInput={(e) => {
+                      e.currentTarget.style.height = 'auto';
+                      e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
+                    }}
+                    onChange={(e) => updateSegment(seg.id, { translated_text: e.target.value })}
+                    onFocus={(e) => { 
+                      e.currentTarget.style.borderColor = 'var(--accent)'; 
+                      e.currentTarget.style.background = 'var(--bg-surface)'; 
+                      e.currentTarget.style.height = 'auto';
+                      e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
+                    }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'var(--bg)'; }}
+                    spellCheck={false}
+                  />
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
-      {segments.length > 0 && (
-        <div className="sedit">
-          <div className="stcbar">
-            {/* Displaying first segment info for demo of editor */}
-            <input type="text" className="tci" defaultValue={formatTc(segments[0].start)} />
-            <span className="tcsep">—</span>
-            <input type="text" className="tci" defaultValue={formatTc(segments[0].end)} />
-            <div className="sacts">
-              <button className="sab">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M3 8h10M8 3v10"/>
-                </svg>
-              </button>
-              <button className="sab del" onClick={() => deleteSegment(segments[0].id)}>
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M2 4h12M6 8v4M10 8v4M4 4v10a1 1 0 001 1h6a1 1 0 001-1V4M7 1h2"/>
-                </svg>
-              </button>
-            </div>
-          </div>
 
-          <div className="scols">
-            <div className="sc">
-              <div className="schd">
-                <div className="scdot" style={{background: 'var(--i3)'}}></div>
-                <span className="sclang">src</span>
-              </div>
-              <textarea 
-                className="scta" 
-                value={segments[0].source_text} 
-                onChange={(e) => updateSegment(segments[0].id, { source_text: e.target.value })}
-              />
-              <div className="scfoot">
-                <span className="scinfo">Whisper ASR</span>
-                <button className="btn sm">Reload</button>
-              </div>
-            </div>
-
-            <div className="sc">
-              <div className="schd">
-                <div className="scdot" style={{background: 'var(--ac)'}}></div>
-                <span className="sclang">target</span>
-              </div>
-              <textarea 
-                className="scta" 
-                value={segments[0].translated_text}
-                onChange={(e) => updateSegment(segments[0].id, { translated_text: e.target.value })}
-              />
-              <div className="scfoot">
-                <span className="scinfo">Translation</span>
-                <button 
-                  className="btn sm pri" 
-                  style={{background: 'var(--green)'}}
-                  onClick={() => handleReTTS(segments[0].id, segments[0].translated_text)}
-                >
-                  {segments[0].tts_status === 'pending' ? 'Syncing...' : 'Re-TTS'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

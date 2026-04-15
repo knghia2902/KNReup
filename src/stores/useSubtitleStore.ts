@@ -23,6 +23,7 @@ interface SubtitleStore {
   selectSegment: (id: number | null) => void;
   updateSegment: (id: number, partial: Partial<SubtitleSegment>) => void;
   splitSegment: (id: number, splitTime: number) => void;
+  autoSplitLongSegments: () => void;
   mergeSegments: (id1: number, id2: number) => void;
   trimSegment: (id: number, newStart: number, newEnd: number) => void;
   deleteSegment: (id: number) => void;
@@ -114,6 +115,67 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
       return { 
         segments: newSegs,
         fileSegments: { ...state.fileSegments, [state.activeFile]: newSegs } 
+      };
+    }),
+
+  autoSplitLongSegments: () =>
+    set((state) => {
+      if (!state.activeFile) return state;
+      const newSegs: SubtitleSegment[] = [];
+      let nextId = Math.max(...state.segments.map(s => s.id), 0) + 1;
+
+      state.segments.forEach(seg => {
+        const text = seg.translated_text || seg.source_text || '';
+        const words = text.split(' ');
+
+        if (words.length > 8 && (text.includes('.') || text.includes(',') || text.includes('?') || text.includes('!'))) {
+           const midPoint = Math.floor(text.length / 2);
+           let splitIndex = -1;
+           
+           for (let offset = 0; offset < midPoint; offset++) {
+              if (['.', ',', '?', '!'].includes(text[midPoint + offset])) {
+                 splitIndex = midPoint + offset + 1;
+                 break;
+              }
+              if (['.', ',', '?', '!'].includes(text[midPoint - offset])) {
+                 splitIndex = midPoint - offset + 1;
+                 break;
+              }
+           }
+
+           if (splitIndex !== -1 && splitIndex > 5 && splitIndex < text.length - 5) {
+              const ratio = splitIndex / text.length;
+              const splitTime = seg.start + (seg.end - seg.start) * ratio;
+
+              let trans1 = text.substring(0, splitIndex).trim();
+              if (trans1.endsWith(',')) trans1 = trans1.slice(0, -1);
+              let trans2 = text.substring(splitIndex).trim();
+              if (trans2.endsWith(',')) trans2 = trans2.slice(0, -1);
+
+              const srcRatioPos = Math.floor(seg.source_text.length * ratio);
+              let src1 = seg.source_text.substring(0, srcRatioPos).trim();
+              if (src1.endsWith(',')) src1 = src1.slice(0, -1);
+              let src2 = seg.source_text.substring(srcRatioPos).trim();
+              if (src2.endsWith(',')) src2 = src2.slice(0, -1);
+
+              newSegs.push({ ...seg, end: splitTime, source_text: src1, translated_text: trans1 });
+              newSegs.push({
+                 ...seg,
+                 id: nextId++,
+                 start: splitTime,
+                 source_text: src2,
+                 translated_text: trans2,
+                 tts_status: 'pending'
+              });
+              return;
+           }
+        }
+        newSegs.push(seg);
+      });
+
+      return {
+        segments: newSegs,
+        fileSegments: { ...state.fileSegments, [state.activeFile]: newSegs }
       };
     }),
 

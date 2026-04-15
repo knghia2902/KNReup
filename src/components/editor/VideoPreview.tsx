@@ -536,29 +536,10 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
 
       const allLines = text.split('\n').flatMap(l => getGreedyLines(l));
 
-      const linesPerPage = 2;
-      const totalPages = Math.ceil(allLines.length / linesPerPage) || 1;
-      
-      let lines = allLines;
-      if (totalPages > 1 && currentSeg) {
-        const segDuration = currentSeg.end - currentSeg.start;
-        const timeElapsed = currentTime - currentSeg.start;
-        const pageDuration = segDuration / totalPages;
-        
-        let currentPage = Math.floor(timeElapsed / pageDuration);
-        if (currentPage >= totalPages) currentPage = totalPages - 1;
-        if (currentPage < 0) currentPage = 0;
-        
-        const startIndex = currentPage * linesPerPage;
-        lines = allLines.slice(startIndex, startIndex + linesPerPage);
-      } else if (totalPages > 1) {
-        // Fallback for placeholder default text
-        lines = allLines.slice(0, linesPerPage);
-      }
-
+      const lines = allLines;
       const lineHeight = scaledFontSize * 1.15;
       
-      // Chiều rộng cố định 90%, chiều cao động theo số dòng hiện tại của page (max 2)
+      // Chiều rộng cố định 90%, chiều cao động theo số dòng hiện tại
       const boxHeight = lines.length * lineHeight + paddingY * 2;
       const boxX = x - boxWidth / 2;
       const boxY = boxCenterY - boxHeight / 2;
@@ -651,6 +632,12 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
   }, [renderSubtitles]);
 
   useEffect(() => {
+    if (videoRef.current?.paused) {
+      renderSubtitles();
+    }
+  }, [segments, renderSubtitles]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.width = videoDimensions.w;
@@ -714,6 +701,21 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
     setVideoDimensions({ w: video.videoWidth, h: video.videoHeight });
   }, []);
 
+  const [currentTime, setCurrentTime] = useState(0);
+
+  // Sync state explicitly to capture current seg
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handleTime = () => setCurrentTime(video.currentTime);
+    video.addEventListener('timeupdate', handleTime);
+    return () => video.removeEventListener('timeupdate', handleTime);
+  }, [videoSrc]);
+
+  const currentSeg = useMemo(() => {
+    return segments.find((s) => currentTime >= s.start && currentTime <= s.end);
+  }, [currentTime, segments]);
+
   if (!videoSrc) {
     return (
       <>
@@ -768,22 +770,32 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
               onPointerCancel={handlePointerUp}
               onPointerLeave={handlePointerUp}
             />
-            {(projectConfig.blur_enabled || projectConfig.watermark_enabled || projectConfig.image_logo_enabled || projectConfig.ocr_enabled) && effectiveDimensions.w > 0 && (
-              <div data-overlay-container style={getOverlayContainerStyle()}>
-                {projectConfig.blur_enabled && (
-                  <DraggableBlur videoDimensions={effectiveDimensions} />
-                )}
-                {projectConfig.ocr_enabled && (
-                  <DraggableOcr videoDimensions={effectiveDimensions} />
-                )}
-                {projectConfig.watermark_enabled && (
-                  <DraggableTextLogo videoDimensions={effectiveDimensions} />
-                )}
-                {projectConfig.image_logo_enabled && (
-                  <DraggableImageLogo videoDimensions={effectiveDimensions} />
-                )}
-              </div>
-            )}
+            <div data-overlay-container style={getOverlayContainerStyle()}>
+              {projectConfig.blur_enabled && effectiveDimensions.w > 0 && <DraggableBlur videoDimensions={effectiveDimensions} />}
+              {projectConfig.ocr_enabled && effectiveDimensions.w > 0 && <DraggableOcr videoDimensions={effectiveDimensions} />}
+              {projectConfig.watermark_enabled && effectiveDimensions.w > 0 && <DraggableTextLogo videoDimensions={effectiveDimensions} />}
+              {projectConfig.image_logo_enabled && effectiveDimensions.w > 0 && <DraggableImageLogo videoDimensions={effectiveDimensions} />}
+              
+              {/* Click Canvas subtitle area → focus in SubTab panel */}
+              {subtitleConfig.enabled && currentSeg && effectiveDimensions.h > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '5%',
+                    width: '90%',
+                    top: `${subtitleConfig.position}%`,
+                    transform: 'translateY(-50%)',
+                    minHeight: '40px',
+                    cursor: 'pointer',
+                    zIndex: 30,
+                  }}
+                  onClick={() => {
+                    useSubtitleStore.getState().selectSegment(currentSeg.id);
+                    window.dispatchEvent(new CustomEvent('focus-subtitle-panel', { detail: currentSeg.id }));
+                  }}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

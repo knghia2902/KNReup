@@ -6,51 +6,80 @@ export function QueueTab() {
   const removeJob = useQueueStore(s => s.removeJob);
 
   return (
-    <div className="ps" style={{ borderBottom: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="pshd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>Export Queue</span>
+        <span>RENDER QUEUE</span>
         {jobs.some(j => j.status === 'completed' || j.status === 'failed') && (
-          <button className="btn sm" onClick={clearCompleted} style={{ padding: '2px 6px', fontSize: 11 }}>
+          <button 
+            className="btn" 
+            onClick={clearCompleted} 
+            style={{ padding: '2px 8px', fontSize: '9px', height: '20px' }}
+          >
             Clear Done
           </button>
         )}
       </div>
       
       {jobs.length === 0 ? (
-        <div style={{ padding: 12, opacity: 0.5, textAlign: 'center', fontSize: 13 }}>No jobs in queue</div>
+        <div style={{ 
+          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', 
+          justifyContent: 'center', gap: '12px', padding: '40px 20px',
+          color: 'var(--text-disabled)'
+        }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" width="32" height="32" style={{ opacity: 0.3 }}>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M12 8v8M8 12h8" />
+          </svg>
+          <div style={{ fontSize: '11px', textAlign: 'center' }}>No jobs in queue.<br/>Use the OUT tab to add exports.</div>
+        </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {jobs.map(job => (
-            <div key={job.id} style={{ padding: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                <span className={`fcbadge ${job.status === 'completed' ? 'ok' : job.status === 'failed' ? 'error' : 'warn'}`}>
-                  {job.status.toUpperCase()}
+            <div key={job.id} style={{ 
+              padding: '10px', background: 'var(--bg-surface)', 
+              border: '1px solid var(--border)', borderRadius: '8px',
+              transition: 'border-color 0.2s',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ 
+                  fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
+                  padding: '2px 6px', borderRadius: '4px',
+                  background: job.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' : job.status === 'failed' ? 'rgba(239, 68, 68, 0.15)' : 'var(--accent-subtle)',
+                  color: job.status === 'completed' ? '#22c55e' : job.status === 'failed' ? '#ef4444' : 'var(--accent)'
+                }}>
+                  {job.status === 'processing' ? `${Math.round(job.progress)}%` : job.status}
                 </span>
-                <span style={{ opacity: 0.8 }}>{Math.round(job.progress)}%</span>
-              </div>
-              
-              <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
-                <div 
-                  style={{ 
-                    height: '100%', 
-                    width: `${job.progress}%`, 
-                    background: job.status === 'failed' ? '#ff3b30' : 'var(--accent)',
-                    transition: 'width 0.3s'
-                  }} 
-                />
-              </div>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 11, opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }} title={job.videoPath}>
-                  {job.videoPath.split(/[\\/]/).pop()}
-                </div>
                 
                 {job.status !== 'processing' && (
-                   <button className="btn sm" onClick={() => removeJob(job.id)} style={{ padding: '2px 6px', fontSize: 10 }}>Remove</button>
+                  <button 
+                    className="btn" 
+                    onClick={() => removeJob(job.id)} 
+                    style={{ padding: '2px 6px', fontSize: '9px', height: '18px', color: '#ef4444', borderColor: 'transparent' }}
+                  >✕</button>
                 )}
               </div>
               
-              {job.message && <div style={{ fontSize: 11, color: 'var(--i4)', marginTop: 4 }}>{job.message}</div>}
+              <div style={{ 
+                height: '3px', background: 'var(--border)', borderRadius: '2px', 
+                overflow: 'hidden', marginBottom: '8px'
+              }}>
+                <div style={{ 
+                  height: '100%', width: `${job.progress}%`, 
+                  background: job.status === 'failed' ? '#ef4444' : 'var(--accent)',
+                  transition: 'width 0.3s ease',
+                  borderRadius: '2px'
+                }} />
+              </div>
+              
+              <div style={{ 
+                fontSize: '10px', color: 'var(--text-dim)', whiteSpace: 'nowrap', 
+                overflow: 'hidden', textOverflow: 'ellipsis' 
+              }} title={job.videoPath}>
+                {job.videoPath.split(/[\\/]/).pop()}
+              </div>
+              
+              {job.message && <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px' }}>{job.message}</div>}
             </div>
           ))}
         </div>

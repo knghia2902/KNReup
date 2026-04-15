@@ -20,8 +20,8 @@ function formatTime(secs: number) {
 
 export function Timeline({ filePaths }: TimelineProps) {
   const config = useProjectStore();
-  const { timelineZoom, updateConfig } = config;
-  const { videoDuration, segments } = useSubtitleStore();
+  const { timelineZoom, updateConfig, bgm_enabled, bgm_file } = config;
+  const { videoDuration, segments, activeFile } = useSubtitleStore();
   
   const playheadRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,8 +30,13 @@ export function Timeline({ filePaths }: TimelineProps) {
   
   const pixelsPerSecond = 50 * timelineZoom;
   const maxSubTime = segments.length > 0 ? segments[segments.length - 1].end : 0;
-  // Chiều dài timeline = Độ dài bự nhất giữa Video hoặc mốc cuối của Subtitle + 20 giây padding
-  const timelineWidthPx = Math.max(videoDuration, maxSubTime) * pixelsPerSecond + (20 * pixelsPerSecond);
+  
+  // Xác định file thực tế để hiển thị (ưu tiên activeFile, fallback về file đầu tiên trong list)
+  const currentVideoPath = activeFile || (filePaths.length > 0 ? filePaths[0] : null);
+
+  // Đảm bảo duration không bao giờ bằng 0 để tránh width = 0
+  const safeDuration = Math.max(videoDuration || 0, maxSubTime, 1);
+  const timelineWidthPx = safeDuration * pixelsPerSecond + (20 * pixelsPerSecond);
 
   useEffect(() => {
     let animationFrameId: number;
@@ -48,7 +53,6 @@ export function Timeline({ filePaths }: TimelineProps) {
             const xPos = time * pixelsPerSecond;
             playheadRef.current.style.transform = `translateX(${xPos}px)`;
             
-            // Bám đuổi camera (scroll follow)
             if (containerRef.current) {
               const container = containerRef.current;
               const rect = container.getBoundingClientRect();
@@ -102,14 +106,41 @@ export function Timeline({ filePaths }: TimelineProps) {
   const handleZoomIn = () => updateConfig({ timelineZoom: Math.min(10, timelineZoom + 0.5) });
   const handleZoomOut = () => updateConfig({ timelineZoom: Math.max(0.1, timelineZoom - 0.5) });
 
+  // Handle Ctrl + Wheel Zoom
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const currentZoom = useProjectStore.getState().timelineZoom;
+        // Scale deltaY down by a factor of 1000 so one mouse tick (100) zooms smoothly by 0.1
+        const zoomDelta = e.deltaY * -0.001;
+        updateConfig({ 
+          timelineZoom: Math.max(0.1, Math.min(10, currentZoom + zoomDelta)) 
+        });
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+    }
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [timelineZoom, updateConfig]);
+
+  const TRACK_HEIGHT = 50; 
+
   return (
-    <div className="tl" style={{ flexShrink: 0, height: 250, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: '#ffffff', userSelect: 'none' }}>
+    <div className="tl" style={{ flexShrink: 0, height: '100%', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', userSelect: 'none' }}>
       
       {/* HEADER */}
-      <div className="tlhd" style={{ height: 36, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)' }}>
-        <span className="tltitle" style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="tlhd" style={{ height: 36, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
+        <span className="tltitle" style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 16 }}>
            TIMELINE 
-           <span style={{ fontSize: '13px', color: '#475569', fontFamily: 'monospace', letterSpacing: '1px' }}>{formatTime(currentTime)}</span>
+           <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontFamily: 'monospace', letterSpacing: '1px' }}>{formatTime(currentTime)}</span>
         </span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
           <button className="tlb" style={{ width: 28, height: 24, padding: 0 }} onClick={handleZoomOut}>-</button>
@@ -119,26 +150,28 @@ export function Timeline({ filePaths }: TimelineProps) {
       </div>
       
       {/* 2-PANE BODY */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflowY: 'auto', background: 'var(--bg-primary)', alignItems: 'flex-start' }}>
         
         {/* LEFT PANE: TRACK HEADERS */}
-        <div style={{ width: 70, flexShrink: 0, borderRight: '1px solid var(--border)', background: '#f8fafc', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-           <div style={{ height: 26, borderBottom: '1px solid var(--border)', background: '#fff' }}></div>
+        <div style={{ width: 70, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-secondary)', position: 'relative', zIndex: 10, alignSelf: 'stretch' }}>
+           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 26, borderBottom: '1px solid var(--border)', background: 'var(--bg-primary)' }}></div>
            {[ 
-             { id: 'vid', label: 'VID', color: '#3b82f6' },
-             { id: 'tts', label: 'TTS', color: '#10b981' },
-             { id: 'sub', label: 'SUB', color: '#f97316' },
-             { id: 'bgm', label: 'BGM', color: '#9ca3af' }
-           ].map((tk, idx) => (
-             <div key={tk.id} style={{ height: 42, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: idx < 3 ? '1px solid var(--border)' : 'none', fontSize: '10px', color: '#64748b', fontWeight: 600 }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: tk.color, marginRight: 8, flexShrink: 0 }}></div>
-                {tk.label}
+             { id: 'vid', label: 'VID', color: 'var(--accent)', top: 26 },
+             { id: 'tts', label: 'TTS', color: 'var(--success)', top: 76 },
+             { id: 'sub', label: 'SUB', color: 'var(--accent)', top: 126 },
+             { id: 'bgm', label: 'BGM', color: 'var(--text-muted)', top: 176 }
+           ].map((tk) => (
+             <div key={tk.id} style={{ position: 'absolute', top: tk.top, left: 0, width: '100%', height: TRACK_HEIGHT, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border-subtle)', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: tk.color, flexShrink: 0 }}></div>
+                  {tk.label}
+                </div>
              </div>
            ))}
         </div>
 
         {/* RIGHT PANE: TIMELINE TRACKS */}
-        <div className="tlbody" ref={containerRef} style={{ display: 'block', position: 'relative', overflowX: 'auto', overflowY: 'hidden', flex: 1, background: '#ffffff' }}
+        <div className="tlbody" ref={containerRef} style={{ display: 'block', position: 'relative', overflowX: 'auto', overflowY: 'hidden', flex: 1, background: 'var(--bg-primary)', alignSelf: 'stretch' }}
              onPointerDown={(e) => {
                const tlbody = containerRef.current;
                if (!tlbody) return;
@@ -152,7 +185,7 @@ export function Timeline({ filePaths }: TimelineProps) {
                  playheadRef.current.style.transform = `translateX(${newTime * pixelsPerSecond}px)`;
                }
              }}>
-           <div style={{ width: `${timelineWidthPx}px`, minWidth: '100%', height: '100%', position: 'relative', flexShrink: 0 }}>
+           <div style={{ width: `${timelineWidthPx}px`, minWidth: '100%', height: 'max-content', minHeight: '100%', position: 'relative', flexShrink: 0 }}>
              
              {/* Playhead */}
              <div className="playhead-fixed" ref={playheadRef} style={{ 
@@ -166,66 +199,60 @@ export function Timeline({ filePaths }: TimelineProps) {
                </div>
              </div>
 
-             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+             <div style={{ position: 'relative', width: '100%', height: '226px' }}>
                
                {/* Timeline Ruler Row (Placeholder) */}
-               <div style={{ height: 26, borderBottom: '1px solid var(--border)', background: '#f8fafc' }}></div>
+               <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 26, borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', zIndex: 10 }}></div>
 
                {/* VID Track */}
-               <div className="tltr" style={{ height: 42, borderBottom: '1px solid var(--border)', position: 'relative', background: 'transparent' }}>
-                  <div style={{ position: 'absolute', top: 6, bottom: 6, left: 4, width: `${videoDuration * pixelsPerSecond}px`, background: '#f1f5f9', borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>
-                     <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.35 }}>
-                        <VideoTrack videoPath={filePaths.length > 0 ? filePaths[0] : null} videoDuration={videoDuration} pixelsPerSecond={pixelsPerSecond} />
-                     </div>
-                     {filePaths.length > 0 && (
-                        <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: '#334155', fontWeight: 600, zIndex: 10, background: 'rgba(241,245,249,0.95)', padding: '2px 8px', borderRadius: 5 }}>
-                           <div style={{ width: 3, height: 12, background: '#94a3b8', marginRight: 8, borderRadius: 2 }}></div>
-                           {filePaths[0].split(/[\\/]/).pop()}
-                        </div>
-                     )}
-                     <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.6, pointerEvents: 'none', mixBlendMode: 'multiply' }}>
-                        <AudioTrack url={filePaths.length > 0 ? filePaths[0] : null} pixelsPerSecond={pixelsPerSecond} color="#94a3b8" />
-                     </div>
-                  </div>
+               <div className="tltr" style={{ position: 'absolute', top: 26, left: 0, width: '100%', height: TRACK_HEIGHT, borderBottom: '1px solid var(--border-subtle)', background: 'transparent', display: 'flex', alignItems: 'center' }}>
+                  {currentVideoPath && (
+                    <div style={{ position: 'absolute', height: 42, left: 4, width: `${Math.max(videoDuration || 1, 1) * pixelsPerSecond}px`, background: 'var(--accent-subtle)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', zIndex: 5 }}>
+                       <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.8 }}>
+                          <VideoTrack videoPath={currentVideoPath} videoDuration={videoDuration || 1} pixelsPerSecond={pixelsPerSecond} />
+                       </div>
+                       <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 600, zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 5 }}>
+                          <div style={{ width: 3, height: 12, background: 'var(--accent)', marginRight: 8, borderRadius: 2 }}></div>
+                          {currentVideoPath.split(/[\\/]/).pop()}
+                       </div>
+                       <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.6, pointerEvents: 'none', mixBlendMode: 'screen' }}>
+                          <AudioTrack url={currentVideoPath} pixelsPerSecond={pixelsPerSecond} color="var(--accent)" />
+                       </div>
+                    </div>
+                  )}
                </div>
 
                {/* TTS Track */}
-               <div className="tltr" style={{ height: 42, borderBottom: '1px solid var(--border)', position: 'relative', background: 'transparent' }}>
-                  <div style={{ position: 'absolute', top: 6, bottom: 6, left: 4, minWidth: `${videoDuration * pixelsPerSecond}px`, width: 'max-content', background: '#ecfdf5', borderRadius: 8, overflow: 'hidden', border: '1px solid #d1fae5', display: 'flex', alignItems: 'center' }}>
-                     <div style={{ flexShrink: 0, height: '100%', opacity: 0.9 }}>
-                        <AudioTrack url={filePaths.length > 0 ? filePaths[0] : null} pixelsPerSecond={pixelsPerSecond} color="#10b981" />
+               <div className="tltr" style={{ position: 'absolute', top: 76, left: 0, width: '100%', height: TRACK_HEIGHT, borderBottom: '1px solid var(--border-subtle)', background: 'transparent', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ position: 'absolute', height: 42, left: 4, minWidth: '100px', width: `${Math.max(videoDuration || 1, 1) * pixelsPerSecond}px`, background: 'var(--success-subtle, rgba(5,150,105,0.08))', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--success)', display: 'flex', alignItems: 'center', zIndex: 5 }}>
+                     <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--success)', fontWeight: 600, zIndex: 10, background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: 5 }}>
+                        <div style={{ width: 3, height: 12, background: 'var(--success)', marginRight: 8, borderRadius: 2 }}></div>
+                        tts_output_vi.wav
                      </div>
-                     {filePaths.length > 0 && (
-                        <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: '#059669', fontWeight: 600, zIndex: 10, background: 'rgba(236,253,245,0.95)', padding: '2px 8px', borderRadius: 5 }}>
-                           <div style={{ width: 3, height: 12, background: '#34d399', marginRight: 8, borderRadius: 2 }}></div>
-                           tts_output_vi.wav
-                        </div>
-                     )}
                   </div>
                </div>
 
                {/* SUB Track */}
-               <div className="tltr" style={{ height: 42, borderBottom: '1px solid var(--border)', position: 'relative', background: 'transparent' }}>
-                  <SubtitleTrack pixelsPerSecond={pixelsPerSecond} />
-               </div>
-
-               {/* BGM Track */}
-               <div className="tltr" style={{ height: 42, position: 'relative', background: 'transparent' }}>
-                  <div style={{ position: 'absolute', top: 6, bottom: 6, left: 4, minWidth: `400px`, width: 'max-content', background: '#f8fafc', borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>
-                     <div style={{ flexShrink: 0, height: '100%', opacity: 0.8 }}>
-                        {config.bgm_enabled && config.bgm_file ? (
-                          <AudioTrack url={config.bgm_file} pixelsPerSecond={pixelsPerSecond} color="#94a3b8" />
-                        ) : null}
-                     </div>
-                     {config.bgm_enabled && config.bgm_file && (
-                        <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: '#64748b', fontWeight: 600, zIndex: 10, background: 'rgba(248,250,252,0.95)', padding: '2px 8px', borderRadius: 5 }}>
-                           <div style={{ width: 3, height: 12, background: '#cbd5e1', marginRight: 8, borderRadius: 2 }}></div>
-                           {config.bgm_file.split(/[\\/]/).pop()}
-                        </div>
-                     )}
+               <div className="tltr" style={{ position: 'absolute', top: 126, left: 0, width: '100%', height: TRACK_HEIGHT, borderBottom: '1px solid var(--border-subtle)', background: 'transparent', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ height: 42, width: '100%', zIndex: 5, position: 'relative' }}>
+                     <SubtitleTrack pixelsPerSecond={pixelsPerSecond} />
                   </div>
                </div>
 
+               {/* BGM Track */}
+               <div className="tltr" style={{ position: 'absolute', top: 176, left: 0, width: '100%', height: TRACK_HEIGHT, borderBottom: '1px solid var(--border-subtle)', background: 'transparent', display: 'flex', alignItems: 'center' }}>
+                  {bgm_enabled && bgm_file && (
+                     <div style={{ position: 'absolute', height: 42, left: 4, minWidth: '200px', width: 'max-content', background: 'var(--bg-surface)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', zIndex: 5 }}>
+                        <div style={{ flexShrink: 0, height: '100%', opacity: 0.8 }}>
+                           <AudioTrack url={bgm_file} pixelsPerSecond={pixelsPerSecond} color="var(--accent)" />
+                        </div>
+                        <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--accent)', fontWeight: 600, zIndex: 10, background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: 5 }}>
+                           <div style={{ width: 3, height: 12, background: 'var(--accent)', marginRight: 8, borderRadius: 2 }}></div>
+                           {bgm_file.split(/[\\/]/).pop()}
+                        </div>
+                     </div>
+                  )}
+               </div>
              </div>
            </div>
         </div>

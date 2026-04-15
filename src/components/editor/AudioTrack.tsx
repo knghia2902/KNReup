@@ -15,21 +15,15 @@ export function AudioTrack({ url, pixelsPerSecond, color }: AudioTrackProps) {
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    if (!url || !containerRef.current) {
-      if (wavesurfer.current) {
-        wavesurfer.current.destroy();
-        wavesurfer.current = null;
-        setIsReady(false);
-      }
-      return;
-    }
+    if (!url || !containerRef.current) return;
 
+    // Khởi tạo wavesurfer nếu chưa có
     if (!wavesurfer.current) {
       wavesurfer.current = WaveSurfer.create({
         container: containerRef.current,
         waveColor: color,
         progressColor: color,
-        height: 26,
+        height: 32,
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
@@ -46,26 +40,26 @@ export function AudioTrack({ url, pixelsPerSecond, color }: AudioTrackProps) {
       });
     }
 
-    setIsReady(false);
-    wavesurfer.current.load(convertFileSrc(url)).catch((e) => {
-      if (e.name !== 'AbortError') {
-         console.warn("Wavesurfer load error:", e);
-      }
+    // Load file mới
+    const tauriUrl = url.startsWith('http') ? url : convertFileSrc(url);
+    wavesurfer.current.load(tauriUrl).catch((e) => {
+      console.warn("Wavesurfer load error:", e);
     });
 
-    return () => {};
+    return () => {
+      // Đừng destroy ở đây để tránh flash khi re-render
+    };
   }, [url, color]);
 
   useEffect(() => {
     if (wavesurfer.current && isReady) {
       try {
         wavesurfer.current.zoom(pixelsPerSecond);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) { /* ignore */ }
     }
   }, [pixelsPerSecond, isReady]);
 
+  // Cleanup khi component thực sự unmount
   useEffect(() => {
     return () => {
       if (wavesurfer.current) {
@@ -79,8 +73,9 @@ export function AudioTrack({ url, pixelsPerSecond, color }: AudioTrackProps) {
     <div 
       ref={containerRef} 
       style={{ 
-        width: duration > 0 ? `${duration * pixelsPerSecond}px` : '100vw', 
+        width: duration > 0 ? `${duration * pixelsPerSecond}px` : '100%', 
         height: '100%', 
+        minWidth: '200px',
         overflow: 'hidden', 
         pointerEvents: 'none'
       }} 
