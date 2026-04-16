@@ -240,13 +240,18 @@ async def get_thumbnail(video_path: str, time: float):
         if cache_path.exists():
             return FileResponse(cache_path)
             
-        proc = await asyncio.create_subprocess_exec(
-            'ffmpeg', '-y', '-ss', str(time), '-i', video_path, 
-            '-vframes', '1', '-q:v', '5', '-s', '160x90', str(cache_path),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        await proc.communicate()
+        def _extract():
+            subprocess.run(
+                [
+                    'ffmpeg', '-y', '-ss', str(time), '-i', video_path, 
+                    '-vframes', '1', '-q:v', '5', '-s', '160x90', str(cache_path)
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False
+            )
+            
+        await asyncio.to_thread(_extract)
         
     if not cache_path.exists():
         raise HTTPException(500, "Thumbnail extraction failed")

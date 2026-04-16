@@ -57,18 +57,21 @@ class FFmpegOutputBuilder:
         segments: list[dict],
         config: dict,
     ) -> str:
-        """Write .ass file, return path."""
-        # Get video dimensions using ffprobe
+        """Write .ass file using Pillow for pixel-perfect text measurement."""
+        from PIL import ImageFont
         import json
         import subprocess
+
+        # ── 1. Get ACTUAL video dimensions via ffprobe ──
         try:
-            probe_cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height:stream_tags=rotate:stream_side_data=rotation", "-of", "json", self.input_video]
+            probe_cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0",
+                         "-show_entries", "stream=width,height:stream_tags=rotate:stream_side_data=rotation",
+                         "-of", "json", self.input_video]
             probe_out = subprocess.check_output(probe_cmd).decode("utf-8", errors="replace")
             probe_data = json.loads(probe_out)
             stream = probe_data["streams"][0]
-            width = int(stream["width"])
-            height = int(stream["height"])
-            
+            orig_w = int(stream["width"])
+            orig_h = int(stream["height"])
             rotation = 0
             if "tags" in stream and "rotate" in stream["tags"]:
                 rotation = int(float(stream["tags"]["rotate"]))
@@ -76,95 +79,201 @@ class FFmpegOutputBuilder:
                 for sd in stream["side_data_list"]:
                     if "rotation" in sd:
                         rotation = int(float(sd["rotation"]))
-            if abs(rotation) == 90 or abs(rotation) == 270:
-                width, height = height, width
+            if abs(rotation) in (90, 270):
+                orig_w, orig_h = orig_h, orig_w
         except Exception as e:
             logger.warning(f"ffprobe failed, fallback to 1920x1080. Error: {e}")
+            orig_w, orig_h = 1920, 1080
+
+        # ── 2. Determine effective output dimensions ──
+        video_ratio = config.get("video_ratio", "original")
+        if video_ratio == "16:9":
             width, height = 1920, 1080
+        elif video_ratio == "9:16":
+            width, height = 1080, 1920
+        else:
+            width, height = orig_w, orig_h
 
-        font_name = config.get("font", config.get("font_name", "Arial"))
-        font_size = config.get("font_size", 50)
-        color = config.get("color", "#FFFF00")
-        outline_color = config.get("outline_color", "#000000")
-        position = config.get("position", 90)  # 0-100 percentage
+        # 👋 DIY TUNE HERE: Multiplier to match Frontend Preview vs LibASS output
+        # (4/3) is the theoretical factor, but we're bumping to 2.5 for testing.
+        ass_scale_factor = 1.6 
+
+        # ── 3. Font & styling config ──
+        font_name = config.get("subtitle_font", "Be Vietnam Pro")
+        base_font_size = int(config.get("subtitle_font_size", 50))
+
+        # Mirror EXACT Canvas scaling: scaledFontSize = fontSize * (canvasHeight / 1080.0)
+        # This is the height in exactly geometric pixels (corresponding to Canvas pixel size)
+        pixel_font_size = base_font_size * (height / 1080.0)
         
-        # Match Canvas scaling logic (Base: 1080p)
-        ass_font_size = int(float(font_size) * (height / 1080.0))
-        ass_outline = max(1, int(ass_font_size * 0.08))  # Match Canvas ctx.lineWidth = fontSize * 0.08
-        alignment = 5 # Middle Center
+        # LibASS internally divides FontSize by roughly 1.333 (empirically verified).
+        # We pre-multiply by our scale factor to compensate.
+        ass_style_font_size = int(pixel_font_size * ass_scale_factor)
         
-        # Exact position mapping
-        pos_x = int(width / 2)
-        pos_y = int(height * (position / 100.0))
+        outline_radius = max(1, int(pixel_font_size * ass_scale_factor * 0.08))
 
-        margin_h = int(width * 0.05)
-        # Average character width for a bold sans-serif font is roughly 55% of font size
-        avg_char_width = max(1.0, ass_font_size * 0.55)
-        max_chars = max(10, int((width - 2 * margin_h) / avg_char_width))
+        # ── 4. Load the actual TTF font for Pillow measurement ──
+        # output.py is at app/engines/output.py, fonts are at assets/fonts/ (sibling to app/)
+        sidecar_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        fonts_dir = os.path.join(sidecar_root, "assets", "fonts")
+        font_map = {
+            "Be Vietnam Pro": "BeVietnamPro-Bold.ttf",
+            "Montserrat": "Montserrat-Bold.ttf",
+            "BeVietnamPro-Bold": "BeVietnamPro-Bold.ttf",
+            "BeVietnamPro-Medium": "BeVietnamPro-Medium.ttf",
+        }
+        ttf_file = os.path.join(fonts_dir, font_map.get(font_name, "BeVietnamPro-Bold.ttf"))
+        try:
+            pil_font = ImageFont.truetype(ttf_file, size=int(pixel_font_size))
+            logger.info(f"Pillow loaded font: {ttf_file} at size {int(pixel_font_size)}")
+        except Exception as e:
+            logger.warning(f"Cannot load TTF {ttf_file}: {e}. Using default.")
+            pil_font = ImageFont.load_default()
 
-        import textwrap
+        # ── 5. Subtitle bounding box (percentage → pixels) ──
+        def _safe_float(key: str, default: float) -> float:
+            val = config.get(key)
+            if val is None: return default
+            try: return float(val)
+            except (ValueError, TypeError): return default
 
-        primary_colour = _color_to_ass(color)
-        outline_colour = _color_to_ass(outline_color)
+        sub_x_pct = _safe_float("subtitle_x", 5.0)
+        sub_y_pct = _safe_float("subtitle_y", 80.0)
+        sub_w_pct = _safe_float("subtitle_w", 90.0)
+        sub_h_pct = _safe_float("subtitle_h", 15.0)
 
-        ass_content = f"""[Script Info]
-Title: KNReup Subtitles
-ScriptType: v4.00+
-PlayResX: {width}
-PlayResY: {height}
-WrapStyle: 0
+        # Legacy absolute pixel conversion (values > 100 = old pixel format)
+        if sub_y_pct > 100:
+            sub_x_pct = (sub_x_pct / 1920.0) * 100.0
+            sub_y_pct = (sub_y_pct / 1080.0) * 100.0
+        if sub_w_pct > 100 or sub_h_pct > 100:
+            sub_w_pct = (sub_w_pct / 1920.0) * 100.0
+            sub_h_pct = (sub_h_pct / 1080.0) * 100.0
 
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font_name},{ass_font_size},{primary_colour},&H000000FF,{outline_colour},&H80000000,0,0,0,0,100,100,0,0,1,{ass_outline},0,{alignment},{margin_h},{margin_h},0,1
+        # Clamp
+        if sub_x_pct + sub_w_pct > 100: sub_w_pct = max(5, 100 - sub_x_pct)
+        if sub_y_pct + sub_h_pct > 100: sub_h_pct = max(5, 100 - sub_y_pct)
 
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-"""
+        box_x = (sub_x_pct / 100.0) * width
+        box_y = (sub_y_pct / 100.0) * height
+        box_w = (sub_w_pct / 100.0) * width
+        box_h = (sub_h_pct / 100.0) * height
+        box_center_x = box_x + box_w / 2
+        box_center_y = box_y + box_h / 2
+        text_max_width = box_w - pixel_font_size * 0.2
 
-        for seg in segments:
-            text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
-            text = text or ""
-            # Escape ASS special chars
-            text = text.replace("\\", "").replace("{", "\\{").replace("}", "\\}")
-            
-            raw_lines = []
-            for para in text.split("\n"):
-                if para.strip():
-                    raw_lines.extend(textwrap.wrap(para.strip(), width=max_chars))
+        # ── 6. Greedy word-wrap using Pillow text measurement ──
+        def measure_text(txt: str) -> float:
+            bbox = pil_font.getbbox(txt)
+            return bbox[2] - bbox[0] if bbox else 0
+
+        def greedy_wrap(text_str: str) -> list:
+            words = text_str.split(' ')
+            lines = []
+            current = ''
+            for word in words:
+                test = f"{current} {word}" if current else word
+                if measure_text(test) <= text_max_width:
+                    current = test
                 else:
-                    raw_lines.append("")
-                    
-            if not raw_lines:
-                continue
-                
-            # Paginate over time (max 2 lines per screen)
-            lines_per_page = 2
-            total_pages = max(1, (len(raw_lines) + lines_per_page - 1) // lines_per_page)
-            
+                    if current: lines.append(current)
+                    current = word
+            if current: lines.append(current)
+            return lines
+
+        line_height = pixel_font_size * 1.15
+
+        # ── 7. Color conversion ──
+        def hex_to_ass(hex_col: str) -> str:
+            hex_col = hex_col.lstrip("#")
+            if len(hex_col) == 6:
+                r, g, b = hex_col[0:2], hex_col[2:4], hex_col[4:6]
+                return f"&H00{b}{g}{r}"
+            return "&H00FFFFFF"
+
+        primary_color = hex_to_ass(config.get("color", "#FFFF00"))
+        outline_color_ass = hex_to_ass(config.get("outline_color", "#000000"))
+
+        # ── 8. Build ASS header ──
+        # Alignment 5 = Middle Center (matches Canvas textAlign='center' + textBaseline='middle')
+        ass_lines = [
+            "[Script Info]\n",
+            "ScriptType: v4.00+\n",
+            f"PlayResX: {width}\n",
+            f"PlayResY: {height}\n",
+            "WrapStyle: 0\n",
+            "\n[V4+ Styles]\n",
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
+            "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
+            "Alignment, MarginL, MarginR, MarginV, Encoding\n",
+            f"Style: Default,{font_name},{ass_style_font_size},{primary_color},&H000000FF,{outline_color_ass},&H80000000,"
+            f"-1,0,0,0,100,100,0,0,1,{outline_radius},0,5,0,0,0,1\n",
+            "\n[Events]\n",
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        ]
+
+        # ── 9. Generate per-line positioned dialogues ──
+        for seg in segments:
             start_sec = float(seg["start"])
             end_sec = float(seg["end"])
-            page_duration = (end_sec - start_sec) / total_pages
-            
-            for i in range(total_pages):
-                page_lines = raw_lines[i * lines_per_page : (i + 1) * lines_per_page]
-                page_text = "\\N".join(page_lines)
-                
-                p_start = start_sec + i * page_duration
-                p_end = start_sec + (i + 1) * page_duration
-                
-                s_time = self._seconds_to_ass_time(p_start)
-                e_time = self._seconds_to_ass_time(p_end)
-                
-                # Inject \\pos tag to perfectly match Canvas absolute positioning
-                ass_content += f"Dialogue: 0,{s_time},{e_time},Default,,0,0,0,,{{\\pos({pos_x},{pos_y})}}{page_text}\n"
+            s_time = self._seconds_to_ass_time(start_sec)
+            e_time = self._seconds_to_ass_time(end_sec)
 
-        # Write to temp file
+            layout = seg.get("exact_layout")
+
+            if layout and layout.get("lines"):
+                # ✅ USE FRONTEND PRE-CALCULATED LAYOUT (pixel-perfect)
+                seg_font_size = layout.get("fontSize", pixel_font_size)
+                ass_seg_font_size = int(seg_font_size * ass_scale_factor)  # Pre-multiplied size
+                seg_outline = max(1, int(seg_font_size * 0.08))
+
+                for line_data in layout["lines"]:
+                    px = float(line_data["x"])
+                    py = float(line_data["y"])
+                    line_text = str(line_data["text"])
+                    # Escape ASS special chars
+                    line_text = line_text.replace("\\", "").replace("{", "\\{").replace("}", "\\}")
+                    # Per-line font size override via \fs tag
+                    ass_lines.append(
+                        f"Dialogue: 0,{s_time},{e_time},Default,,0,0,0,,"
+                        f"{{\\an5\\fs{ass_seg_font_size}\\bord{seg_outline}\\pos({px:.1f},{py:.1f})}}{line_text}\n"
+                    )
+                logger.debug(f"  Segment [{s_time}-{e_time}]: used exact_layout ({len(layout['lines'])} lines, fs={ass_seg_font_size})")
+            else:
+                # ⚠️ FALLBACK: compute layout with Pillow (legacy path)
+                text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
+                text = (text or "").replace("\n", " ").strip()
+                if not text:
+                    continue
+                text = text[0].upper() + text[1:]
+                text = text.replace("\\", "").replace("{", "\\{").replace("}", "\\}")
+
+                all_lines = greedy_wrap(text)
+                start_y = box_center_y - ((len(all_lines) - 1) / 2) * line_height
+
+                for idx, line_text in enumerate(all_lines):
+                    px = box_center_x
+                    py = start_y + idx * line_height
+                    ass_lines.append(
+                        f"Dialogue: 0,{s_time},{e_time},Default,,0,0,0,,"
+                        f"{{\\an5\\pos({px:.1f},{py:.1f})}}{line_text}\n"
+                    )
+                logger.debug(f"  Segment [{s_time}-{e_time}]: Pillow fallback ({len(all_lines)} lines)")
+
+        # ── 10. Write ASS file ──
         ass_path = tempfile.mktemp(suffix=".ass")
         with open(ass_path, "w", encoding="utf-8") as f:
-            f.write(ass_content)
+            f.write("".join(ass_lines))
 
-        logger.info(f"ASS file generated: {ass_path} ({len(segments)} segments)")
+        # Debug: also save a copy for inspection
+        debug_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "debug_ass_final.ass")
+        try:
+            with open(debug_path, "w", encoding="utf-8") as f:
+                f.write("".join(ass_lines))
+        except Exception:
+            pass
+
+        logger.info(f"ASS file generated: {ass_path} ({len(segments)} segments, {width}x{height})")
         return ass_path
 
     def build(
@@ -281,10 +390,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 )
                 v_current = "vlogo"
 
-        # 4. Add ASS subtitles
-        if self._ass_file:
+        # 5. Add ASS subtitles
+        if self._ass_file and getattr(config, "subtitle_enabled", True):
+            # Escaping the ass parameter path for FFmpeg
             ass_escaped = self._ass_file.replace("\\", "/").replace(":", "\\:")
-            filter_complex_parts.append(f"[{v_current}]ass='{ass_escaped}'[vout]")
+
+            # Use absolute path for fontsdir and properly escape colons for FFmpeg filtergraph parser
+            fonts_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "assets", "fonts"))
+            fonts_dir_escaped = fonts_dir.replace("\\", "/").replace(":", "\\:")
+            
+            filter_complex_parts.append(f"[{v_current}]ass='{ass_escaped}':fontsdir='{fonts_dir_escaped}'[vout]")
             v_current = "vout"
 
         # Audio stream inputs parsing (audio gốc LUÔN ở input 0 = video file)
@@ -374,6 +489,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     pass
 
         proc.wait()
+        
+        # DEBUG: Ghi toàn bộ stderr ra file để debug font
+        with open("ffmpeg_live.log", "w", encoding="utf-8") as dump_log:
+            dump_log.write("".join(stderr_lines))
+            
         if proc.returncode != 0:
             error_log = "".join(stderr_lines[-10:])  # Lấy 10 dòng log lỗi cuối
             raise RuntimeError(f"FFmpeg failed with exit code {proc.returncode}. Log: {error_log}")

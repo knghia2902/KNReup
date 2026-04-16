@@ -16,9 +16,11 @@ interface SubtitleStore {
   activeFile: string | null;
   segments: SubtitleSegment[]; // mirrors fileSegments[activeFile]
   videoDuration: number;
+  videoDimensions: {w: number, h: number} | null;
   selectedId: number | null;
   setActiveFile: (path: string | null) => void;
   setVideoDuration: (duration: number) => void;
+  setVideoDimensions: (dims: {w: number, h: number} | null) => void;
   setSegments: (segments: SubtitleSegment[], targetPath?: string) => void;
   selectSegment: (id: number | null) => void;
   updateSegment: (id: number, partial: Partial<SubtitleSegment>) => void;
@@ -35,6 +37,7 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
   activeFile: null,
   segments: [],
   videoDuration: 30, // Default fallback
+  videoDimensions: null,
   selectedId: null,
 
   setActiveFile: (path) => set((state) => ({
@@ -44,6 +47,7 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
   })),
 
   setVideoDuration: (duration) => set({ videoDuration: duration }),
+  setVideoDimensions: (dims) => set({ videoDimensions: dims }),
 
   setSegments: (segs, targetPath) => set((state) => {
     const path = targetPath || state.activeFile;

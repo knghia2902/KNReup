@@ -1,4 +1,6 @@
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
+import { useProjectStore } from '../../stores/useProjectStore';
+import { SelectControl } from '../controls/SelectControl';
 import { useEffect, useRef } from 'react';
 
 function formatTc(seconds: number) {
@@ -15,6 +17,7 @@ interface SubTabProps {
 
 export function SubTab({ onAnalyze, processing }: SubTabProps) {
   const { segments, updateSegment } = useSubtitleStore();
+  const config = useProjectStore();
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,9 +44,37 @@ export function SubTab({ onAnalyze, processing }: SubTabProps) {
   }, []);
   return (
     <>
+      <div className="ps" style={{ background: 'var(--bg-secondary)', paddingBottom: '16px' }}>
+        <div className="pshd">Extraction Settings</div>
+        <div style={{ padding: '0 12px 12px', fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
+          Chuột trái vào phần Video để resize vùng chọn OCR Region. Thiết lập vùng quét chính xác vào sub gốc giúp OCR chạy cực nhanh không ăn CPU.
+        </div>
+        <div style={{ padding: '0 12px' }}>
+          <SelectControl 
+            label="Analyze Source" 
+            value={(config.asr_enabled ? 'audio' : '') + (config.ocr_enabled ? '_ocr' : '')} 
+            onChange={(v) => {
+              if (v === 'audio') config.updateConfig({ asr_enabled: true, ocr_enabled: false });
+              if (v === '_ocr') config.updateConfig({ asr_enabled: false, ocr_enabled: true });
+              if (v === 'audio_ocr') config.updateConfig({ asr_enabled: true, ocr_enabled: true });
+            }}
+            options={[
+              { value: 'audio', label: 'Audio Only (Whisper)' },
+              { value: '_ocr', label: 'Hardsub Only (OCR)' },
+              { value: 'audio_ocr', label: 'Smart Merge (Audio + Hardsub)' },
+            ]} 
+          />
+        </div>
+      </div>
 
       <div className="subhd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '8px' }}>
-        <span className="subsid">Segment Editor ({segments.length})</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="subsid">Segment Editor ({segments.length})</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', background: 'var(--bg)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+            <input type="checkbox" checked={config.subtitle_enabled} onChange={(e) => config.updateConfig({ subtitle_enabled: e.target.checked })} style={{ margin: 0, cursor: 'pointer' }} />
+            <span style={{ fontSize: '9px', color: 'var(--text-primary)', fontWeight: 600 }}>Hiện Sub</span>
+          </label>
+        </div>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button 
             className="btn" 

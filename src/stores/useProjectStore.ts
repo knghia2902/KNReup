@@ -17,7 +17,10 @@ export interface ProjectConfig {
   custom_prompt: string;
   // Subtitle Style
   subtitle_enabled: boolean;
-  subtitle_position: number; // 0-100
+  subtitle_x: number;
+  subtitle_y: number;
+  subtitle_w: number;
+  subtitle_h: number;
   subtitle_font_size: number;
   subtitle_font: string;
   subtitle_color: string;
@@ -100,7 +103,10 @@ const DEFAULT_CONFIG: ProjectConfig = {
   translation_style: 'default',
   custom_prompt: '',
   subtitle_enabled: true,
-  subtitle_position: 90,
+  subtitle_x: 100,
+  subtitle_y: 800,
+  subtitle_w: 880,
+  subtitle_h: 150,
   subtitle_font_size: 50,
   subtitle_font: 'Be Vietnam Pro',
   subtitle_color: '#FFFF00',

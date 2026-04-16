@@ -167,6 +167,116 @@ function DraggableOcr({ videoDimensions }: { videoDimensions: { w: number; h: nu
   );
 }
 
+// ─── Draggable Subtitle Bounding Box ───────────────────────
+function DraggableSubtitleRegion({ currentSegId }: { currentSegId?: number }) {
+  const config = useProjectStore();
+  const [dragging, setDragging] = useState<'move' | 'resize' | null>(null);
+  
+  // Pair-based heuristic: if Y > 100, X and Y are legacy pixels. If W > 100, W and H are legacy.
+  const isPosLegacy = config.subtitle_y !== undefined && config.subtitle_y > 100;
+  const isSizeLegacy = (config.subtitle_w !== undefined && config.subtitle_w > 100) || (config.subtitle_h !== undefined && config.subtitle_h > 100);
+
+  const safeNx = (val: number | undefined, df: number) => { const v = val ?? df; return isPosLegacy ? (v / 1080) * 100 : v; };
+  const safeNy = (val: number | undefined, df: number) => { const v = val ?? df; return isPosLegacy ? (v / 1920) * 100 : v; };
+  const safeNw = (val: number | undefined, df: number) => { const v = val ?? df; return isSizeLegacy ? (v / 1080) * 100 : v; };
+  const safeNh = (val: number | undefined, df: number) => { const v = val ?? df; return isSizeLegacy ? (v / 1920) * 100 : v; };
+
+  const startRef = useRef({ mx: 0, my: 0, px: 0, py: 0, pw: 0, ph: 0, time: 0 });
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  if (!config.subtitle_enabled) return null;
+
+  const handlePointerDown = (e: React.PointerEvent, mode: 'move' | 'resize') => {
+    e.stopPropagation();
+    e.preventDefault();
+    wrapRef.current?.setPointerCapture(e.pointerId);
+    setDragging(mode);
+    startRef.current = { 
+      mx: e.clientX, 
+      my: e.clientY, 
+      px: safeNx(config.subtitle_x, 5), 
+      py: safeNy(config.subtitle_y, 80), 
+      pw: safeNw(config.subtitle_w, 90), 
+      ph: safeNh(config.subtitle_h, 15), 
+      time: Date.now() 
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    const parentEl = wrapRef.current?.closest('[data-overlay-container]') as HTMLElement | null;
+    if (!parentEl) return;
+    const rect = parentEl.getBoundingClientRect();
+    
+    // Calculate movement in percentage of the container
+    const dxPct = ((e.clientX - startRef.current.mx) / rect.width) * 100;
+    const dyPct = ((e.clientY - startRef.current.my) / rect.height) * 100;
+
+    if (dragging === 'move') {
+      config.updateConfig({
+        subtitle_x: Math.max(0, Math.min(100 - startRef.current.pw, startRef.current.px + dxPct)),
+        subtitle_y: Math.max(0, Math.min(100 - startRef.current.ph, startRef.current.py + dyPct)),
+      });
+    } else {
+      config.updateConfig({
+        subtitle_w: Math.max(5, Math.min(100 - startRef.current.px, startRef.current.pw + dxPct)),
+        subtitle_h: Math.max(5, Math.min(100 - startRef.current.py, startRef.current.ph + dyPct)),
+      });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (dragging) {
+      wrapRef.current?.releasePointerCapture(e.pointerId);
+      setDragging(null);
+      if (Date.now() - startRef.current.time < 300 && startRef.current.mx === e.clientX && startRef.current.my === e.clientY) {
+        if (currentSegId) {
+          useSubtitleStore.getState().selectSegment(currentSegId);
+          window.dispatchEvent(new CustomEvent('focus-subtitle-panel', { detail: currentSegId }));
+        }
+      }
+    }
+  };
+
+  return (
+    <div
+      ref={wrapRef}
+      style={{
+        position: 'absolute',
+        border: dragging ? '2px dashed rgba(255,255,0,0.8)' : '1px dashed rgba(255,255,0,0.5)',
+        backgroundColor: dragging ? 'rgba(255,255,0,0.1)' : 'transparent',
+        left: `${safeNx(config.subtitle_x, 5)}%`,
+        top: `${safeNy(config.subtitle_y, 80)}%`,
+        width: `${Math.min(safeNw(config.subtitle_w, 90), 100 - safeNx(config.subtitle_x, 5))}%`,
+        height: `${Math.min(safeNh(config.subtitle_h, 15), 100 - safeNy(config.subtitle_y, 80))}%`,
+        cursor: dragging === 'move' ? 'grabbing' : 'grab',
+        pointerEvents: config.subtitle_enabled ? 'auto' : 'none',
+        boxSizing: 'border-box',
+      }}
+      onPointerDown={(e) => handlePointerDown(e, 'move')}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onMouseEnter={() => {
+        if (!dragging && wrapRef.current) wrapRef.current.style.border = '2px dashed rgba(255,255,0,0.8)';
+      }}
+      onMouseLeave={() => {
+        if (!dragging && wrapRef.current) wrapRef.current.style.border = '1px dashed rgba(255,255,0,0.5)';
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute', right: -4, bottom: -4, width: 10, height: 10,
+          background: 'rgba(255,255,0,1)', borderRadius: 2, cursor: 'nwse-resize', pointerEvents: 'auto',
+          opacity: 0.8
+        }}
+        onPointerDown={(e) => handlePointerDown(e, 'resize')}
+      />
+      <div style={{ position: 'absolute', top: -18, left: 0, fontSize: 10, color: 'rgba(255,255,0,1)', fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>SUBTITLE</div>
+    </div>
+  );
+}
+
 // ─── Draggable Text Logo ─────────────────────────────
 function DraggableTextLogo({ videoDimensions }: { videoDimensions: { w: number; h: number } }) {
   const config = useProjectStore();
@@ -377,97 +487,54 @@ function DraggableImageLogo({ videoDimensions }: { videoDimensions: { w: number;
   );
 }
 
-interface SubtitleConfig {
-  enabled: boolean;
-  position: number;
-  font_size: number;
-  font: string;
-  color: string;
-  outline_color: string;
-}
-
 interface VideoPreviewProps {
   videoSrc: string | null;
   segments: SubtitleSegment[];
-  subtitleConfig: SubtitleConfig;
   videoRatio?: 'original' | '16:9' | '9:16';
   isEditingSub?: boolean;
-  onPositionChange?: (pos: number) => void;
 }
 
-export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 'original', isEditingSub = false, onPositionChange }: VideoPreviewProps) {
+export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEditingSub = false }: VideoPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
-  const boxRectRef = useRef<{ x: number, y: number, w: number, h: number } | null>(null);
-  
   const projectConfig = useProjectStore();
 
   const [fontReady, setFontReady] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState({ w: 0, h: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffsetY, setDragOffsetY] = useState(0);
+
+  // ─── Tính toán effective dimensions (target frame sau pad/crop) ───
+  const effectiveDimensions = useMemo(() => {
+    if (!videoDimensions.w || !videoDimensions.h) return videoDimensions;
+    if (videoRatio === '16:9') {
+      return { w: 1920, h: 1080 };
+    }
+    if (videoRatio === '9:16') {
+      return { w: 1080, h: 1920 };
+    }
+    // Original → giữ nguyên
+    return videoDimensions;
+  }, [videoDimensions, videoRatio]);
 
   // ─── Font Loading ────────────────────────────────────
   useEffect(() => {
-    const font = new FontFaceObserver(subtitleConfig.font);
+    const font = new FontFaceObserver(projectConfig.subtitle_font);
     setFontReady(false);
     font
       .load('Ẩặẫậ', 5000)
       .then(() => setFontReady(true))
       .catch(() => {
-        console.warn(`Font "${subtitleConfig.font}" failed to load, using fallback`);
+        console.warn(`Font "${projectConfig.subtitle_font}" failed to load, using fallback`);
         setFontReady(true);
       });
-  }, [subtitleConfig.font]);
+  }, [projectConfig.subtitle_font]);
 
-  // ─── Drag Handlers ───────────────────────────────────
+  // ─── Canvas Interaction ──────────────────────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    const mouseY = (e.clientY - rect.top) * scaleY;
-
-    let hitBox = false;
-    const b = boxRectRef.current;
-    if (isEditingSub && b && mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
-      setIsDragging(true);
-      setDragOffsetY(mouseY - (b.y + b.h / 2));
-      canvas.setPointerCapture(e.pointerId);
-      hitBox = true;
-    }
-
-    if (!hitBox && videoRef.current) {
+    e.preventDefault();
+    if (videoRef.current) {
       if (videoRef.current.paused) videoRef.current.play();
       else videoRef.current.pause();
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !isEditingSub || !onPositionChange) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleY = canvas.height / rect.height;
-    const mouseY = (e.clientY - rect.top) * scaleY;
-
-    const newCenterY = mouseY - dragOffsetY;
-    let newRatio = (newCenterY / canvas.height) * 100;
-    newRatio = Math.max(5, Math.min(95, newRatio));
-
-    onPositionChange(newRatio);
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (isDragging) {
-      setIsDragging(false);
-      canvasRef.current?.releasePointerCapture(e.pointerId);
     }
   };
 
@@ -475,7 +542,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
   const renderSubtitles = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || !subtitleConfig.enabled) return;
+    if (!video || !canvas || !projectConfig.subtitle_enabled) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -487,33 +554,64 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
       (s) => currentTime >= s.start && currentTime <= s.end
     );
 
+    if (!projectConfig.subtitle_enabled) {
+      if (!video.paused) {
+        rafRef.current = requestAnimationFrame(renderSubtitles);
+      }
+      return;
+    }
+
     const forceShowDummy = projectConfig.watermark_enabled || projectConfig.blur_enabled || projectConfig.ocr_enabled;
 
     if (currentSeg || isEditingSub || forceShowDummy) {
-      const text = currentSeg ? (currentSeg.translated_text || currentSeg.source_text || "") : "Vùng hiển thị Phụ đề (Tham khảo)";
+      let text = currentSeg ? (currentSeg.translated_text || currentSeg.source_text || "") : "Vùng hiển thị Phụ đề (Tham khảo)";
+      // Capitalize the first letter
+      text = text.trim();
+      if (text) {
+          text = text.charAt(0).toUpperCase() + text.slice(1);
+      }
+
       if (!text && !isEditingSub && !forceShowDummy) return;
 
-      let fontFamily = subtitleConfig.font;
+      let fontFamily = projectConfig.subtitle_font;
       if (!fontReady && !document.fonts.check(`12px "${fontFamily}"`)) {
         fontFamily = 'sans-serif';
       }
       
-      let scaledFontSize = subtitleConfig.font_size * (canvas.height / 1080.0);
+      let scaledFontSize = projectConfig.subtitle_font_size * (canvas.height / 1080.0);
       ctx.font = `bold ${scaledFontSize}px "${fontFamily}", sans-serif`;
 
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineJoin = 'round';
 
-      const x = canvas.width / 2;
-      const yRatio = subtitleConfig.position / 100;
-      const boxCenterY = canvas.height * yRatio;
+      // Pair-based heuristic
+      const isPosLegacy = projectConfig.subtitle_y !== undefined && projectConfig.subtitle_y > 100;
+      const isSizeLegacy = (projectConfig.subtitle_w !== undefined && projectConfig.subtitle_w > 100) || (projectConfig.subtitle_h !== undefined && projectConfig.subtitle_h > 100);
+
+      const safeNx = (val: number | undefined, df: number) => { const v = val ?? df; return isPosLegacy ? (v / 1080) * 100 : v; };
+      const safeNy = (val: number | undefined, df: number) => { const v = val ?? df; return isPosLegacy ? (v / 1920) * 100 : v; };
+      const safeNw = (val: number | undefined, df: number) => { const v = val ?? df; return isSizeLegacy ? (v / 1080) * 100 : v; };
+      const safeNh = (val: number | undefined, df: number) => { const v = val ?? df; return isSizeLegacy ? (v / 1920) * 100 : v; };
+
+      const subX = safeNx(projectConfig.subtitle_x, 5);
+      const subY = safeNy(projectConfig.subtitle_y, 80);
+      let subW = safeNw(projectConfig.subtitle_w, 90);
+      let subH = safeNh(projectConfig.subtitle_h, 15);
+
+      // Clamp dimensions to prevent overflow when switching aspect ratios
+      if (subX + subW > 100) subW = Math.max(5, 100 - subX);
+      if (subY + subH > 100) subH = Math.max(5, 100 - subY);
+
+      const boxWidth = (subW / 100) * canvas.width;
+      const boxHeight = (subH / 100) * canvas.height;
       
-      const paddingX = scaledFontSize * 0.8;
-      const paddingY = scaledFontSize * 0.3;
+      const boxX = (subX / 100) * canvas.width;
+      const boxY = (subY / 100) * canvas.height;
+      const boxCenterX = boxX + boxWidth / 2;
+      const boxCenterY = boxY + boxHeight / 2;
       
-      const boxWidth = canvas.width * 0.9;
-      const textMaxWidth = boxWidth - paddingX * 2;
+      const textMaxWidth = boxWidth - scaledFontSize * 0.2;
       const measure = (textLine: string) => ctx.measureText(textLine).width;
       
       const getGreedyLines = (textStr: string): string[] => {
@@ -538,13 +636,6 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
 
       const lines = allLines;
       const lineHeight = scaledFontSize * 1.15;
-      
-      // Chiều rộng cố định 90%, chiều cao động theo số dòng hiện tại
-      const boxHeight = lines.length * lineHeight + paddingY * 2;
-      const boxX = x - boxWidth / 2;
-      const boxY = boxCenterY - boxHeight / 2;
-
-      boxRectRef.current = { x: boxX, y: boxY, w: boxWidth, h: boxHeight };
 
       if (isEditingSub) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -561,19 +652,19 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
         ctx.lineWidth = Math.max(2, scaledFontSize * 0.16);
 
         lines.forEach(line => {
-          ctx.strokeStyle = subtitleConfig.outline_color;
-          ctx.strokeText(line, x, startY);
-          ctx.fillStyle = subtitleConfig.color;
-          ctx.fillText(line, x, startY);
+          ctx.strokeStyle = projectConfig.subtitle_outline_color;
+          ctx.strokeText(line, boxCenterX, startY);
+          ctx.fillStyle = projectConfig.subtitle_color;
+          ctx.fillText(line, boxCenterX, startY);
           startY += lineHeight;
         });
       }
     }
 
-    if (!video.paused && !isDragging) {
+    if (!video.paused) {
       rafRef.current = requestAnimationFrame(renderSubtitles);
     }
-  }, [segments, subtitleConfig, fontReady, isEditingSub, isDragging, projectConfig.blur_enabled, projectConfig.watermark_enabled]);
+  }, [segments, projectConfig, fontReady, isEditingSub]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -586,6 +677,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
           ? prev 
           : { w: video.videoWidth, h: video.videoHeight }
       );
+      useSubtitleStore.getState().setVideoDimensions({ w: video.videoWidth, h: video.videoHeight });
       useSubtitleStore.getState().setVideoDuration(video.duration);
     };
 
@@ -640,14 +732,14 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.width = videoDimensions.w;
-    canvas.height = videoDimensions.h;
+    canvas.width = effectiveDimensions.w || 1920;
+    canvas.height = effectiveDimensions.h || 1080;
     renderSubtitles();
-  }, [videoDimensions, renderSubtitles]);
+  }, [effectiveDimensions, renderSubtitles]);
 
   useEffect(() => {
     renderSubtitles();
-  }, [subtitleConfig, renderSubtitles, isEditingSub]);
+  }, [projectConfig, renderSubtitles, isEditingSub]);
 
   const getVframeStyle = () => {
     let ratioW = 16;
@@ -667,19 +759,7 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
     };
   };
 
-  // ─── Tính toán effective dimensions (target frame sau pad/crop) ───
-  // Dùng độ phân giải chuẩn (Standard Resolution) để đồng bộ với backend.
-  const effectiveDimensions = useMemo(() => {
-    if (!videoDimensions.w || !videoDimensions.h) return videoDimensions;
-    if (videoRatio === '16:9') {
-      return { w: 1920, h: 1080 };
-    }
-    if (videoRatio === '9:16') {
-      return { w: 1080, h: 1920 };
-    }
-    // Original → giữ nguyên
-    return videoDimensions;
-  }, [videoDimensions, videoRatio]);
+
 
   // Overlay container luôn phủ full .vinner → user đặt overlay bất kỳ đâu trong target frame
   const getOverlayContainerStyle = (): React.CSSProperties => {
@@ -754,6 +834,8 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
             />
             <canvas
               ref={canvasRef}
+              width={effectiveDimensions.w || 1920}
+              height={effectiveDimensions.h || 1080}
               style={{
                 gridArea: '1 / 1',
                 width: '100%', height: '100%',
@@ -762,13 +844,9 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
                 objectFit: 'contain',
                 pointerEvents: 'auto',
                 zIndex: 10,
-                cursor: isDragging ? 'grabbing' : (isEditingSub ? 'grab' : 'default')
+                cursor: 'default'
               }}
               onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              onPointerLeave={handlePointerUp}
             />
             <div data-overlay-container style={getOverlayContainerStyle()}>
               {projectConfig.blur_enabled && effectiveDimensions.w > 0 && <DraggableBlur videoDimensions={effectiveDimensions} />}
@@ -777,23 +855,8 @@ export function VideoPreview({ videoSrc, segments, subtitleConfig, videoRatio = 
               {projectConfig.image_logo_enabled && effectiveDimensions.w > 0 && <DraggableImageLogo videoDimensions={effectiveDimensions} />}
               
               {/* Click Canvas subtitle area → focus in SubTab panel */}
-              {subtitleConfig.enabled && currentSeg && effectiveDimensions.h > 0 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '5%',
-                    width: '90%',
-                    top: `${subtitleConfig.position}%`,
-                    transform: 'translateY(-50%)',
-                    minHeight: '40px',
-                    cursor: 'pointer',
-                    zIndex: 30,
-                  }}
-                  onClick={() => {
-                    useSubtitleStore.getState().selectSegment(currentSeg.id);
-                    window.dispatchEvent(new CustomEvent('focus-subtitle-panel', { detail: currentSeg.id }));
-                  }}
-                />
+              {projectConfig.subtitle_enabled && effectiveDimensions.w > 0 && (
+                <DraggableSubtitleRegion currentSegId={currentSeg?.id} />
               )}
             </div>
           </div>

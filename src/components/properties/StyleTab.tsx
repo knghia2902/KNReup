@@ -108,12 +108,7 @@ export function StyleTab() {
             min={10} max={100} unit="px" 
             onChange={(v) => config.updateConfig({ subtitle_font_size: v })}
           />
-          <SliderControl 
-            label="Vertical Pos" 
-            value={config.subtitle_position} 
-            min={0} max={100} unit="%"
-            onChange={(v) => config.updateConfig({ subtitle_position: v })}
-          />
+
           
           <div className="pr">
             <div className="plbl">Font Face</div>

@@ -132,7 +132,12 @@ function App() {
               font_size: projectConfig.subtitle_font_size,
               color: projectConfig.subtitle_color,
               outline_color: projectConfig.subtitle_outline_color,
-              position: projectConfig.subtitle_position,
+              video_ratio: projectConfig.video_ratio,
+              subtitle_x: projectConfig.subtitle_x,
+              subtitle_y: projectConfig.subtitle_y,
+              subtitle_w: projectConfig.subtitle_w,
+              subtitle_h: projectConfig.subtitle_h,
+              subtitle_enabled: projectConfig.subtitle_enabled,
             }
           },
         });
@@ -158,16 +163,24 @@ function App() {
         if (progress) resetPipeline();
         
         useQueueStore.getState().updateJobStatus(nextJob.id, 'processing');
-        renderVideo(
-          nextJob.videoPath,
-          nextJob.config,
-          nextJob.segments,
-          0,
-          nextJob.outputPath
-        ).then(() => {
-          useQueueStore.getState().updateJobStatus(nextJob.id, 'completed');
-        }).catch(() => {
-          useQueueStore.getState().updateJobStatus(nextJob.id, 'failed');
+        
+        // Ensure 100% frame pixel-perfect precision on backend by calculating 
+        // the greedy wrap here in an offscreen JS canvas using our utility
+        import('./utils/subtitleLayout').then(({ calculateSubtitleLayout }) => {
+          const videoDimensions = useSubtitleStore.getState().videoDimensions;
+          const layoutSegments = calculateSubtitleLayout(nextJob.segments, nextJob.config, videoDimensions || {w: 1920, h: 1080});
+          
+          renderVideo(
+            nextJob.videoPath,
+            nextJob.config,
+            layoutSegments,
+            0,
+            nextJob.outputPath
+          ).then(() => {
+            useQueueStore.getState().updateJobStatus(nextJob.id, 'completed');
+          }).catch(() => {
+            useQueueStore.getState().updateJobStatus(nextJob.id, 'failed');
+          });
         });
       }
     }
@@ -238,14 +251,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const subtitleConfig = {
-    enabled: projectConfig.subtitle_enabled,
-    position: projectConfig.subtitle_position,
-    font_size: projectConfig.subtitle_font_size,
-    font: projectConfig.subtitle_font,
-    color: projectConfig.subtitle_color,
-    outline_color: projectConfig.subtitle_outline_color,
-  };
+
 
   return (
     <>
@@ -282,10 +288,8 @@ function App() {
             <VideoPreview
               videoSrc={videoSrc}
               segments={segments}
-              subtitleConfig={subtitleConfig}
               videoRatio={projectConfig.video_ratio as 'original' | '16:9' | '9:16'}
               isEditingSub={sidebarFocus === 'subtitle'}
-              onPositionChange={(pos) => projectConfig.updateConfig({ subtitle_position: pos })}
             />
           }
           properties={<PropertiesPanel sidebarFocus={sidebarFocus} onRender={handleRender} onAnalyze={handleAnalyze} processing={processing} />}
