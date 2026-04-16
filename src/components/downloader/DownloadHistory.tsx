@@ -5,6 +5,7 @@ interface DownloadHistoryProps {
   history: DownloadItem[];
   onFetch: (limit?: number, offset?: number, platform?: string) => void;
   onDelete: (id: number) => void;
+  connected?: boolean;
 }
 
 const PLATFORMS = ['all', 'youtube', 'tiktok', 'douyin', 'facebook', 'instagram'];
@@ -32,12 +33,14 @@ function getStatusClass(status: string): string {
   return 'st-pending';
 }
 
-export function DownloadHistory({ history, onFetch, onDelete }: DownloadHistoryProps) {
+export function DownloadHistory({ history, onFetch, onDelete, connected = true }: DownloadHistoryProps) {
   const [activePlatform, setActivePlatform] = useState('all');
 
   useEffect(() => {
-    onFetch(50, 0, activePlatform);
-  }, [activePlatform]);
+    if (connected) {
+      onFetch(50, 0, activePlatform);
+    }
+  }, [activePlatform, connected]);
 
   return (
     <div className="dl-history">

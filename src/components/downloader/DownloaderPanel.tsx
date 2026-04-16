@@ -9,9 +9,12 @@ import { DownloadOptions } from './DownloadOptions';
 import { DownloadQueue } from './DownloadQueue';
 import { DownloadHistory } from './DownloadHistory';
 import { CookieManager } from './CookieManager';
+import { useSidecar } from '../../hooks/useSidecar';
 import '../../styles/downloader.css';
 
 export function DownloaderPanel() {
+  const { connected } = useSidecar();
+
   const {
     videoInfo,
     isAnalyzing,
@@ -29,11 +32,13 @@ export function DownloaderPanel() {
     checkCookie,
   } = useDownloader();
 
-  // Fetch history on mount
+  // Fetch history when sidecar connected
   useEffect(() => {
-    fetchHistory();
-    checkCookie();
-  }, []);
+    if (connected) {
+      fetchHistory();
+      checkCookie();
+    }
+  }, [connected]);
 
   const handleDownload = async (_videoId: string, formatId: string) => {
     if (!videoInfo) return;
@@ -90,6 +95,7 @@ export function DownloaderPanel() {
           history={history}
           onFetch={fetchHistory}
           onDelete={deleteDownload}
+          connected={connected}
         />
       </div>
     </div>
