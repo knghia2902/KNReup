@@ -30,6 +30,11 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 
 ## Context
 
+### Pending Todos
+
+- 2026-04-16: Redesign app using unified core technology like CapCut ([1 total pending])
+
+
 ### File tham khảo
 
 - `Clone/VideoTransAI/` — Bản build VideoTransAI (tham khảo frontend + API)
