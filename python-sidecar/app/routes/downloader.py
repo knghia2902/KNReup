@@ -15,7 +15,9 @@ from app.engines.downloader import get_download_manager
 
 logger = logging.getLogger(__name__)
 
+# safe reload test
 router = APIRouter(prefix="/api/download")
+
 
 
 # ─── Models ───────────────────────────────────────────────
@@ -27,10 +29,15 @@ class StartDownloadRequest(BaseModel):
     url: str
     format_id: str = ""
     output_dir: str = ""
+    overwrites: bool = False
 
 
 class CookieSyncRequest(BaseModel):
-    browser: str = "edge"
+    browser: str = "auto"
+
+
+class CookieSetRequest(BaseModel):
+    cookie_string: str
 
 
 # ─── Analyze ──────────────────────────────────────────────
@@ -56,7 +63,9 @@ async def start_download(req: StartDownloadRequest):
             url=req.url,
             format_id=req.format_id,
             output_dir=req.output_dir,
+            overwrites=req.overwrites,
         )
+
         return {"download_id": download_id, "status": "started"}
     except Exception as e:
         logger.error(f"Start download failed: {e}")
@@ -147,23 +156,22 @@ async def get_history(
 # ─── Delete ──────────────────────────────────────────────
 @router.delete("/{download_id}")
 async def delete_download(download_id: int, delete_file: bool = False):
-    """Delete download record and optionally the file."""
+    """Delete download record and optionally the file. Idempotent."""
+    logger.info(f"DELETE request for download_id={download_id}")
     manager = get_download_manager()
-    deleted = await manager.delete_download_record(download_id, delete_file=delete_file)
-    if not deleted:
-        raise HTTPException(404, f"Download {download_id} not found")
+    await manager.delete_download_record(download_id, delete_file=delete_file)
     return {"deleted": True}
 
 
 # ─── Cancel ──────────────────────────────────────────────
 @router.post("/cancel/{download_id}")
 async def cancel_download(download_id: int):
-    """Cancel a running download."""
+    """Cancel a running download. Idempotent."""
+    logger.info(f"CANCEL request for download_id={download_id}")
     manager = get_download_manager()
-    cancelled = await manager.cancel_download(download_id)
-    if not cancelled:
-        raise HTTPException(400, f"Download {download_id} is not running")
+    await manager.cancel_download(download_id)
     return {"cancelled": True}
+
 
 
 # ─── Cookie Sync ─────────────────────────────────────────
@@ -175,6 +183,14 @@ async def sync_cookie(req: CookieSyncRequest):
     return result
 
 
+@router.post("/cookie/set")
+async def set_cookie(req: CookieSetRequest):
+    """Set Douyin cookie manually."""
+    manager = get_download_manager()
+    result = await manager.set_douyin_cookie(req.cookie_string)
+    return result
+
+
 # ─── Cookie Status ───────────────────────────────────────
 @router.get("/cookie/status")
 async def cookie_status():
@@ -182,3 +198,10 @@ async def cookie_status():
     manager = get_download_manager()
     result = await manager.check_douyin_cookie()
     return result
+
+@router.get("/check-file")
+async def check_file(title: str, platform: str, video_id: str = ""):
+    """Check if a video file exists on disk."""
+    manager = get_download_manager()
+    exists = await manager.check_file_existence(title, platform, video_id)
+    return {"exists": exists}

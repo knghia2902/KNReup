@@ -6,9 +6,8 @@ import { useEffect } from 'react';
 import { useDownloader } from '../../hooks/useDownloader';
 import { URLInput } from './URLInput';
 import { DownloadOptions } from './DownloadOptions';
-import { DownloadQueue } from './DownloadQueue';
 import { DownloadHistory } from './DownloadHistory';
-import { CookieManager } from './CookieManager';
+import { DouyinAuthWidget } from './DouyinAuthWidget';
 import { useSidecar } from '../../hooks/useSidecar';
 import '../../styles/downloader.css';
 
@@ -29,7 +28,9 @@ export function DownloaderPanel() {
     deleteDownload,
     fetchHistory,
     syncCookie,
+    setCookie,
     checkCookie,
+    checkFileExistence,
   } = useDownloader();
 
   // Fetch history when sidecar connected
@@ -40,63 +41,84 @@ export function DownloaderPanel() {
     }
   }, [connected]);
 
-  const handleDownload = async (_videoId: string, formatId: string) => {
+  const handleDownload = async (_videoId: string, formatId: string, overwrites: boolean = false) => {
     if (!videoInfo) return;
     try {
-      // Use the original analyzed URL
-      const url = document.querySelector<HTMLInputElement>('.dl-url-input')?.value || '';
-      await startDownload(url, formatId);
+      // Use the webpage_url retrieved during analysis
+      const url = videoInfo.webpage_url;
+      await startDownload(url, formatId, overwrites);
+
     } catch (err: any) {
       console.error('Download failed:', err);
     }
   };
 
   return (
-    <div className="dl-panel">
-      {/* Header */}
-      <div className="dl-panel-header">
-        <div className="dl-panel-title-row">
-          <h2 className="dl-panel-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Video Downloader
-          </h2>
-          <CookieManager
-            cookieStatus={cookieStatus}
-            onSync={syncCookie}
-            isSyncing={isSyncingCookie}
+    <div className="dl-layout-wrapper">
+      <div className="dl-container">
+        
+        {/* Top Section: Branding and Search */}
+        <section className="dl-top-section">
+          <div className="dl-hero-header">
+            <div className="dl-top-row">
+              <h1>Multi Download Media</h1>
+              <DouyinAuthWidget
+                cookieStatus={cookieStatus}
+                onSet={setCookie}
+                onSync={syncCookie}
+                isSyncing={isSyncingCookie}
+              />
+            </div>
+            <p>High-performance extraction from Douyin, TikTok, YouTube & more.</p>
+          </div>
+
+          <URLInput
+            onAnalyze={analyzeURL}
+            isAnalyzing={isAnalyzing}
+            error={analyzeError}
           />
+        </section>
+
+        {/* Bottom Section: Side-by-Side Panels */}
+        <div className="dl-main-grid">
+          <div className="dl-options-panel">
+            {videoInfo ? (
+              <DownloadOptions
+                videoInfo={videoInfo}
+                history={history}
+                onDownload={handleDownload}
+              />
+
+            ) : (
+              <div className="dl-empty-placeholder">
+                <div className="dl-ep-icon">✨</div>
+                <h3>Ready to Extract</h3>
+                <p>Paste a video URL above to see available formats and resolutions.</p>
+                <div className="dl-ep-platforms">
+                  <span>Douyin</span>
+                  <span>TikTok</span>
+                  <span>YouTube</span>
+                  <span>...</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="dl-history-panel">
+            <DownloadHistory
+              history={history}
+              queue={queue}
+              onFetch={fetchHistory}
+              onDelete={deleteDownload}
+              onCancel={cancelDownload}
+              onDownload={startDownload}
+              checkFileExistence={checkFileExistence}
+              connected={connected}
+            />
+          </div>
+
         </div>
-      </div>
-
-      {/* URL Input */}
-      <URLInput
-        onAnalyze={analyzeURL}
-        isAnalyzing={isAnalyzing}
-        error={analyzeError}
-      />
-
-      {/* Main content area */}
-      <div className="dl-content">
-        {/* Download Options */}
-        {videoInfo && (
-          <DownloadOptions
-            videoInfo={videoInfo}
-            onDownload={handleDownload}
-          />
-        )}
-
-        {/* Download Queue */}
-        <DownloadQueue queue={queue} onCancel={cancelDownload} />
-
-        {/* History */}
-        <DownloadHistory
-          history={history}
-          onFetch={fetchHistory}
-          onDelete={deleteDownload}
-          connected={connected}
-        />
+        
       </div>
     </div>
   );

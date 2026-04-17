@@ -12,19 +12,21 @@ DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'data', 'dow
 
 
 async def get_db() -> aiosqlite.Connection:
-    """Get async SQLite connection with WAL mode."""
+    """Get async SQLite connection with timeout."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    db = await aiosqlite.connect(DB_PATH)
+    db = await aiosqlite.connect(DB_PATH, timeout=30)
     db.row_factory = aiosqlite.Row
-    await db.execute("PRAGMA journal_mode=WAL")
     return db
 
 
 async def init_db():
-    """Initialize downloads table and indexes."""
-    db = await get_db()
+    """Initialize downloads table and indexes using synchronous sqlite3 to prevent lifespan locks."""
+    import sqlite3
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     try:
-        await db.executescript('''
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.executescript('''
             CREATE TABLE IF NOT EXISTS downloads (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 url TEXT NOT NULL,
@@ -48,11 +50,12 @@ async def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status);
             CREATE INDEX IF NOT EXISTS idx_downloads_platform ON downloads(platform);
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_downloads_url ON downloads(url);
+            DROP INDEX IF EXISTS idx_downloads_url;
+            CREATE INDEX IF NOT EXISTS idx_downloads_url ON downloads(url);
         ''')
-        await db.commit()
+        conn.commit()
     finally:
-        await db.close()
+        conn.close()
 
 
 async def add_download(
@@ -168,13 +171,21 @@ async def delete_download(download_id: int) -> bool:
         await db.close()
 
 
-async def check_url_exists(url: str) -> Optional[dict]:
-    """Check if URL already exists in database. Returns record or None."""
+async def find_existing_download(url: str, video_id: str = "") -> Optional[dict]:
+    """Find existing download by URL or Video ID."""
     db = await get_db()
     try:
-        cursor = await db.execute(
-            "SELECT * FROM downloads WHERE url = ?", (url,)
-        )
+        if video_id:
+            cursor = await db.execute(
+                "SELECT * FROM downloads WHERE video_id = ? OR url = ? ORDER BY created_at DESC", 
+                (video_id, url)
+            )
+        else:
+            cursor = await db.execute(
+                "SELECT * FROM downloads WHERE url = ? ORDER BY created_at DESC", 
+                (url,)
+            )
+            
         row = await cursor.fetchone()
         if row:
             return dict(row)

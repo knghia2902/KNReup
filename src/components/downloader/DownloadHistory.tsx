@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Trash, CloudArrowDown, ArrowCounterClockwise, StopCircle } from '@phosphor-icons/react';
 import type { DownloadItem } from '../../hooks/useDownloader';
 
 interface DownloadHistoryProps {
   history: DownloadItem[];
+  queue: DownloadItem[];
   onFetch: (limit?: number, offset?: number, platform?: string) => void;
   onDelete: (id: number) => void;
+  onCancel: (id: number) => void;
+  onDownload?: (url: string, format_id?: string, overwrites?: boolean, meta?: Partial<DownloadItem>) => void;
+  checkFileExistence?: (title: string, platform: string, video_id: string) => Promise<boolean>;
   connected?: boolean;
 }
-
-const PLATFORMS = ['all', 'youtube', 'tiktok', 'douyin', 'facebook', 'instagram'];
 
 function formatBytes(bytes: number): string {
   if (!bytes) return '—';
@@ -25,95 +28,176 @@ function getPlatformIcon(p: string): string {
   return icons[p] || '🌐';
 }
 
-function getStatusClass(status: string): string {
-  if (status === 'completed') return 'st-done';
-  if (status === 'error') return 'st-err';
-  if (status === 'cancelled') return 'st-cancel';
-  if (status === 'downloading') return 'st-dl';
-  return 'st-pending';
+function StatusBadge({ status, error }: { status: string; error?: string }) {
+  if (status === 'completed') return <span className="dl-st-badge st-done">Completed</span>;
+  if (status === 'error') return (
+    <span className="dl-st-badge st-err" title={error || 'Unknown error'}>
+      Error
+    </span>
+  );
+  if (status === 'cancelled') return <span className="dl-st-badge st-cancel">Cancelled</span>;
+  return <span className="dl-st-badge st-pending">{status}</span>;
 }
 
-export function DownloadHistory({ history, onFetch, onDelete, connected = true }: DownloadHistoryProps) {
-  const [activePlatform, setActivePlatform] = useState('all');
+export function DownloadHistory({ history, queue, onFetch, onDelete, onCancel, onDownload, checkFileExistence, connected = true }: DownloadHistoryProps) {
+  const [missingFiles, setMissingFiles] = useState<Record<number, boolean>>({});
 
+  // Auto-refresh on focus or periodically
   useEffect(() => {
-    if (connected) {
-      onFetch(50, 0, activePlatform);
-    }
-  }, [activePlatform, connected]);
+    if (!connected) return;
+
+    const refresh = () => onFetch(50, 0, 'all');
+
+    // 1. Poll every 5s
+    const interval = setInterval(refresh, 5000);
+
+    // 2. Refresh on window focus/tab visibility
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', refresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [connected, onFetch]);
+
+  // Check existence for completed items
+  useEffect(() => {
+    const checkMissing = async () => {
+      if (!checkFileExistence) return;
+      const completedItems = history.filter(item => item.status === 'completed');
+      const results: Record<number, boolean> = {};
+      
+      await Promise.all(completedItems.map(async (item) => {
+        const exists = await checkFileExistence(item.title, item.platform, item.video_id);
+        results[item.id] = !exists;
+      }));
+      
+      setMissingFiles(results);
+    };
+
+    checkMissing();
+  }, [history, checkFileExistence]);
+
+  // Combine queue and history, ensuring uniqueness by id
+  // Queue items take precedence to show real-time progress
+  const allItemsMap = new Map<number, any>();
+  
+  // 1. Add history items
+  history.forEach(item => allItemsMap.set(item.id, item));
+  
+  // 2. Add/overwrite with queue items
+  queue.forEach(item => allItemsMap.set(item.id, item));
+  
+  // 3. Convert back to array and sort by created_at desc (newest first)
+  const allItems = Array.from(allItemsMap.values()).sort((a, b) => {
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
+
 
   return (
-    <div className="dl-history">
-      <div className="dl-hist-header">
-        <span className="dl-hist-title">Recent Extractions</span>
-        <div className="dl-hist-filters">
-          {PLATFORMS.map(p => (
-            <button
-              key={p}
-              className={`dl-hf ${activePlatform === p ? 'active' : ''}`}
-              onClick={() => setActivePlatform(p)}
-            >
-              {p === 'all' ? 'All' : getPlatformIcon(p)}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="dl-recent-section">
 
-      {history.length === 0 ? (
-        <div className="dl-hist-empty">
-          <span>No downloads yet</span>
+
+      <div className="dl-recent-table">
+        <div className="dl-rt-head">
+          <div className="dl-rtc">MEDIA</div>
+          <div className="dl-rtc">PLATFORM</div>
+          <div className="dl-rtc">SIZE</div>
+          <div className="dl-rtc">STATUS</div>
+          <div className="dl-rtc">ACTIONS</div>
         </div>
-      ) : (
-        <div className="dl-hist-table">
-          <div className="dl-ht-head">
-            <span className="dl-htc media">MEDIA</span>
-            <span className="dl-htc platform">PLATFORM</span>
-            <span className="dl-htc quality">QUALITY</span>
-            <span className="dl-htc size">SIZE</span>
-            <span className="dl-htc status">STATUS</span>
-            <span className="dl-htc actions">ACTIONS</span>
-          </div>
-          <div className="dl-ht-body">
-            {history.map(item => (
-              <div className="dl-ht-row" key={item.id}>
-                <div className="dl-htc media">
-                  <div className="dl-ht-thumb">
-                    {item.thumbnail_url ? (
-                      <img src={item.thumbnail_url} alt="" />
+
+        <div className="dl-rt-body">
+          {allItems.length === 0 ? (
+            <div className="dl-hist-empty">No downloads yet. Get started by analyzing a link.</div>
+          ) : (
+            allItems.map(item => {
+              const isDownloading = item.status === 'downloading' || item.status === 'analyzing';
+              return (
+                <div className="dl-rt-row" key={item.id}>
+                  <div className="dl-rtc media">
+                    <div className="dl-rt-thumb">
+                      {item.thumbnail_url ? (
+                        <img src={item.thumbnail_url} alt="" />
+                      ) : (
+                        <span>{getPlatformIcon(item.platform)}</span>
+                      )}
+                    </div>
+                    <span className="dl-rt-title" title={item.title}>{item.title}</span>
+                  </div>
+                  <div className="dl-rtc platform">
+                    <span>{item.platform}</span>
+                  </div>
+                  <div className="dl-rtc size">
+                    {formatBytes(item.file_size)}
+                  </div>
+                  <div className="dl-rtc status">
+                    {isDownloading ? (
+                      <div className="dl-rt-progress">
+                        <div className="dl-rt-pct">{Math.round(item.progress || 0)}%</div>
+                        <div className="dl-rt-bar">
+                          <div className="dl-rt-fill" style={{ width: `${item.progress || 0}%` }} />
+                        </div>
+                        <div className="dl-rt-speed">{item.speed || ''}</div>
+                      </div>
                     ) : (
-                      <span>{getPlatformIcon(item.platform)}</span>
+                      <StatusBadge 
+                        status={item.status} 
+                        error={item.metadata?.error || item.metadata?.errMsg || (typeof item.metadata === 'string' ? item.metadata : undefined)} 
+                      />
                     )}
                   </div>
-                  <span className="dl-ht-title">{item.title || 'Untitled'}</span>
+                  <div className="dl-rtc actions">
+                    <div className="dl-rt-action-btns">
+                      {item.status === 'completed' && missingFiles[item.id] && onDownload && (
+                        <button 
+                          className="dl-rt-btn restore" 
+                          onClick={() => onDownload(item.url, item.resolution, true, item)}
+                          title="Video missing. Click to Restore."
+                        >
+                          <CloudArrowDown size={18} weight="bold" />
+                        </button>
+                      )}
+                      {(item.status === 'cancelled' || item.status === 'error') && onDownload && (
+                        <button 
+                          className="dl-rt-btn retry" 
+                          onClick={() => onDownload(item.url, item.resolution, true, item)}
+                          title="Click to download again."
+                        >
+                          <ArrowCounterClockwise size={18} weight="bold" />
+                        </button>
+                      )}
+                      {isDownloading ? (
+                        <button 
+                          className="dl-rt-btn cancel" 
+                          onClick={() => onCancel(item.id)} 
+                          title="Hủy tải"
+                        >
+                          <StopCircle size={18} weight="bold" />
+                        </button>
+                      ) : (
+                        <button 
+                          className="dl-rt-btn delete" 
+                          onClick={() => onDelete(item.id)} 
+                          title="Xóa lịch sử"
+                        >
+                          <Trash size={18} weight="bold" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
-                <div className="dl-htc platform">
-                  <span>{getPlatformIcon(item.platform)} {item.platform}</span>
-                </div>
-                <div className="dl-htc quality">
-                  <span>{item.resolution || '—'}</span>
-                </div>
-                <div className="dl-htc size">
-                  <span>{formatBytes(item.file_size)}</span>
-                </div>
-                <div className="dl-htc status">
-                  <span className={`dl-st-badge ${getStatusClass(item.status)}`}>
-                    {item.status === 'completed' ? '● Done' : item.status}
-                  </span>
-                </div>
-                <div className="dl-htc actions">
-                  <button
-                    className="dl-ht-del"
-                    onClick={() => onDelete(item.id)}
-                    title="Delete"
-                  >
-                    🗑
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              );
+            })
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -54,7 +54,9 @@ class BaseDownloader(ABC):
         format_id: str,
         output_dir: str,
         progress_callback: Optional[Callable] = None,
+        overwrites: bool = False,
     ) -> str:
+
         """Download video and return file path.
         
         Args:

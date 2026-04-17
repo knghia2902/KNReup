@@ -15,32 +15,23 @@ export function URLInput({ onAnalyze, isAnalyzing, error }: URLInputProps) {
     onAnalyze(trimmed);
   };
 
-  const handlePaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        setUrl(text.trim());
-        onAnalyze(text.trim());
-      }
-    } catch { /* clipboard denied */ }
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleAnalyze();
   };
 
   return (
-    <div className="dl-url-section">
-      <div className="dl-url-row">
-        <button className="dl-paste-btn" onClick={handlePaste} title="Paste from clipboard">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    <div className="dl-hero-search">
+      <div className="dl-search-box">
+        <div className="dl-search-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
-        </button>
+        </div>
         <input
-          className="dl-url-input"
           type="text"
-          placeholder="Paste video URL here... (YouTube, TikTok, Douyin, Facebook)"
+          className="dl-search-input"
+          placeholder="Paste video URL here..."
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -52,16 +43,16 @@ export function URLInput({ onAnalyze, isAnalyzing, error }: URLInputProps) {
           disabled={isAnalyzing || !url.trim()}
         >
           {isAnalyzing ? (
-            <span className="dl-spinner" />
+            <span className="dl-btn-content">
+              <span className="dl-spinner-small" />
+              Analyzing...
+            </span>
           ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
+            'Analyze Link ➔'
           )}
-          {isAnalyzing ? 'Analyzing...' : 'Analyze Link'}
         </button>
       </div>
-      {error && <div className="dl-error">{error}</div>}
+      {error && <div className="dl-error-message" style={{ color: 'var(--dl-danger)', fontWeight: 600 }}>{error}</div>}
     </div>
   );
 }

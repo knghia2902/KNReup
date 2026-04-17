@@ -3,11 +3,23 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": [
-    "main"
+    "main",
+    "douyin-login"
   ],
   "permissions": [
     "core:default",
+    "core:window:default",
+    "core:event:default",
+    "core:event:allow-emit",
+    "core:event:allow-listen",
+    "allow-evaluate-javascript",
+    "allow-sync-captured-cookie",
+    "allow-get-webview-cookies",
     "core:window:allow-start-dragging",
+    "core:window:allow-create",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:webview:allow-create-webview-window",
     "opener:default",
     "opener:allow-open-path",
     "opener:allow-reveal-item-in-dir",

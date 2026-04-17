@@ -1,10 +1,206 @@
-import { useState, useMemo } from 'react';
-import type { VideoInfo, VideoFormat } from '../../hooks/useDownloader';
+import { useState, useMemo, useEffect } from 'react';
+import { useDownloader, type VideoInfo, VideoFormat, DownloadItem } from '../../hooks/useDownloader';
 
 interface DownloadOptionsProps {
   videoInfo: VideoInfo;
-  onDownload: (url: string, format_id: string) => void;
+  history: DownloadItem[];
+  onDownload: (url: string, format_id: string, overwrites: boolean) => void;
 }
+
+// ... helper functions (formatBytes, formatDuration, etc.) ...
+
+export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps) {
+  const { checkFileExistence } = useDownloader();
+  const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
+  const [fileExistsOnDisk, setFileExistsOnDisk] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingFormatId, setPendingFormatId] = useState<string | null>(null);
+
+  // Smart Filesystem Check
+  useEffect(() => {
+    const checkFile = async () => {
+      const exists = await checkFileExistence(
+        videoInfo.title,
+        videoInfo.platform,
+        videoInfo.video_id
+      );
+      setFileExistsOnDisk(exists);
+    };
+    checkFile();
+  }, [videoInfo, checkFileExistence]);
+
+  const { videoFormats, audioFormats } = useMemo(() => {
+    // Sorting logic...
+    const vf: VideoFormat[] = [];
+    const af: VideoFormat[] = [];
+    
+    for (const f of videoInfo.formats) {
+      if (f.resolution !== 'audio only') {
+        vf.push(f);
+      } else {
+        af.push(f);
+      }
+    }
+
+    vf.sort((a, b) => {
+      const getHeight = (r: string) => parseInt(r.replace(/[^0-9]/g, '')) || 0;
+      return getHeight(b.resolution) - getHeight(a.resolution);
+    });
+
+    return { videoFormats: vf, audioFormats: af };
+  }, [videoInfo.formats]);
+
+  const formats = activeTab === 'video' ? videoFormats : audioFormats;
+
+  const handleDownloadClick = (e: React.MouseEvent, format_id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Chỉ kích hoạt Modal nếu thực sự có file trên đĩa (Tránh cảnh báo vô lý khi đã xóa file)
+    if (fileExistsOnDisk) {
+      setPendingFormatId(format_id);
+      setShowConfirm(true);
+    } else {
+      // Nếu không có file (ngay cả khi có trong history), cứ cho tải về ngay
+      onDownload(videoInfo.webpage_url || '', format_id, false);
+    }
+  };
+
+
+  const handleConfirm = () => {
+    if (pendingFormatId) {
+      onDownload(videoInfo.webpage_url || '', pendingFormatId, true);
+    }
+    setShowConfirm(false);
+    setPendingFormatId(null);
+  };
+
+  const handleCancel = () => {
+    setShowConfirm(false);
+    setPendingFormatId(null);
+  };
+
+  return (
+    <div className="dl-options-grid">
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="dl-modal-overlay" onClick={handleCancel}>
+          <div className="dl-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="dl-modal-icon">📂</div>
+            <div className="dl-modal-text">
+              <h2>Video Đã Tồn Tại</h2>
+              <p>
+                Video <strong>"{videoInfo.title}"</strong> đã có sẵn trong máy hoặc lịch sử. 
+                Bạn có muốn tải lại và ghi đè không?
+              </p>
+            </div>
+            <div className="dl-modal-actions">
+              <button className="dl-modal-btn secondary" onClick={handleCancel}>Hủy</button>
+              <button className="dl-modal-btn primary" onClick={handleConfirm}>Tải Lại</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Info Card */}
+      <div className="dl-info-card">
+        {/* ... thumbnail and info meta ... */}
+        <div className="dl-thumbnail">
+          {videoInfo.thumbnail ? (
+            <img src={videoInfo.thumbnail} alt={videoInfo.title} />
+          ) : (
+            <div className="dl-thumb-placeholder">
+              <span>{getPlatformIcon(videoInfo.platform)}</span>
+            </div>
+          )}
+          {videoInfo.duration > 0 && (
+            <span className="dl-duration-badge">{formatDuration(videoInfo.duration)}</span>
+          )}
+        </div>
+        <div className="dl-info-meta">
+          <h3 className="dl-info-title" title={videoInfo.title}>{videoInfo.title}</h3>
+          <div className="dl-info-details">
+            <span className="dl-uploader">
+              {getPlatformIcon(videoInfo.platform)} {videoInfo.uploader || 'Unknown Uploader'}
+            </span>
+            <span className="dl-dot">•</span>
+            <span className="dl-platform-badge">{videoInfo.platform}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Formats Card */}
+      <div className="dl-formats-card">
+        <div className="dl-format-header">
+          <h3>Download Options</h3>
+          <div className="dl-format-tabs">
+            <button
+              className={`dl-ftab ${activeTab === 'video' ? 'active' : ''}`}
+              onClick={() => setActiveTab('video')}
+            >
+              Video
+            </button>
+            <button
+              className={`dl-ftab ${activeTab === 'audio' ? 'active' : ''}`}
+              onClick={() => setActiveTab('audio')}
+            >
+              Audio
+            </button>
+          </div>
+        </div>
+
+        <div className="dl-format-list">
+          {formats.length === 0 ? (
+            <div className="dl-no-formats">No {activeTab} formats available</div>
+          ) : (
+            formats.map((f, i) => {
+              const badge = getResolutionBadge(f.resolution);
+              return (
+                <div className="dl-format-row" key={f.format_id}>
+                  <div className="dl-fr-icon">
+                    {activeTab === 'video' ? '🎬' : '🎵'}
+                  </div>
+                  <div className="dl-fr-main">
+                    <div className="dl-fr-top">
+                      <span className="dl-fr-title">
+                        {f.ext.toUpperCase()} {f.resolution === 'audio only' ? '' : f.resolution}
+                      </span>
+                      {badge.label && (
+                        <span className={`dl-fr-badge ${badge.class}`}>{badge.label}</span>
+                      )}
+                      {i === 0 && <span className="dl-fr-best">★</span>}
+                    </div>
+                    <div className="dl-fr-sub">
+                      {f.vcodec !== 'none' ? f.vcodec : f.acodec} • {f.format_note && `${f.format_note} • `} 
+                      {formatBytes(f.filesize)}
+                    </div>
+                  </div>
+                  <div className="dl-fr-actions">
+                    {(() => {
+                      const isOverwrite = fileExistsOnDisk;
+                      return (
+                        <button
+                          className={`dl-fr-download-btn ${isOverwrite ? 'exists' : ''}`}
+                          onClick={(e) => handleDownloadClick(e, f.format_id)}
+                          title={isOverwrite ? 'Video đã có sẵn trong folder. Nhấn để tải lại (Ghi đè).' : 'Tải video về máy'}
+                        >
+                          {isOverwrite ? 'Tải lại' : 'Tải về'}
+                        </button>
+                      );
+                    })()}
+                  </div>
+
+                </div>
+
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function formatBytes(bytes: number | null): string {
   if (!bytes) return '—';
@@ -43,109 +239,3 @@ function getPlatformIcon(platform: string): string {
   return icons[platform] || '🌐';
 }
 
-export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps) {
-  const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
-
-  const { videoFormats, audioFormats } = useMemo(() => {
-    const vf: VideoFormat[] = [];
-    const af: VideoFormat[] = [];
-    
-    for (const f of videoInfo.formats) {
-      if (f.vcodec !== 'none' && f.resolution !== 'audio only') {
-        vf.push(f);
-      } else if (f.acodec !== 'none') {
-        af.push(f);
-      }
-    }
-
-    // Sort by resolution quality (descending)
-    vf.sort((a, b) => {
-      const getHeight = (r: string) => parseInt(r.replace(/[^0-9]/g, '')) || 0;
-      return getHeight(b.resolution) - getHeight(a.resolution);
-    });
-
-    return { videoFormats: vf, audioFormats: af };
-  }, [videoInfo.formats]);
-
-  const formats = activeTab === 'video' ? videoFormats : audioFormats;
-
-  return (
-    <div className="dl-options">
-      {/* Video Info Header */}
-      <div className="dl-info-header">
-        <div className="dl-thumbnail">
-          {videoInfo.thumbnail ? (
-            <img src={videoInfo.thumbnail} alt={videoInfo.title} />
-          ) : (
-            <div className="dl-thumb-placeholder">
-              <span>{getPlatformIcon(videoInfo.platform)}</span>
-            </div>
-          )}
-        </div>
-        <div className="dl-info-meta">
-          <h3 className="dl-info-title">{videoInfo.title}</h3>
-          <div className="dl-info-details">
-            <span className="dl-platform-badge">
-              {getPlatformIcon(videoInfo.platform)} {videoInfo.platform}
-            </span>
-            <span className="dl-uploader">{videoInfo.uploader}</span>
-            {videoInfo.duration > 0 && (
-              <span className="dl-duration">{formatDuration(videoInfo.duration)}</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Format Tabs */}
-      <div className="dl-format-tabs">
-        <button
-          className={`dl-ftab ${activeTab === 'video' ? 'active' : ''}`}
-          onClick={() => setActiveTab('video')}
-        >
-          Video ({videoFormats.length})
-        </button>
-        <button
-          className={`dl-ftab ${activeTab === 'audio' ? 'active' : ''}`}
-          onClick={() => setActiveTab('audio')}
-        >
-          Audio ({audioFormats.length})
-        </button>
-      </div>
-
-      {/* Format List */}
-      <div className="dl-format-list">
-        {formats.length === 0 ? (
-          <div className="dl-no-formats">No {activeTab} formats available</div>
-        ) : (
-          formats.map((f, i) => {
-            const badge = getResolutionBadge(f.resolution);
-            return (
-              <div className="dl-format-card" key={f.format_id}>
-                <div className="dl-fc-left">
-                  <span className="dl-fc-ext">{f.ext.toUpperCase()}</span>
-                  {badge.label && (
-                    <span className={`dl-fc-res ${badge.class}`}>{badge.label}</span>
-                  )}
-                  {i === 0 && <span className="dl-fc-rec">★ Best</span>}
-                </div>
-                <div className="dl-fc-center">
-                  <span className="dl-fc-codec">{f.vcodec !== 'none' ? f.vcodec : f.acodec}</span>
-                  {f.format_note && <span className="dl-fc-note">{f.format_note}</span>}
-                </div>
-                <div className="dl-fc-right">
-                  <span className="dl-fc-size">{formatBytes(f.filesize)}</span>
-                  <button
-                    className="dl-fc-dl-btn"
-                    onClick={() => onDownload(videoInfo.video_id || '', f.format_id)}
-                  >
-                    ↓
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}

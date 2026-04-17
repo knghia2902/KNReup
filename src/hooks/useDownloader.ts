@@ -25,6 +25,7 @@ export interface VideoInfo {
   thumbnail: string;
   platform: string;
   video_id: string;
+  webpage_url: string;
   formats: VideoFormat[];
 }
 
@@ -36,10 +37,12 @@ export interface DownloadItem {
   thumbnail_url: string;
   resolution: string;
   file_size: number;
+  video_id: string;
   status: 'pending' | 'analyzing' | 'downloading' | 'completed' | 'error' | 'cancelled';
   progress: number;
   speed: string;
-  error_message: string;
+  error_message?: string;
+  metadata?: any;
   created_at: string;
   completed_at: string;
 }
@@ -89,24 +92,30 @@ export function useDownloader() {
   }, []);
 
   // ─── Start Download ───────────────────────────────────
-  const startDownload = useCallback(async (url: string, format_id: string = '') => {
+  const startDownload = useCallback(async (
+    url: string, 
+    format_id: string = '', 
+    overwrites: boolean = false,
+    meta?: Partial<DownloadItem>
+  ) => {
     try {
       const result = await sidecar.fetch<{ download_id: number }>('/api/download/start', {
         method: 'POST',
-        body: JSON.stringify({ url, format_id }),
+        body: JSON.stringify({ url, format_id, overwrites }),
       });
 
       const downloadId = result.download_id;
 
-      // Add to queue immediately
+      // Add to queue immediately with provided meta or fallback to videoInfo
       setQueue(prev => [{
         id: downloadId,
         url,
-        platform: videoInfo?.platform || 'unknown',
-        title: videoInfo?.title || url,
-        thumbnail_url: videoInfo?.thumbnail || '',
+        platform: meta?.platform || videoInfo?.platform || 'unknown',
+        title: meta?.title || videoInfo?.title || url,
+        thumbnail_url: meta?.thumbnail_url || videoInfo?.thumbnail || '',
         resolution: format_id,
-        file_size: 0,
+        file_size: meta?.file_size || 0,
+        video_id: meta?.video_id || videoInfo?.video_id || '',
         status: 'downloading',
         progress: 0,
         speed: '',
@@ -124,7 +133,14 @@ export function useDownloader() {
           const data = JSON.parse(event.data);
           setQueue(prev => prev.map(item =>
             item.id === downloadId
-              ? { ...item, progress: data.progress || item.progress, speed: data.speed || item.speed, status: data.status || item.status }
+              ? { 
+                  ...item, 
+                  progress: data.progress ?? item.progress, 
+                  speed: data.speed ?? item.speed, 
+                  status: data.status ?? item.status,
+                  file_size: data.file_size ?? item.file_size,
+                  metadata: data.metadata ?? item.metadata
+                }
               : item
           ));
 
@@ -195,12 +211,33 @@ export function useDownloader() {
   }, []);
 
   // ─── Cookie Management ────────────────────────────────
-  const syncCookie = useCallback(async (browser: string = 'edge') => {
+  const syncCookie = useCallback(async (browser: string = 'auto') => {
     setIsSyncingCookie(true);
     try {
       const result = await sidecar.fetch<{ success: boolean; message: string }>(
         '/api/download/cookie/sync',
         { method: 'POST', body: JSON.stringify({ browser }) }
+      );
+      if (result.success) {
+        setCookieStatus({ valid: true, message: result.message });
+      } else {
+        setCookieStatus({ valid: false, message: result.message });
+      }
+      return result;
+    } catch (err: any) {
+      setCookieStatus({ valid: false, message: err.message });
+      return { success: false, message: err.message };
+    } finally {
+      setIsSyncingCookie(false);
+    }
+  }, []);
+
+  const setCookie = useCallback(async (cookie_string: string) => {
+    setIsSyncingCookie(true);
+    try {
+      const result = await sidecar.fetch<{ success: boolean; message: string }>(
+        '/api/download/cookie/set',
+        { method: 'POST', body: JSON.stringify({ cookie_string }) }
       );
       if (result.success) {
         setCookieStatus({ valid: true, message: result.message });
@@ -227,6 +264,17 @@ export function useDownloader() {
     }
   }, []);
 
+  const checkFileExistence = useCallback(async (title: string, platform: string, video_id: string = '') => {
+    try {
+      const params = new URLSearchParams({ title, platform, video_id });
+      const result = await sidecar.fetch<{ exists: boolean }>(`/api/download/check-file?${params}`);
+      return result.exists;
+    } catch {
+      return false;
+    }
+  }, []);
+
+
   // ─── Clear video info ─────────────────────────────────
   const clearVideoInfo = useCallback(() => {
     setVideoInfo(null);
@@ -249,7 +297,10 @@ export function useDownloader() {
     deleteDownload,
     fetchHistory,
     syncCookie,
+    setCookie,
     checkCookie,
+    checkFileExistence,
     clearVideoInfo,
   };
 }
+

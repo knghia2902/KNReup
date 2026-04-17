@@ -202,19 +202,33 @@ function App() {
     let unlistenFile: (() => void) | undefined;
     let unlistenDrag: (() => void) | undefined;
 
-    listen('tauri://file-drop', (event) => {
-      const paths = event.payload as string[];
-      if (paths && paths.length > 0) {
-        handleFileSelected(paths[0]);
+    const setupListeners = async () => {
+      // Check if we are in tauri environment to avoid crash in browser
+      if (typeof window !== 'undefined' && !(window as any).__TAURI_INTERNALS__) {
+        console.warn("Tauri internals not found. skipping file-drop listeners.");
+        return;
       }
-    }).then(f => unlistenFile = f);
 
-    listen('tauri://drag-drop', (event) => {
-      const payload = event.payload as any;
-      if (payload && payload.paths && payload.paths.length > 0) {
-        handleFileSelected(payload.paths[0]);
+      try {
+        unlistenFile = await listen('tauri://file-drop', (event) => {
+          const paths = event.payload as string[];
+          if (paths && paths.length > 0) {
+            handleFileSelected(paths[0]);
+          }
+        });
+
+        unlistenDrag = await listen('tauri://drag-drop', (event) => {
+          const payload = event.payload as any;
+          if (payload && payload.paths && payload.paths.length > 0) {
+            handleFileSelected(payload.paths[0]);
+          }
+        });
+      } catch (err) {
+        console.error("Failed to setup Tauri listeners:", err);
       }
-    }).then(f => unlistenDrag = f);
+    };
+
+    setupListeners();
 
     return () => {
       if (unlistenFile) unlistenFile();
