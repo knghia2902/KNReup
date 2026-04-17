@@ -14,6 +14,7 @@ from .ytdlp_engine import YtdlpDownloader
 from .douyin_engine import DouyinDownloader
 import platform
 import subprocess
+import ctypes
 from .database import (
     add_download, update_download, get_download,
     list_downloads, delete_download, find_existing_download,
@@ -405,13 +406,14 @@ class DownloadManager:
             
         try:
             if platform.system() == 'Windows':
-                import subprocess
-                subprocess.run(['explorer', '/select,', os.path.normpath(path)], check=True)
+                # os.path.normpath handles backslashes
+                target = os.path.normpath(path)
+                # explorer /select, "path"
+                # SW_SHOWNORMAL = 1
+                ctypes.windll.shell32.ShellExecuteW(None, "open", "explorer.exe", f'/select,"{target}"', None, 1)
             elif platform.system() == 'Darwin':
-                import subprocess
                 subprocess.run(['open', '-R', path], check=True)
             else:
-                import subprocess
                 subprocess.run(['xdg-open', os.path.dirname(path)], check=True)
             return True
         except Exception as e:
