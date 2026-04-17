@@ -114,7 +114,6 @@ export function DownloaderPanel() {
               onDelete={deleteDownload}
               onCancel={cancelDownload}
               onDownload={startDownload}
-              onOpen={openFile}
               onShow={showInFolder}
               checkFileExistence={checkFileExistence}
               connected={connected}

@@ -916,7 +916,6 @@
 }
 
 /* Hover effects matched to delete button style */
-.dl-rt-btn.play:hover,
 .dl-rt-btn.folder:hover,
 .dl-rt-btn.delete:hover {
   background: rgba(239, 68, 68, 0.1);

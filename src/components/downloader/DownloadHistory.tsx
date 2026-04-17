@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash, CloudArrowDown, ArrowCounterClockwise, StopCircle, Play, FolderOpen } from '@phosphor-icons/react';
+import { Trash, CloudArrowDown, ArrowCounterClockwise, StopCircle, FolderOpen } from '@phosphor-icons/react';
 import type { DownloadItem } from '../../hooks/useDownloader';
 
 interface DownloadHistoryProps {
@@ -8,7 +8,6 @@ interface DownloadHistoryProps {
   onFetch: (limit?: number, offset?: number, platform?: string) => void;
   onDelete: (id: number) => void;
   onCancel: (id: number) => void;
-  onOpen: (id: number) => void;
   onShow: (id: number) => void;
   onDownload?: (url: string, format_id?: string, overwrites?: boolean, meta?: Partial<DownloadItem>) => void;
   checkFileExistence?: (title: string, platform: string, video_id: string) => Promise<boolean>;
@@ -42,7 +41,7 @@ function StatusBadge({ status, error }: { status: string; error?: string }) {
 }
 
 export function DownloadHistory({ 
-  history, queue, onFetch, onDelete, onCancel, onOpen, onShow, onDownload, checkFileExistence, connected = true 
+  history, queue, onFetch, onDelete, onCancel, onShow, onDownload, checkFileExistence, connected = true 
 }: DownloadHistoryProps) {
   const [missingFiles, setMissingFiles] = useState<Record<number, boolean>>({});
 
@@ -169,13 +168,6 @@ export function DownloadHistory({
                       )}
                       {item.status === 'completed' && !missingFiles[item.id] && (
                         <>
-                          <button 
-                            className="dl-rt-btn play" 
-                            onClick={() => onOpen(item.id)}
-                            title="Mở video"
-                          >
-                            <Play size={18} weight="fill" />
-                          </button>
                           <button 
                             className="dl-rt-btn folder" 
                             onClick={() => onShow(item.id)}
