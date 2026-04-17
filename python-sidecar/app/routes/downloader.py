@@ -199,6 +199,24 @@ async def cookie_status():
     result = await manager.check_douyin_cookie()
     return result
 
+@router.post("/open/{download_id}")
+async def open_download_file(download_id: int):
+    """Open the downloaded file."""
+    manager = get_download_manager()
+    success = await manager.open_file(download_id)
+    if not success:
+        raise HTTPException(400, "Failed to open file or file not found")
+    return {"success": True}
+
+@router.post("/show/{download_id}")
+async def show_download_folder(download_id: int):
+    """Show the downloaded file in folder."""
+    manager = get_download_manager()
+    success = await manager.show_in_folder(download_id)
+    if not success:
+        raise HTTPException(400, "Failed to show folder or file not found")
+    return {"success": True}
+
 @router.get("/check-file")
 async def check_file(title: str, platform: str, video_id: str = ""):
     """Check if a video file exists on disk."""

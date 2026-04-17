@@ -184,6 +184,22 @@ export function useDownloader() {
     }
   }, []);
 
+  const openFile = useCallback(async (downloadId: number) => {
+    try {
+      await sidecar.fetch(`/api/download/open/${downloadId}`, { method: 'POST' });
+    } catch (err: any) {
+      console.error('Failed to open file:', err);
+    }
+  }, []);
+
+  const showInFolder = useCallback(async (downloadId: number) => {
+    try {
+      await sidecar.fetch(`/api/download/show/${downloadId}`, { method: 'POST' });
+    } catch (err: any) {
+      console.error('Failed to show folder:', err);
+    }
+  }, []);
+
   // ─── Delete Download ──────────────────────────────────
   const deleteDownload = useCallback(async (downloadId: number) => {
     try {
@@ -295,6 +311,8 @@ export function useDownloader() {
     startDownload,
     cancelDownload,
     deleteDownload,
+    openFile,
+    showInFolder,
     fetchHistory,
     syncCookie,
     setCookie,

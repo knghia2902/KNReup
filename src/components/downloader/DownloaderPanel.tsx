@@ -26,6 +26,8 @@ export function DownloaderPanel() {
     startDownload,
     cancelDownload,
     deleteDownload,
+    openFile,
+    showInFolder,
     fetchHistory,
     syncCookie,
     setCookie,
@@ -112,6 +114,8 @@ export function DownloaderPanel() {
               onDelete={deleteDownload}
               onCancel={cancelDownload}
               onDownload={startDownload}
+              onOpen={openFile}
+              onShow={showInFolder}
               checkFileExistence={checkFileExistence}
               connected={connected}
             />

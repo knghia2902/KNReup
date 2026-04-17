@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash, CloudArrowDown, ArrowCounterClockwise, StopCircle } from '@phosphor-icons/react';
+import { Trash, CloudArrowDown, ArrowCounterClockwise, StopCircle, Play, FolderOpen } from '@phosphor-icons/react';
 import type { DownloadItem } from '../../hooks/useDownloader';
 
 interface DownloadHistoryProps {
@@ -8,6 +8,8 @@ interface DownloadHistoryProps {
   onFetch: (limit?: number, offset?: number, platform?: string) => void;
   onDelete: (id: number) => void;
   onCancel: (id: number) => void;
+  onOpen: (id: number) => void;
+  onShow: (id: number) => void;
   onDownload?: (url: string, format_id?: string, overwrites?: boolean, meta?: Partial<DownloadItem>) => void;
   checkFileExistence?: (title: string, platform: string, video_id: string) => Promise<boolean>;
   connected?: boolean;
@@ -39,7 +41,9 @@ function StatusBadge({ status, error }: { status: string; error?: string }) {
   return <span className="dl-st-badge st-pending">{status}</span>;
 }
 
-export function DownloadHistory({ history, queue, onFetch, onDelete, onCancel, onDownload, checkFileExistence, connected = true }: DownloadHistoryProps) {
+export function DownloadHistory({ 
+  history, queue, onFetch, onDelete, onCancel, onOpen, onShow, onDownload, checkFileExistence, connected = true 
+}: DownloadHistoryProps) {
   const [missingFiles, setMissingFiles] = useState<Record<number, boolean>>({});
 
   // Auto-refresh on focus or periodically
@@ -154,7 +158,7 @@ export function DownloadHistory({ history, queue, onFetch, onDelete, onCancel, o
                   </div>
                   <div className="dl-rtc actions">
                     <div className="dl-rt-action-btns">
-                      {item.status === 'completed' && missingFiles[item.id] && onDownload && (
+                       {item.status === 'completed' && missingFiles[item.id] && onDownload && (
                         <button 
                           className="dl-rt-btn restore" 
                           onClick={() => onDownload(item.url, item.resolution, true, item)}
@@ -162,6 +166,24 @@ export function DownloadHistory({ history, queue, onFetch, onDelete, onCancel, o
                         >
                           <CloudArrowDown size={18} weight="bold" />
                         </button>
+                      )}
+                      {item.status === 'completed' && !missingFiles[item.id] && (
+                        <>
+                          <button 
+                            className="dl-rt-btn play" 
+                            onClick={() => onOpen(item.id)}
+                            title="Mở video"
+                          >
+                            <Play size={18} weight="fill" />
+                          </button>
+                          <button 
+                            className="dl-rt-btn folder" 
+                            onClick={() => onShow(item.id)}
+                            title="Mở thư mục"
+                          >
+                            <FolderOpen size={18} weight="bold" />
+                          </button>
+                        </>
                       )}
                       {(item.status === 'cancelled' || item.status === 'error') && onDownload && (
                         <button 

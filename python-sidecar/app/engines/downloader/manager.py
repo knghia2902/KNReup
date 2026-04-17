@@ -12,6 +12,8 @@ from typing import Optional, Callable
 from .base import DownloadError
 from .ytdlp_engine import YtdlpDownloader
 from .douyin_engine import DouyinDownloader
+import platform
+import subprocess
 from .database import (
     add_download, update_download, get_download,
     list_downloads, delete_download, find_existing_download,
@@ -364,6 +366,57 @@ class DownloadManager:
                 
         return False
 
+
+    async def open_file(self, download_id: int) -> bool:
+        """Open the downloaded file with system default player."""
+        record = await get_download(download_id)
+        if not record or not record.get('file_path'):
+            logger.warning(f"Cannot open file: Record {download_id} has no file_path")
+            return False
+        
+        path = record['file_path']
+        if not os.path.exists(path):
+            logger.warning(f"Cannot open file: Path does not exist: {path}")
+            return False
+            
+        try:
+            if platform.system() == 'Windows':
+                os.startfile(path)
+            elif platform.system() == 'Darwin':
+                import subprocess
+                subprocess.run(['open', path], check=True)
+            else:
+                import subprocess
+                subprocess.run(['xdg-open', path], check=True)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to open file {path}: {e}")
+            return False
+
+    async def show_in_folder(self, download_id: int) -> bool:
+        """Show the downloaded file in system file explorer."""
+        record = await get_download(download_id)
+        if not record or not record.get('file_path'):
+            return False
+            
+        path = record['file_path']
+        if not os.path.exists(path):
+            return False
+            
+        try:
+            if platform.system() == 'Windows':
+                import subprocess
+                subprocess.run(['explorer', '/select,', os.path.normpath(path)], check=True)
+            elif platform.system() == 'Darwin':
+                import subprocess
+                subprocess.run(['open', '-R', path], check=True)
+            else:
+                import subprocess
+                subprocess.run(['xdg-open', os.path.dirname(path)], check=True)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to show folder for {path}: {e}")
+            return False
 
 # Singleton instance
 _manager_instance: Optional[DownloadManager] = None
