@@ -5,16 +5,16 @@
    ========================================================================== */
 
 .dl-layout-wrapper {
-  --dl-bg: #F9FAFB;
-  --dl-surface: #FFFFFF;
-  --dl-text: #18181B;
-  --dl-steel: #71717A;
-  --dl-slate: #94A3B8;
-  --dl-border: rgba(226, 232, 240, 0.5);
-  --dl-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
-  --dl-accent: #3B82F6;
-  --dl-danger: #E11D48;
-  --dl-success: #10B981;
+  --dl-bg: var(--bg-primary);
+  --dl-surface: var(--bg-surface);
+  --dl-text: var(--text-primary);
+  --dl-steel: var(--text-secondary);
+  --dl-slate: var(--text-muted);
+  --dl-border: var(--border);
+  --dl-shadow: var(--shadow-md);
+  --dl-accent: var(--accent);
+  --dl-danger: var(--danger);
+  --dl-success: var(--success);
   --spring-smooth: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --spring-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
 
@@ -722,9 +722,9 @@
 }
 
 .dl-rt-row:hover {
-  background: white;
+  background: var(--dl-surface);
   transform: scale(1.005) translateX(4px);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
   z-index: 10;
 }
 
