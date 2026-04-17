@@ -711,7 +711,7 @@
   display: grid;
   grid-template-columns: minmax(0, 2.5fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(110px, 1fr) minmax(140px, auto);
   gap: 24px;
-  padding: 0.85rem 1.5rem;
+  padding: 1rem 1.5rem;
   align-items: center;
   border-bottom: 1px solid var(--dl-border);
   transition: all 0.3s var(--spring-smooth);
@@ -734,6 +734,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Allow action buttons to lift without clipping */
+.dl-rt-row .dl-rtc:last-child {
+  overflow: visible;
 }
 
 .dl-rtc.media {

@@ -26,7 +26,6 @@ export function DownloaderPanel() {
     startDownload,
     cancelDownload,
     deleteDownload,
-    openFile,
     showInFolder,
     fetchHistory,
     syncCookie,
