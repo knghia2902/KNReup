@@ -12,9 +12,6 @@
     "core:event:default",
     "core:event:allow-emit",
     "core:event:allow-listen",
-    "allow-evaluate-javascript",
-    "allow-sync-captured-cookie",
-    "allow-get-webview-cookies",
     "core:window:allow-start-dragging",
     "core:window:allow-create",
     "core:window:allow-close",
@@ -23,6 +20,11 @@
     "opener:default",
     "opener:allow-open-path",
     "opener:allow-reveal-item-in-dir",
-    "dialog:default"
+    "dialog:default",
+    "fs:default",
+    "shell:default",
+    "shell:allow-execute",
+    "shell:allow-open",
+    "custom-commands"
   ]
 }

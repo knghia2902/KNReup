@@ -10,16 +10,15 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 
 **Tự động hoá pipeline lồng tiếng video end-to-end**: Upload video → Nhận diện giọng nói → Dịch → Tạo giọng đọc → Xuất video có phụ đề + lồng tiếng — tất cả trong một app duy nhất.
 
-## Current Milestone: v2.0 Pro Release
+## Current Milestone: v3.0 Full Release (Automation & AI)
 
-**Goal:** Mở rộng sức mạnh công nghệ AI lõi (Multi-Engine Dịch/Giọng đọc + Fallback tự động), trang bị vũ khí đồ họa cho Output (Watermark/AI Blur), và giao diện Timeline Đa Track Nâng Cao.
+**Goal:** Nâng cấp trải nghiệm Editor chuyên nghiệp, tích hợp trợ lý AI để tối ưu hóa nội dung, và xây dựng hệ thống tự động hóa kênh cùng hệ thống phân phối (Licensing).
 
 **Target features:**
-- Dịch tiếng đa dạng: CTranslate2 Offline, OpenAI API. Tích hợp Auto-Fallback.
-- Giọng đọc phong phú: Piper TTS, gTTS, SmartVoice + Audio FX.
-- Kỹ xảo hình ảnh OCR: Nhận diện chữ cứng PaddleOCR/EasyOCR, bôi mờ (Blur) phụ đề gốc.
-- Đóng dấu bản quyền: Watermark text/logo, Smart Crop.
-- Layout Advanced: 4-track timeline (Video/Audio/Sub/BGM), Dark/Light theme, phím tắt.
+- **Pro Editor Upgrade**: Chế độ Snap timeline, hỗ trợ phím tắt nâng cao, tối ưu hóa preview.
+- **AI Empowerment**: AI Subtitle Refiner (hiệu đính phụ đề), AI Subtitle Masking (xóa sub cứng tự động).
+- **Automation Monitoring**: Tự động theo dõi và tải video từ Douyin/TikTok theo danh sách kênh.
+- **System & Licensing**: Tích hợp hệ thống bản quyền SaaS, tự động cập nhật và đóng gói bộ cài hoàn thiện.
 
 ## Requirements
 

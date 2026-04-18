@@ -125,7 +125,30 @@ Plans:
 - [x] TBD (run /gsd-plan-phase 07.1 to break down) (completed 2026-04-17)
 **Status**: ✅ Complete (2026-04-17)
 
-## Phase 8: Auto-Monitor + AI Assistants
+## Phase 8.0: Editor Upgrade & AI Enhancement
+> **Mục tiêu**: Nâng cấp toàn diện UX Editor — Timeline tương tác chi tiết, Properties Panel nâng cao, và AI tối ưu nội dung.
+> **Requirements**: M3-ED-01, M3-ED-02, M3-ED-03, M3-ED-04
+> **Output**: Editor chuyên nghiệp ngang cấp CapCut/Premiere.
+
+- **Interactive Timeline Tracks**: Tất cả 4 track (VID/TTS/SUB/BGM) đều chỉnh sửa trực tiếp.
+  - VID: Trim đầu/cuối clip, kéo di chuyển, thumbnail chi tiết.
+  - TTS: Waveform hiển thị, trim/offset audio theo segment.
+  - SUB: Giữ drag/trim/split hiện tại + snapping.
+  - BGM: Trim nhạc nền, điểm bắt đầu, fade in/out trực quan.
+- **Timeline Snapping**: Magnetic timeline — hút giữa các track khi kéo.
+- **Advanced Properties Panels**:
+  - STYLE: Preset phong cách phụ đề (Cinematic, Minimal...).
+  - TTS: Chọn giọng đọc per-segment + preview audio.
+  - SUB: Bulk edit, tìm kiếm/thay thế, AI Refine button.
+  - OUT: Batch Export Presets (lưu/tải cấu hình export).
+- **AI Subtitle Refiner**: Gọi LLM (Gemini/DeepSeek) hiệu đính phụ đề tự động.
+- **AI Subtitle Masking**: OCR phát hiện hardsub cũ → auto Blur zone.
+
+**UAT**: Trim VID track → kéo BGM offset → AI Refine phụ đề → lưu Export Preset → Auto-mask sub cũ.
+
+---
+
+## Phase 8.1: Auto-Monitor
 > **Mục tiêu**: Tự động theo dõi accounts + AI pro tools
 > **Output**: Set & forget monitoring + AI-powered editing
 
@@ -133,10 +156,8 @@ Plans:
 - Cookie extraction + JIT auth + health check
 - Proxy rotation + anti-ban — **đây là arms race, cần maintain thường xuyên**
 - Monitor module UI (Account list + Video feed trong titlebar tab Monitor)
-- AI Text Editor (review + suggest)
 - AI Video Summarizer (key moments → short video)
 - Auto Copyright Analyzer
-- Subtitle Masking (AI detect + overlay)
 
 **UAT**: Tab Monitor → thêm Douyin account → scan 10 video mới → auto queue download
 
@@ -160,29 +181,18 @@ Plans:
 
 ## Milestones
 
-### Milestone 1 — MVP Release (sau Phase 3)
+### Milestone 1 — MVP Release (sau Phase 3.1)
 > Pipeline + Editor cơ bản đủ để có user thực tế.
-> Phase 1 + 2 + 3 → release sớm.
+> ✅ SHIPPED 2026-03-25
 
-### Milestone 2 — Pro Release (sau Phase 6)
-> Multi-engine + effects + timeline → sản phẩm pro.
+### Milestone 2 — Pro Release (sau Phase 7.1)
+> Multi-engine + effects + timeline + Downloader → sản phẩm pro.
+> ✅ SHIPPED 2026-04-17
 
 ### Milestone 3 — Full Release (sau Phase 9)
-> Downloader + Monitor + AI + License → sản phẩm hoàn chỉnh.
+> Pro Editor + Auto-Monitor + AI + License → sản phẩm hoàn chỉnh thương mại.
 
 ---
-
-## Tóm Tắt
-
-| Phase | Tên | Dependencies |
-|-------|-----|-------------|
-| 1 | Foundation (Tauri + Sidecar + Layout) | Không |
-| 2 | 0/5 | Planned    |  | 3 | NLE Editor UI (4 tabs, sidebar states) | Phase 2 |
-| 4 | Multi-Engine + Advanced | Phase 2 |
-| 5 | Output Advanced | Complete    | 2026-03-26 | 6 | Timeline + Premium UI | Phase 3 |
-| 7 | Video Downloader | Phase 1 |
-| 8 | Auto-Monitor + AI | Phase 7 |
-| 9 | Polish + License | All |
 
 ## Kỹ thuật Notes (từ tech review)
 

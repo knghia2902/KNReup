@@ -4,16 +4,18 @@ interface VideoTrackProps {
   videoPath: string | null;
   videoDuration: number;
   pixelsPerSecond: number;
+  clipStart?: number;
+  clipDuration?: number;
 }
 
-export function VideoTrack({ videoPath, videoDuration, pixelsPerSecond }: VideoTrackProps) {
+export function VideoTrack({ videoPath, videoDuration, pixelsPerSecond, clipStart = 0 }: VideoTrackProps) {
   // block duration = 5 seconds
   const blockDuration = 5;
   const numBlocks = Math.ceil(videoDuration / blockDuration);
   const blocks = Array.from({ length: numBlocks }, (_, i) => i * blockDuration);
 
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex' }}>
+    <div style={{ position: 'absolute', top: 0, left: -clipStart * pixelsPerSecond, width: `${videoDuration * pixelsPerSecond}px`, height: '100%', display: 'flex' }}>
       {blocks.map(time => (
         <ThumbnailBlock 
           key={time} 

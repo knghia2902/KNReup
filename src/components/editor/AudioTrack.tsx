@@ -6,9 +6,11 @@ interface AudioTrackProps {
   url: string | null;
   pixelsPerSecond: number;
   color: string;
+  clipStart?: number;
+  clipDuration?: number;
 }
 
-export function AudioTrack({ url, pixelsPerSecond, color }: AudioTrackProps) {
+export function AudioTrack({ url, pixelsPerSecond, color, clipStart = 0, clipDuration }: AudioTrackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -71,14 +73,23 @@ export function AudioTrack({ url, pixelsPerSecond, color }: AudioTrackProps) {
 
   return (
     <div 
-      ref={containerRef} 
       style={{ 
-        width: duration > 0 ? `${duration * pixelsPerSecond}px` : '100%', 
+        width: `${(clipDuration || duration) * pixelsPerSecond}px`, 
         height: '100%', 
-        minWidth: '200px',
-        overflow: 'hidden', 
-        pointerEvents: 'none'
-      }} 
-    />
+        overflow: 'hidden',
+        position: 'relative'
+      }}
+    >
+      <div 
+        ref={containerRef} 
+        style={{ 
+          width: duration > 0 ? `${duration * pixelsPerSecond}px` : '100%', 
+          height: '100%', 
+          position: 'absolute',
+          left: -clipStart * pixelsPerSecond,
+          pointerEvents: 'none'
+        }} 
+      />
+    </div>
   );
 }

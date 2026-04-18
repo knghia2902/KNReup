@@ -1,30 +1,43 @@
-# Requirements: Milestone v2.0 (Pro Release)
+# Milestone 3 Requirements: Full Release (Automation & AI)
 
-Bảng yêu cầu kỹ thuật chi tiết cho đợt nâng cấp Pro Release của KNReup.
+## Goals
+Nâng cấp trải nghiệm chỉnh sửa (Editor) lên mức chuyên nghiệp, tích hợp AI để tối ưu nội dung, và xây dựng hệ thống tự động hóa.
 
-## Multi-Engine Dịch & Lồng Tiếng (Category 1)
-- [x] **M2-01**: Tích hợp Engine API hệ OpenAI (để hỗ trợ các Prompt dịch cao cấp hơn).
-- [x] **M2-02**: Tích hợp CTranslate2 / Argos Offline làm fallback cứng cho tính năng Dịch.
-- [x] **M2-03**: Xây dựng thuật toán Auto Fallback và Key Rotation trong class `TranslationEngine` (ví dụ: DeepSeek tịt thì tự đổi API Key hoặc fallback sang Gemini).
-- [x] **M2-04**: Tích hợp Engine Đọc Piper TTS (Offline) và gTTS (Online).
-- [x] **M2-05**: Bổ sung Audio FX Pipeline cho Engine TTS gốc (Thay đổi Speed, Pitch, Volume) trước khi trộn.
+## Editor Upgrades (Trọng tâm Phase 8.0)
 
-## Kỹ Xảo Output Nâng Cao (Category 2)
-- [ ] **M2-06**: Ứng dụng AI PaddleOCR / EasyOCR chạy ngầm để dò tìm bounding box của Hardsub Gốc trong video.
-- [ ] **M2-07**: Tự động Blur (Làm mờ) vùng bounding box phụ đề do OCR dò ra trước khi chèn sub mới đè lên.
-- [ ] **M2-08**: Hỗ trợ chèn Watermark Text và Logo (Có 1 Controller Dot trên UI Canvas Preview để kéo thả tọa độ).
-- [ ] **M2-09**: Hỗ trợ thiết lập Audio BGM (Nhạc nền) - Tính toán Ducking (Giảm âm lượng nhạc nền khi có TTS) và Auto-loop.
-- [ ] **M2-10**: Bổ sung Engine Crop và Smart Resize (Tự Fill Viền) chuyển khung hình từ 16:9 sang 9:16.
+### M3-ED-01: Interactive Timeline Tracks
+- **Feature**: Tất cả 4 track (VID, TTS, SUB, BGM) đều có thể chỉnh sửa trực tiếp trên timeline.
+- **Requirement**:
+  - **VID Track**: Trim đầu/cuối video, kéo thả di chuyển clip, hiển thị thumbnail chi tiết hơn.
+  - **TTS Track**: Xem waveform TTS, trim/offset audio TTS theo segment phụ đề.
+  - **SUB Track**: Giữ nguyên tính năng drag/trim/split hiện tại, bổ sung snap-to-playhead.
+  - **BGM Track**: Trim nhạc nền, điều chỉnh điểm bắt đầu BGM, fade in/out trực quan.
+  - **Snapping**: Cơ chế "hút" giữa các track khi kéo (magnetic timeline).
+- **UI**: Các handle resize 2 đầu + tooltip hiển thị thời gian chính xác.
 
-## Giao Diện & Timeline (Category 3)
-- [ ] **M2-11**: Nâng cấp Timeline thành 4 Track chuyên biệt: VIDEO / AUDIO / SUB / BGM.
-- [ ] **M2-12**: Tích hợp `wavesurfer.js` để render waveform chân thực ở Track Audio thay vì hộp vuông.
-- [ ] **M2-13**: Tối ưu UX/UI với Dark/Light Theme Switcher và Glassmorphism cho 5-Panel Editor hiện hành.
-- [ ] **M2-14**: Quản lý phím tắt Keyboard (Space để play/pause, Ctrl+S để lưu project nội bộ).
+### M3-ED-02: Advanced Properties Panels
+- **Feature**: Nâng cấp các tab STYLE, TTS, SUB, OUT trong Properties Panel.
+- **Requirement**:
+  - **STYLE Tab**: Thêm preset phong cách phụ đề (CapCut-style, Cinematic, Minimal...), live preview khi thay đổi.
+  - **TTS Tab**: Chọn giọng đọc per-segment (không chỉ global), preview audio trước khi render.
+  - **SUB Tab**: Bulk edit (chọn nhiều segment → sửa cùng lúc), tìm kiếm/thay thế trong phụ đề.
+  - **OUT Tab**: Batch Export Presets (lưu/tải cấu hình export yêu thích).
 
-## Future / Out of Scope
-- **Video Downloader**: Mặc dù từng được xếp trong Roadmap, tính năng Downloader Douyin/Tiktok quá khổng lồ (liên quan Session Cookie, Bypass). Sẽ đẩy mạnh vào **Milestone 3** để không phá vỡ mảng Editor của Milestone 2.
-- **Voice Cloning**: Đòi hỏi GPU Server VRAM siêu cao, tạm thời Out-of-Scope toàn diện.
+### M3-ED-03: AI Subtitle Refiner
+- **Feature**: Tích hợp nút "AI Refine" trong bảng phụ đề.
+- **Requirement**: Gửi toàn bộ phụ đề đến LLM (Gemini/DeepSeek) để hiệu đính, làm mượt ngôn ngữ và kiểm tra lỗi chính tả tự động.
+- **UI**: Nút bấm trực tiếp trên SUB tab hoặc toolbar.
 
-## Traceability
-*(Các Requirement ID hiện đang nằm chờ được Plan vào các Phase 4, 5, 6).*
+### M3-ED-04: AI Subtitle Masking
+- **Feature**: Tự động phát hiện và bôi mờ phụ đề gốc.
+- **Requirement**: Sử dụng OCR (EasyOCR) để quét frame, tự động đặt vùng Blur khớp với hardsub cũ.
+
+## Automation & System
+
+### M3-AU-01: Auto-Monitor (Account Tracking)
+- **Feature**: Theo dõi kênh Douyin/TikTok.
+- **Requirement**: Hệ thống tự động kiểm tra kênh mỗi X phút, phát hiện video mới và tự động đưa vào hàng đợi tải về.
+
+### M3-SY-01: Licensing & Distribution
+- **Feature**: Hệ thống bản quyền và cập nhật.
+- **Requirement**: Đăng ký license key, kiểm tra khi khởi động app, tự động tải và cài đặt bản cập nhật mới.

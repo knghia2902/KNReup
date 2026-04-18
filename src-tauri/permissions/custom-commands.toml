@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "custom-commands"
+description = "Permissions for internal Rust commands"
+commands.allow = [
+    "greet",
+    "evaluate_javascript",
+    "get_webview_cookies",
+    "sync_captured_cookie"
+]

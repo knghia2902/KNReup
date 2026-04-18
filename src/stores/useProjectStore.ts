@@ -73,10 +73,17 @@ export interface ProjectConfig {
   bgm_enabled: boolean;
   bgm_file: string;
   bgm_volume: number;
+  bgm_clip_start: number;
+  bgm_clip_duration: number;
+  bgm_timeline_start: number;
+  vid_clip_start: number;
+  vid_clip_duration: number;
   ducking_strength: number;
   // Timeline State
   timelineZoom: number;
   timelineScrollX: number;
+  snapEnabled: boolean;
+  snapThreshold: number;
 }
 
 interface ProjectStore extends ProjectConfig {
@@ -154,9 +161,16 @@ const DEFAULT_CONFIG: ProjectConfig = {
   bgm_enabled: false,
   bgm_file: '',
   bgm_volume: 0.5,
+  bgm_clip_start: 0,
+  bgm_clip_duration: 0, // 0 means use full duration
+  bgm_timeline_start: 0,
+  vid_clip_start: 0,
+  vid_clip_duration: 0, // 0 means use full duration
   ducking_strength: 0.2,
   timelineZoom: 1,
   timelineScrollX: 0,
+  snapEnabled: true,
+  snapThreshold: 12,
 };
 
 export const useProjectStore = create<ProjectStore>()(

@@ -20,16 +20,58 @@ function formatTime(secs: number) {
 
 export function Timeline({ filePaths }: TimelineProps) {
   const config = useProjectStore();
-  const { timelineZoom, updateConfig, bgm_enabled, bgm_file } = config;
+  const { timelineZoom, updateConfig, bgm_enabled, bgm_file, snapEnabled, snapThreshold } = config;
   const { videoDuration, segments, activeFile } = useSubtitleStore();
   
   const playheadRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
+  const [resizingClip, setResizingClip] = useState<{ type: 'vid' | 'bgm' | 'sub', side: 'left' | 'right' } | null>(null);
+  const [activeSnapTime, setActiveSnapTime] = useState<number | null>(null);
   
   const pixelsPerSecond = 50 * timelineZoom;
   const maxSubTime = segments.length > 0 ? segments[segments.length - 1].end : 0;
+
+  const getSnapMetadata = (time: number) => {
+    if (!snapEnabled) return { snapped: false, time };
+    
+    // Snap points: 0, video end, every segment start/end
+    const snapPoints = [0, videoDuration];
+    
+    // Add VID clip edges
+    const vidEnd = config.vid_clip_start + (config.vid_clip_duration || videoDuration);
+    snapPoints.push(config.vid_clip_start);
+    snapPoints.push(vidEnd);
+    
+    // Add BGM clip edges
+    // Default duration approx based on current UI display if 0
+    const bgmDur = config.bgm_clip_duration || (200 / pixelsPerSecond);
+    const bgmEnd = config.bgm_timeline_start + bgmDur;
+    snapPoints.push(config.bgm_timeline_start);
+    snapPoints.push(bgmEnd);
+
+    segments.forEach(s => {
+      snapPoints.push(s.start);
+      snapPoints.push(s.end);
+    });
+
+    const thresholdSeconds = snapThreshold / pixelsPerSecond;
+    let closestPoint = time;
+    let minDiff = thresholdSeconds;
+    let snapped = false;
+
+    snapPoints.forEach(p => {
+      const diff = Math.abs(time - p);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestPoint = p;
+        snapped = true;
+      }
+    });
+
+    return { snapped, time: closestPoint };
+  };
   
   // Xác định file thực tế để hiển thị (ưu tiên activeFile, fallback về file đầu tiên trong list)
   const currentVideoPath = activeFile || (filePaths.length > 0 ? filePaths[0] : null);
@@ -81,17 +123,22 @@ export function Timeline({ filePaths }: TimelineProps) {
       const rect = tlbody.getBoundingClientRect();
       const pointerX = e.clientX - rect.left + tlbody.scrollLeft;
       const newTime = Math.max(0, (pointerX - 4) / pixelsPerSecond);
+      const { snapped, time: snappedTime } = getSnapMetadata(newTime);
+      setActiveSnapTime(snapped ? snappedTime : null);
       
-      setCurrentTime(newTime);
+      setCurrentTime(snappedTime);
       if (playheadRef.current) {
-        playheadRef.current.style.transform = `translateX(${newTime * pixelsPerSecond}px)`;
+        playheadRef.current.style.transform = `translateX(${snappedTime * pixelsPerSecond}px)`;
       }
       
       const video = document.querySelector('video');
-      if (video) video.currentTime = newTime;
+      if (video) video.currentTime = snappedTime;
     };
     
-    const handlePointerUp = () => setIsDraggingPlayhead(false);
+    const handlePointerUp = () => {
+      setIsDraggingPlayhead(false);
+      setActiveSnapTime(null);
+    };
 
     if (isDraggingPlayhead) {
       window.addEventListener('pointermove', handlePointerMove);
@@ -102,6 +149,64 @@ export function Timeline({ filePaths }: TimelineProps) {
       window.removeEventListener('pointerup', handlePointerUp);
     };
   }, [isDraggingPlayhead, pixelsPerSecond]);
+
+  // Handle Clip Resizing
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!resizingClip) return;
+      const tlbody = containerRef.current;
+      if (!tlbody) return;
+      
+      const rect = tlbody.getBoundingClientRect();
+      const pointerX = e.clientX - rect.left + tlbody.scrollLeft;
+      const rawTime = Math.max(0, (pointerX - 4) / pixelsPerSecond);
+      const { snapped, time: newTime } = getSnapMetadata(rawTime);
+      setActiveSnapTime(snapped ? newTime : null);
+
+      if (resizingClip.type === 'vid') {
+        const { vid_clip_start, vid_clip_duration } = useProjectStore.getState();
+        const duration = vid_clip_duration || videoDuration;
+        if (resizingClip.side === 'left') {
+          const delta = newTime - vid_clip_start;
+          updateConfig({
+            vid_clip_start: newTime,
+            vid_clip_duration: Math.max(0.1, duration - delta)
+          });
+        } else {
+          updateConfig({
+            vid_clip_duration: Math.max(0.1, newTime - vid_clip_start)
+          });
+        }
+      } else if (resizingClip.type === 'bgm') {
+        const { bgm_timeline_start, bgm_clip_duration } = useProjectStore.getState();
+        if (resizingClip.side === 'left') {
+          const delta = newTime - bgm_timeline_start;
+          updateConfig({
+            bgm_timeline_start: newTime,
+            bgm_clip_duration: Math.max(0.1, bgm_clip_duration - delta)
+          });
+        } else {
+          updateConfig({
+            bgm_clip_duration: Math.max(0.1, newTime - bgm_timeline_start)
+          });
+        }
+      }
+    };
+    
+    const handlePointerUp = () => {
+      setResizingClip(null);
+      setActiveSnapTime(null);
+    };
+
+    if (resizingClip) {
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+    }
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [resizingClip, pixelsPerSecond, videoDuration]);
 
   const handleZoomIn = () => updateConfig({ timelineZoom: Math.min(10, timelineZoom + 0.5) });
   const handleZoomOut = () => updateConfig({ timelineZoom: Math.max(0.1, timelineZoom - 0.5) });
@@ -178,11 +283,12 @@ export function Timeline({ filePaths }: TimelineProps) {
                const rect = tlbody.getBoundingClientRect();
                const pointerX = e.clientX - rect.left + tlbody.scrollLeft;
                const newTime = Math.max(0, (pointerX - 4) / pixelsPerSecond);
+               const { time: snappedTime } = getSnapMetadata(newTime);
                const video = document.querySelector('video');
-               if (video) video.currentTime = newTime;
-               setCurrentTime(newTime);
+               if (video) video.currentTime = snappedTime;
+               setCurrentTime(snappedTime);
                if (playheadRef.current) {
-                 playheadRef.current.style.transform = `translateX(${newTime * pixelsPerSecond}px)`;
+                 playheadRef.current.style.transform = `translateX(${snappedTime * pixelsPerSecond}px)`;
                }
              }}>
            <div style={{ width: `${timelineWidthPx}px`, minWidth: '100%', height: 'max-content', minHeight: '100%', position: 'relative', flexShrink: 0 }}>
@@ -199,6 +305,16 @@ export function Timeline({ filePaths }: TimelineProps) {
                </div>
              </div>
 
+             {/* Snap Line */}
+             {activeSnapTime !== null && (
+               <div style={{ 
+                 position: 'absolute', top: 0, bottom: 0, 
+                 left: (activeSnapTime * pixelsPerSecond) + 4, 
+                 width: 1, background: 'rgba(225, 29, 72, 0.6)', 
+                 zIndex: 50, pointerEvents: 'none' 
+               }} />
+             )}
+
              <div style={{ position: 'relative', width: '100%', height: '226px' }}>
                
                {/* Timeline Ruler Row (Placeholder) */}
@@ -207,11 +323,37 @@ export function Timeline({ filePaths }: TimelineProps) {
                {/* VID Track */}
                <div className="tltr" style={{ position: 'absolute', top: 26, left: 0, width: '100%', height: TRACK_HEIGHT, borderBottom: '1px solid var(--border-subtle)', background: 'transparent', display: 'flex', alignItems: 'center' }}>
                   {currentVideoPath && (
-                    <div style={{ position: 'absolute', height: 42, left: 4, width: `${Math.max(videoDuration || 1, 1) * pixelsPerSecond}px`, background: 'var(--accent-subtle)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', zIndex: 5 }}>
+                    <div 
+                       onPointerDown={(e) => e.stopPropagation()}
+                       style={{ 
+                         position: 'absolute', height: 42, 
+                         left: (config.vid_clip_start * pixelsPerSecond) + 4, 
+                         width: `${(config.vid_clip_duration || videoDuration || 1) * pixelsPerSecond}px`, 
+                         background: 'var(--accent-subtle)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', zIndex: 5 
+                       }}
+                     >
+                       {/* Handles */}
+                       <div 
+                         className="clip-handle left"
+                         onPointerDown={(e) => { e.stopPropagation(); setResizingClip({ type: 'vid', side: 'left' }); }}
+                         style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize', zIndex: 20 }}
+                       />
+                       <div 
+                         className="clip-handle right"
+                         onPointerDown={(e) => { e.stopPropagation(); setResizingClip({ type: 'vid', side: 'right' }); }}
+                         style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize', zIndex: 20 }}
+                       />
+
                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.8 }}>
-                          <VideoTrack videoPath={currentVideoPath} videoDuration={videoDuration || 1} pixelsPerSecond={pixelsPerSecond} />
+                          <VideoTrack 
+                             videoPath={currentVideoPath} 
+                             videoDuration={videoDuration || 1} 
+                             pixelsPerSecond={pixelsPerSecond} 
+                             clipStart={config.vid_clip_start}
+                             clipDuration={config.vid_clip_duration}
+                           />
                        </div>
-                       <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 600, zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 5 }}>
+                       <div style={{ position: 'absolute', left: 12, display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 600, zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 5 }}>
                           <div style={{ width: 3, height: 12, background: 'var(--accent)', marginRight: 8, borderRadius: 2 }}></div>
                           {currentVideoPath.split(/[\\/]/).pop()}
                        </div>
@@ -242,14 +384,40 @@ export function Timeline({ filePaths }: TimelineProps) {
                {/* BGM Track */}
                <div className="tltr" style={{ position: 'absolute', top: 176, left: 0, width: '100%', height: TRACK_HEIGHT, borderBottom: '1px solid var(--border-subtle)', background: 'transparent', display: 'flex', alignItems: 'center' }}>
                   {bgm_enabled && bgm_file && (
-                     <div style={{ position: 'absolute', height: 42, left: 4, minWidth: '200px', width: 'max-content', background: 'var(--bg-surface)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', zIndex: 5 }}>
-                        <div style={{ flexShrink: 0, height: '100%', opacity: 0.8 }}>
-                           <AudioTrack url={bgm_file} pixelsPerSecond={pixelsPerSecond} color="var(--accent)" />
-                        </div>
-                        <div style={{ position: 'absolute', left: 8, display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--accent)', fontWeight: 600, zIndex: 10, background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: 5 }}>
-                           <div style={{ width: 3, height: 12, background: 'var(--accent)', marginRight: 8, borderRadius: 2 }}></div>
-                           {bgm_file.split(/[\\/]/).pop()}
-                        </div>
+                     <div 
+                       onPointerDown={(e) => e.stopPropagation()}
+                       style={{ 
+                         position: 'absolute', height: 42, 
+                         left: (config.bgm_timeline_start * pixelsPerSecond) + 4, 
+                         width: `${(config.bgm_clip_duration || 200 / pixelsPerSecond) * pixelsPerSecond}px`, 
+                         background: 'var(--bg-surface)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', zIndex: 5 
+                       }}
+                     >
+                       {/* Handles */}
+                       <div 
+                         className="clip-handle left"
+                         onPointerDown={(e) => { e.stopPropagation(); setResizingClip({ type: 'bgm', side: 'left' }); }}
+                         style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize', zIndex: 20 }}
+                       />
+                       <div 
+                         className="clip-handle right"
+                         onPointerDown={(e) => { e.stopPropagation(); setResizingClip({ type: 'bgm', side: 'right' }); }}
+                         style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize', zIndex: 20 }}
+                       />
+
+                       <div style={{ flexShrink: 0, height: '100%', opacity: 0.8 }}>
+                          <AudioTrack 
+                             url={bgm_file} 
+                             pixelsPerSecond={pixelsPerSecond} 
+                             color="var(--accent)" 
+                             clipStart={config.bgm_timeline_start}
+                             clipDuration={config.bgm_clip_duration}
+                           />
+                       </div>
+                       <div style={{ position: 'absolute', left: 12, display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--accent)', fontWeight: 600, zIndex: 10, background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: 5 }}>
+                          <div style={{ width: 3, height: 12, background: 'var(--accent)', marginRight: 8, borderRadius: 2 }}></div>
+                          {bgm_file.split(/[\\/]/).pop()}
+                       </div>
                      </div>
                   )}
                </div>

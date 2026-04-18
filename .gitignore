@@ -19,6 +19,7 @@ src-tauri/target/
 # Python sidecar
 python-sidecar/dist/
 python-sidecar/build/
+python-sidecar/data/
 
 # IDE
 .vscode/
@@ -37,6 +38,18 @@ Clone/
 # Temp files
 *.tmp
 *.log
+tmp/
+
+# Debug & test scripts
+**/debug_*.py
+**/test_*.py
+**/repro_*.py
+**/cookie_test*.py
+query_db.py
+src-tauri/build_log.txt
+
+# Database files (local dev only)
+*.db
 
 # Outputs
 outputs/

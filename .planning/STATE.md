@@ -1,32 +1,31 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
+milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-17T14:42:00.000Z"
+status: planning
+last_updated: "2026-04-17T16:16:10.758Z"
 last_activity: 2026-04-17
 progress:
-  total_phases: 11
-  completed_phases: 7
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 9
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # STATE.md — KNReup Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-23)
+See: .planning/PROJECT.md (updated 2026-04-17)
 
-**Core value:** Nâng tầm dự án lên cấp độ Pro với sức mạnh AI đa luồng và Kỹ xảo Output 4 Track.
-**Current focus:** Phase 08 — Auto-Monitor + AI Assistants
+**Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
+**Current focus:** Phase 8.0 — Editor Upgrade & AI Enhancement
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
-- **Phase:** 07.1 Completed
-- **Status:** Planning Phase 08
+- **Phase:** 8.0 Planning
+- **Status:** Planning Phase 8.0 — Editor Upgrade & AI Enhancement
 - **Last activity:** 2026-04-17
 
 ## Context
@@ -54,11 +53,13 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 2026-03-23 | react-resizable-panels, wavesurfer.js | Library over custom code |
 | 2026-03-23 | Circuit breaker cho API fallback | Tech review feedback |
 | 2026-03-23 | Canvas=preview, ASS=export | Hardsub strategy |
+| 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 
 ### Roadmap Evolution
 
 - Phase 6.1 inserted after Phase 6: OCR Subtitle Extraction (URGENT)
 - Phase 07.1 inserted after Phase 07: Refactor Stitch UI and Implement Tauri WebView Auth (URGENT)
+- Phase 8 split into 8.0 (Editor Upgrade) and 8.1 (Auto-Monitor): Ưu tiên Editor
 
 ## Phase Progress
 
@@ -73,9 +74,10 @@ See: .planning/PROJECT.md (updated 2026-03-23)
 | 6 | Timeline + Premium UI | ✅ Complete |
 | 6.1 | OCR Subtitle Extraction | ✅ Complete |
 | 7 | Video Downloader | ✅ Complete |
-| 07.1| Refactor Stitch UI & Auth | ✅ Complete |
-| 8 | Auto-Monitor + AI | — |
+| 07.1 | Refactor Stitch UI & Auth | ✅ Complete |
+| 8.0 | Editor Upgrade & AI Enhancement | 📝 Planning Ready |
+| 8.1 | Auto-Monitor | — |
 | 9 | Polish + License | — |
 
 ---
-*Last updated: 2026-03-23T15:50+07:00 — Phase 3 complete*
+*Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*
