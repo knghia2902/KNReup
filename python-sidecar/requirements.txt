@@ -1,3 +1,4 @@
+# Python 3.11 or 3.12 is REQUIRED. Python 3.13 is NOT currently supported due to f2/downloader compatibility.
 fastapi>=0.115.0
 uvicorn>=0.34.0
 faster-whisper>=1.1.0

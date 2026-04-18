@@ -60,7 +60,7 @@ KNReup/
 ### Yêu cầu
 - **Node.js** ≥ 18
 - **Rust** (rustup) + Tauri CLI
-- **Python** ≥ 3.11
+- **Python** 3.11 hoặc 3.12 (**QUAN TRỌNG: Python 3.13 chưa được hỗ trợ** do thư viện `f2`)
 - **FFmpeg** trong PATH
 - **CUDA** (khuyến nghị, có CPU fallback)
 
@@ -99,6 +99,14 @@ npm run tauri dev              # Vite @ port 1420 + Tauri window
 ## 📄 License
 
 Private — Chỉ sử dụng nội bộ.
+
+---
+
+## ❓ Giải quyết sự cố thường gặp
+
+**Lỗi `No matching distribution found for f2>=0.9.0` khi cài đặt:**
+- Nguyên nhân: Bạn đang dùng Python 3.13. Thư viện `f2` (Douyin Downloader) hiện chỉ hỗ trợ tối đa Python 3.12.
+- Cách sửa: Gỡ cài đặt Python 3.13 và cài đặt **Python 3.12.7** (bản ổn định nhất).
 
 ---
 
