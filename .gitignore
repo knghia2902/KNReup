@@ -60,6 +60,10 @@ uploads/
 .env
 .env.local
 
+# Agents
+.agents/
+.agent/
+
 # Knreup-app temp (đã copy)
 # D:\Tools\knreup-app/
 
