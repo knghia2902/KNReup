@@ -105,7 +105,13 @@ class SidecarBridge {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
-      throw new Error(error.detail || `API error: ${response.status}`);
+      const detail = error.detail;
+      const message = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: any) => d.msg || d.message || JSON.stringify(d)).join('; ')
+          : `API error: ${response.status}`;
+      throw new Error(message);
     }
 
     return response.json();

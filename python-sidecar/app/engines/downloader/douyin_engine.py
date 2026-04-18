@@ -125,6 +125,7 @@ class DouyinDownloader(BaseDownloader):
                 'thumbnail': getattr(detail, 'cover', ''),
                 'platform': 'douyin',
                 'video_id': aweme_id,
+                'webpage_url': url,
                 'formats': [
                     {
                         'format_id': 'no-watermark',
