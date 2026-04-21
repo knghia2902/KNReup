@@ -7,7 +7,7 @@ import sys
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import health, system, pipeline, subtitles
+from app.routes import health, system, pipeline, subtitles, proxy
 from app.routes.downloader import router as downloader_router
 
 
@@ -39,6 +39,7 @@ app.include_router(system.router, prefix="/api")
 app.include_router(pipeline.router)
 app.include_router(subtitles.router)
 app.include_router(downloader_router)
+app.include_router(proxy.router, prefix="/api")
 
 
 @app.on_event("startup")

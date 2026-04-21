@@ -3,7 +3,6 @@ import './NLELayout.css';
 import { DownloaderPanel } from '../downloader/DownloaderPanel';
 
 export type AppModule = 'editor' | 'downloader' | 'monitor' | 'settings';
-export type SidebarFocus = 'preview' | 'subtitle' | 'pipeline' | 'monitor-mini' | 'settings-mini';
 
 interface NLELayoutProps {
   mediaBin?: ReactNode;
@@ -29,9 +28,9 @@ export function NLELayout({
   activeModule,
   onVideoDrop,
 }: NLELayoutProps) {
-  const [mediaBinWidth, setMediaBinWidth] = useState(204);
-  const [propertiesWidth, setPropertiesWidth] = useState(350);
-  const [timelineHeight, setTimelineHeight] = useState(250);
+  const [mediaBinWidth, setMediaBinWidth] = useState(380);
+  const [propertiesWidth, setPropertiesWidth] = useState(380);
+  const [timelineHeight, setTimelineHeight] = useState(280);
 
   const isResizing = useRef<string | null>(null);
 
@@ -51,14 +50,14 @@ export function NLELayout({
     if (!isResizing.current) return;
 
     if (isResizing.current === 'mediaBin') {
-      const newWidth = e.clientX - 48; // Sidebar width is 48px
-      setMediaBinWidth(Math.max(150, Math.min(newWidth, 400)));
+      const newWidth = e.clientX - 0; // No sidebar offset
+      setMediaBinWidth(Math.max(200, Math.min(newWidth, 500)));
     } else if (isResizing.current === 'properties') {
       const newWidth = window.innerWidth - e.clientX;
-      setPropertiesWidth(Math.max(260, Math.min(newWidth, 600)));
+      setPropertiesWidth(Math.max(260, Math.min(newWidth, 500)));
     } else if (isResizing.current === 'timeline') {
       const newHeight = window.innerHeight - e.clientY - 24; // Status bar is 24px
-      setTimelineHeight(Math.max(220, Math.min(newHeight, 600)));
+      setTimelineHeight(Math.max(220, Math.min(newHeight, 500)));
     }
   }, []);
 

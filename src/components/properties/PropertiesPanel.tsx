@@ -1,44 +1,34 @@
-import { useState, useEffect } from 'react';
-import { StyleTab } from './StyleTab';
-import { TTSTab } from './TTSTab';
-import { SubTab } from './SubTab';
+import { useState } from 'react';
+import { VideoTab } from './VideoTab';
+import { AudioTab } from './AudioTab';
+import { TextTab } from './TextTab';
+import { AdjustTab } from './AdjustTab';
 import { OutTab } from './OutTab';
 import { QueueTab } from './QueueTab';
-import type { SidebarFocus } from '../layout/NLELayout';
+import { FilmStrip, SpeakerHigh, TextT, Faders, Export, ListBullets } from '@phosphor-icons/react';
 
-export type PropertiesTabID = 'style' | 'tts' | 'sub' | 'out' | 'queue';
+export type PropertiesTabID = 'video' | 'audio' | 'text' | 'adjust' | 'out' | 'queue';
 
 interface PropertiesPanelProps {
-  sidebarFocus?: SidebarFocus;
   onRender?: () => void;
   onAnalyze?: () => void;
   processing?: boolean;
 }
 
-const FOCUS_TAB_MAP: Record<SidebarFocus, PropertiesTabID> = {
-  preview: 'style',
-  subtitle: 'sub',
-  pipeline: 'tts',
-  'monitor-mini': 'queue',
-  'settings-mini': 'style',
-};
 
-const TABS: { id: PropertiesTabID; label: string }[] = [
-  { id: 'style', label: 'STYLE' },
-  { id: 'tts', label: 'TTS' },
-  { id: 'sub', label: 'SUB' },
-  { id: 'out', label: 'OUT' },
-  { id: 'queue', label: 'QUEUE' },
+
+const TABS: { id: PropertiesTabID; label: string; icon: any }[] = [
+  { id: 'video', label: 'Video', icon: FilmStrip },
+  { id: 'audio', label: 'Audio', icon: SpeakerHigh },
+  { id: 'text', label: 'Text', icon: TextT },
+  { id: 'adjust', label: 'Adjust', icon: Faders },
+  { id: 'out', label: 'Out', icon: Export },
+  { id: 'queue', label: 'Queue', icon: ListBullets },
 ];
 
-export function PropertiesPanel({ sidebarFocus, onRender, onAnalyze, processing }: PropertiesPanelProps) {
-  const [tab, setTab] = useState<PropertiesTabID>('style');
+export function PropertiesPanel({ onRender, onAnalyze, processing }: PropertiesPanelProps) {
+  const [tab, setTab] = useState<PropertiesTabID>('video');
 
-  useEffect(() => {
-    if (sidebarFocus && FOCUS_TAB_MAP[sidebarFocus]) {
-      setTab(FOCUS_TAB_MAP[sidebarFocus]);
-    }
-  }, [sidebarFocus]);
 
   return (
     <div className="pp">
@@ -54,33 +44,41 @@ export function PropertiesPanel({ sidebarFocus, onRender, onAnalyze, processing 
         ))}
       </div>
       
-      <div className={`tc ${tab === 'style' ? 'vis' : ''}`}>
-        <div className="pbody">
-          <StyleTab />
+      <div className="pscroll">
+        <div className={`tc ${tab === 'video' ? 'vis' : ''}`}>
+          <div className="pbody">
+            <VideoTab />
+          </div>
         </div>
-      </div>
-      
-      <div className={`tc ${tab === 'tts' ? 'vis' : ''}`}>
-        <div className="pbody">
-          <TTSTab />
+        
+        <div className={`tc ${tab === 'audio' ? 'vis' : ''}`}>
+          <div className="pbody">
+            <AudioTab />
+          </div>
         </div>
-      </div>
-      
-      <div className={`tc ${tab === 'sub' ? 'vis' : ''}`}>
-        <div className="pbody">
-          <SubTab onAnalyze={onAnalyze} processing={processing} />
+
+        <div className={`tc ${tab === 'text' ? 'vis' : ''}`}>
+          <div className="pbody">
+            <TextTab onAnalyze={onAnalyze} processing={processing} />
+          </div>
         </div>
-      </div>
-      
-      <div className={`tc ${tab === 'out' ? 'vis' : ''}`}>
-        <div className="pbody">
-          <OutTab onRender={onRender} processing={processing} />
+
+        <div className={`tc ${tab === 'adjust' ? 'vis' : ''}`}>
+          <div className="pbody">
+            <AdjustTab />
+          </div>
         </div>
-      </div>
-      
-      <div className={`tc ${tab === 'queue' ? 'vis' : ''}`}>
-        <div className="pbody">
-          <QueueTab />
+        
+        <div className={`tc ${tab === 'out' ? 'vis' : ''}`}>
+          <div className="pbody">
+            <OutTab onRender={onRender} processing={processing} />
+          </div>
+        </div>
+        
+        <div className={`tc ${tab === 'queue' ? 'vis' : ''}`}>
+          <div className="pbody">
+            <QueueTab />
+          </div>
         </div>
       </div>
     </div>

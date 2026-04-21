@@ -8,7 +8,7 @@ export function QueueTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="pshd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>RENDER QUEUE</span>
+        <span>Render Queue</span>
         {jobs.some(j => j.status === 'completed' || j.status === 'failed') && (
           <button 
             className="btn" 
@@ -43,7 +43,7 @@ export function QueueTab() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ 
-                  fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
+                  fontSize: '8px', fontWeight: 700, textTransform: 'capitalize', letterSpacing: '0.5px',
                   padding: '2px 6px', borderRadius: '4px',
                   background: job.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' : job.status === 'failed' ? 'rgba(239, 68, 68, 0.15)' : 'var(--accent-subtle)',
                   color: job.status === 'completed' ? '#22c55e' : job.status === 'failed' ? '#ef4444' : 'var(--accent)'

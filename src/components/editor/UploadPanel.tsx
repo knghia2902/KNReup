@@ -51,10 +51,14 @@ export function UploadPanel({ onFileSelected, onFileSwitch, onFileRemoved, disab
             <div 
               key={path} 
               className={`mitem ${isActive ? 'active' : ''}`}
-              onClick={() => onFileSwitch?.(path)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="mthumb">
+                onClick={() => onFileSwitch?.(path)}
+                draggable="true"
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/knreup-asset', JSON.stringify({ type: 'media', path }));
+                }}
+                style={{ cursor: 'grab' }}
+              >
+                <div className="mthumb">
                 <div className="mthumb-bg">
                   <span className="mthumb-lbl">{baseName}</span>
                 </div>

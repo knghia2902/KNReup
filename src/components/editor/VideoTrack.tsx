@@ -1,64 +1,84 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, memo } from 'react';
 
 interface VideoTrackProps {
-  videoPath: string | null;
+  videoPath: string;
   videoDuration: number;
   pixelsPerSecond: number;
   clipStart?: number;
-  clipDuration?: number;
+  scrollLeft: number;
+  viewportWidth: number;
 }
 
-export function VideoTrack({ videoPath, videoDuration, pixelsPerSecond, clipStart = 0 }: VideoTrackProps) {
-  // block duration = 5 seconds
-  const blockDuration = 5;
-  const numBlocks = Math.ceil(videoDuration / blockDuration);
-  const blocks = Array.from({ length: numBlocks }, (_, i) => i * blockDuration);
+export const VideoTrack = memo(({ 
+  videoPath, 
+  videoDuration, 
+  pixelsPerSecond, 
+  clipStart = 0,
+  scrollLeft,
+  viewportWidth
+}: VideoTrackProps) => {
+  // Ensure we never have more than ~500 blocks to avoid observer/DOM overload
+  const blockDuration = useMemo(() => Math.max(2, videoDuration / 500), [videoDuration]);
+  
+  const blocks = useMemo(() => {
+    const numBlocks = Math.ceil(videoDuration / blockDuration);
+    return Array.from({ length: numBlocks }, (_, i) => i * blockDuration);
+  }, [videoDuration, blockDuration]);
+
+  // Virtualization is based on TIMELINE time.
+  // The VideoTrack component renders from its own local 0..duration.
+  const viewportStart = Math.max(0, scrollLeft / pixelsPerSecond);
+  const viewportEnd = viewportStart + (viewportWidth / pixelsPerSecond);
 
   return (
-    <div style={{ position: 'absolute', top: 0, left: -clipStart * pixelsPerSecond, width: `${videoDuration * pixelsPerSecond}px`, height: '100%', display: 'flex' }}>
-      {blocks.map(time => (
-        <ThumbnailBlock 
-          key={time} 
-          time={time} 
-          videoPath={videoPath} 
-          width={blockDuration * pixelsPerSecond} 
-        />
-      ))}
+    <div style={{ display: 'flex', height: '100%', alignItems: 'center', gap: 0, width: videoDuration * pixelsPerSecond }}>
+      {blocks.map((blockStartTime, i) => {
+        const blockEndTime = blockStartTime + blockDuration;
+        
+        // Visibility check relative to timeline viewport
+        const isVisible = blockEndTime > viewportStart && blockStartTime < viewportEnd;
+        if (!isVisible) return <div key={i} style={{ width: blockDuration * pixelsPerSecond, height: '100%', flexShrink: 0 }} />;
+
+        return (
+          <ThumbnailBlock
+            key={i}
+            videoPath={videoPath}
+            time={blockStartTime + clipStart} // Apply clip offset to the thumbnail extractor
+            width={blockDuration * pixelsPerSecond}
+          />
+        );
+      })}
     </div>
   );
-}
+});
 
-function ThumbnailBlock({ time, videoPath, width }: { time: number, videoPath: string | null, width: number }) {
+const ThumbnailBlock = memo(({ time, videoPath, width }: { time: number, videoPath: string | null, width: number }) => {
   const [src, setSrc] = useState<string | null>(null);
   const blockRef = useRef<HTMLDivElement>(null);
 
+  const isWideEnough = width >= 3;
+
   useEffect(() => {
-    if (!videoPath) return;
+    if (!videoPath || src) return;
     
-    // Đừng load thumbnail nếu timeline bị zoom out quá nhỏ lẻ (tránh render 1000 tấm ảnh 1 lúc)
-    if (width < 3) return;
+    // Don't load if too narrow, but don't re-run effect for every width change
+    if (!isWideEnough) return;
 
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && !src) {
-          // Gắn cache-buster nhẹ bằng encodeURIComponent(videoPath)
-          const url = `http://localhost:8008/api/pipeline/thumbnail?video_path=${encodeURIComponent(videoPath)}&time=${time}`;
-          setSrc(url);
-          observer.disconnect();
-        }
-      });
+      if (entries[0].isIntersecting) {
+        const url = `http://localhost:8008/api/pipeline/thumbnail?video_path=${encodeURIComponent(videoPath)}&time=${time}`;
+        setSrc(url);
+        observer.disconnect();
+      }
     }, {
-      root: document.querySelector('.tlbody'), // Vùng scroll ngang timeline
-      rootMargin: '300px', // Fetch trước khi lọt vào view 300px
+      root: document.querySelector('.tlbody'),
+      rootMargin: '300px',
       threshold: 0
     });
 
-    if (blockRef.current) {
-      observer.observe(blockRef.current);
-    }
-
+    if (blockRef.current) observer.observe(blockRef.current);
     return () => observer.disconnect();
-  }, [videoPath, time, src, width]);
+  }, [videoPath, time, src, isWideEnough]); // Only re-run if width crosses threshold
 
   return (
     <div 
@@ -83,4 +103,4 @@ function ThumbnailBlock({ time, videoPath, width }: { time: number, videoPath: s
       )}
     </div>
   );
-}
+});

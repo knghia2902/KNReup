@@ -29,6 +29,7 @@ interface SubtitleStore {
   mergeSegments: (id1: number, id2: number) => void;
   trimSegment: (id: number, newStart: number, newEnd: number) => void;
   deleteSegment: (id: number) => void;
+  deleteAndRippleSubtitle: (id: number) => void;
   clearAll: () => void;
 }
 
@@ -222,6 +223,28 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
     set((state) => {
       if (!state.activeFile) return state;
       const newSegs = state.segments.filter((s) => s.id !== id);
+      return {
+        segments: newSegs,
+        fileSegments: { ...state.fileSegments, [state.activeFile]: newSegs },
+        selectedId: state.selectedId === id ? null : state.selectedId,
+      };
+    }),
+
+  deleteAndRippleSubtitle: (id) =>
+    set((state) => {
+      if (!state.activeFile) return state;
+      const targetIdx = state.segments.findIndex(s => s.id === id);
+      if (targetIdx === -1) return state;
+      const targetSeg = state.segments[targetIdx];
+      const duration = targetSeg.end - targetSeg.start;
+      
+      const newSegs = state.segments.filter(s => s.id !== id).map(s => {
+        if (s.start > targetSeg.start) {
+          return { ...s, start: s.start - duration, end: s.end - duration };
+        }
+        return s;
+      });
+      
       return {
         segments: newSegs,
         fileSegments: { ...state.fileSegments, [state.activeFile]: newSegs },

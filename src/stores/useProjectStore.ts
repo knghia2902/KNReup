@@ -84,6 +84,7 @@ export interface ProjectConfig {
   timelineScrollX: number;
   snapEnabled: boolean;
   snapThreshold: number;
+  selectedClipId: string | null;
 }
 
 interface ProjectStore extends ProjectConfig {
@@ -171,6 +172,7 @@ const DEFAULT_CONFIG: ProjectConfig = {
   timelineScrollX: 0,
   snapEnabled: true,
   snapThreshold: 12,
+  selectedClipId: null,
 };
 
 export const useProjectStore = create<ProjectStore>()(

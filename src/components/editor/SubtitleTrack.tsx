@@ -1,46 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSubtitleStore, SubtitleSegment } from '../../stores/useSubtitleStore';
+import { useProjectStore } from '../../stores/useProjectStore';
 
 interface SubtitleTrackProps {
   pixelsPerSecond: number;
+  scrollLeft: number;
+  viewportWidth: number;
 }
 
-export function SubtitleTrack({ pixelsPerSecond }: SubtitleTrackProps) {
-  const { segments, selectSegment, selectedId, splitSegment, trimSegment, deleteSegment } = useSubtitleStore();
+export function SubtitleTrack({ pixelsPerSecond, scrollLeft, viewportWidth }: SubtitleTrackProps) {
+  const { segments, selectSegment, selectedId, trimSegment } = useSubtitleStore();
   const trackRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-
-      if (e.key.toLowerCase() === 'c' && selectedId !== null) {
-        const video = document.querySelector('video');
-        if (video) {
-          const time = video.currentTime;
-          const seg = useSubtitleStore.getState().segments.find(s => s.id === selectedId);
-          if (seg && time > seg.start && time < seg.end) {
-             splitSegment(selectedId, time);
-          }
-        }
-      }
-
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId !== null) {
-        deleteSegment(selectedId);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, splitSegment, deleteSegment]);
+  
+  const startTime = scrollLeft / pixelsPerSecond;
+  const endTime = (scrollLeft + viewportWidth) / pixelsPerSecond;
+  
+  const visibleSegments = segments.filter(s => s.end > startTime && s.start < endTime);
 
   return (
     <div ref={trackRef} style={{ position: 'relative', top: 0, left: 0, width: '100%', height: '100%' }}>
-      {segments.map(s => (
+      {visibleSegments.map(s => (
         <SubtitleBlock 
            key={s.id} 
            segment={s} 
            pixelsPerSecond={pixelsPerSecond} 
            isSelected={s.id === selectedId}
            onClick={() => {
+             useProjectStore.getState().updateConfig({ selectedClipId: `sub-${s.id}` });
              selectSegment(s.id);
              window.dispatchEvent(new CustomEvent('focus-subtitle-panel', { detail: s.id }));
            }}
@@ -56,7 +42,7 @@ function SubtitleBlock({ segment, pixelsPerSecond, isSelected, onClick, onTrim }
   pixelsPerSecond: number; 
   isSelected: boolean; 
   onClick: () => void; 
-  onTrim: (s: number, e: number) => void 
+  onTrim: (s: number, e: number) => void;
 }) {
   const segments = useSubtitleStore(state => state.segments);
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);

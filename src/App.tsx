@@ -10,13 +10,15 @@ import { usePipeline } from './hooks/usePipeline';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { NLELayout, type AppModule, type SidebarFocus } from './components/layout/NLELayout';
+import { NLELayout, type AppModule } from './components/layout/NLELayout';
 import { Titlebar } from './components/layout/Titlebar';
-import { Sidebar } from './components/layout/Sidebar';
 import { Timeline } from './components/editor/Timeline';
 import { DependencyChecker } from './components/setup/DependencyChecker';
 import { UploadPanel } from './components/editor/UploadPanel';
 import { JobMonitor } from './components/editor/JobMonitor';
+import { CategoryBar, type AssetCategory } from './components/editor/CategoryBar';
+import { AssetPlaceholder } from './components/editor/AssetPlaceholder';
+import { AudioLibrary } from './components/editor/AudioLibrary';
 import { VideoPreview } from './components/editor/VideoPreview';
 import { PropertiesPanel } from './components/properties/PropertiesPanel';
 import { SettingsTab } from './components/properties/SettingsTab';
@@ -29,10 +31,10 @@ function App() {
   const { processing, progress, error: pipelineError, analyzeVideo, renderVideo, cancelPipeline, resetPipeline } = usePipeline();
   const [showSetup, setShowSetup] = useState(true);
   const [activeModule, setActiveModule] = useState<AppModule>('editor');
-  const [sidebarFocus, setSidebarFocus] = useState<SidebarFocus>('preview');
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [filePaths, setFilePaths] = useState<string[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [assetCategory, setAssetCategory] = useState<AssetCategory>('media');
 
   // Zustand stores
   const projectConfig = useProjectStore();
@@ -141,7 +143,7 @@ function App() {
             }
           },
         });
-        setSidebarFocus('monitor-mini'); // Assuming 'monitor-mini' is the correct focus for queue
+        // Queue tab auto-focus removed (sidebar removed)
       }
     } catch (err) {
       console.error("Save dialog failed:", err);
@@ -285,28 +287,35 @@ function App() {
 
       <Titlebar activeModule={activeModule} onModuleChange={setActiveModule} />
       <div className="app">
-        <Sidebar activeFocus={sidebarFocus} onFocusChange={setSidebarFocus} />
         <NLELayout
           activeModule={activeModule}
           mediaBin={
-            <UploadPanel 
-              onFileSelected={handleFileSelected} 
-              onFileSwitch={handleFileSwitch}
-              onFileRemoved={handleFileRemove}
-              disabled={processing} 
-              filePaths={filePaths} 
-              activeFile={activeFile}
-            />
+            <>
+              <CategoryBar active={assetCategory} onChange={setAssetCategory} />
+              {assetCategory === 'media' ? (
+                <UploadPanel 
+                  onFileSelected={handleFileSelected} 
+                  onFileSwitch={handleFileSwitch}
+                  onFileRemoved={handleFileRemove}
+                  disabled={processing} 
+                  filePaths={filePaths} 
+                  activeFile={activeFile}
+                />
+              ) : assetCategory === 'audio' ? (
+                <AudioLibrary />
+              ) : (
+                <AssetPlaceholder category={assetCategory} />
+              )}
+            </>
           }
           videoPreview={
             <VideoPreview
               videoSrc={videoSrc}
               segments={segments}
               videoRatio={projectConfig.video_ratio as 'original' | '16:9' | '9:16'}
-              isEditingSub={sidebarFocus === 'subtitle'}
             />
           }
-          properties={<PropertiesPanel sidebarFocus={sidebarFocus} onRender={handleRender} onAnalyze={handleAnalyze} processing={processing} />}
+          properties={<PropertiesPanel onRender={handleRender} onAnalyze={handleAnalyze} processing={processing} />}
           timeline={<Timeline filePaths={filePaths} />}
           settingsContent={<SettingsTab />}
           onVideoDrop={handleVideoDrop}
