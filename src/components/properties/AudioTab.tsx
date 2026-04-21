@@ -3,7 +3,7 @@ import { SliderControl } from '../controls/SliderControl';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { SpeakerHigh, Waveform, MusicNotes, SpeakerLow } from '@phosphor-icons/react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { getMediaSrc } from '../../utils/url';
 import { useEffect, useRef } from 'react';
 
 export function AudioTab() {
@@ -217,7 +217,7 @@ export function AudioTab() {
 
               {config.bgm_file && (
                 <div style={{ marginBottom: '8px' }}>
-                  <audio ref={audioRef} controls style={{ width: '100%', height: '24px' }} src={convertFileSrc(config.bgm_file)} />
+                  <audio ref={audioRef} controls style={{ width: '100%', height: '24px' }} src={getMediaSrc(config.bgm_file) || ''} />
                 </div>
               )}
 

@@ -334,7 +334,11 @@ export function Timeline({ filePaths }: TimelineProps) {
       if ((e.key === 'Delete' || e.key === 'Backspace')) {
         const { selectedId } = useSubtitleStore.getState();
         if (selectedId !== null) {
-          useSubtitleStore.getState().deleteAndRippleSubtitle(selectedId);
+          if (e.shiftKey) {
+            useSubtitleStore.getState().deleteAndRippleSubtitle(selectedId);
+          } else {
+            useSubtitleStore.getState().deleteSegment(selectedId);
+          }
           e.preventDefault();
         }
       }

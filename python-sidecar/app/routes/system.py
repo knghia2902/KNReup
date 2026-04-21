@@ -8,4 +8,13 @@ router = APIRouter()
 @router.get("/system/check")
 async def check_dependencies():
     """Kiểm tra tất cả dependencies (GPU, FFmpeg, etc.)."""
-    return detect_all_dependencies()
+    data = detect_all_dependencies()
+    
+    # Bổ sung check ONNX Runtime providers
+    try:
+        import onnxruntime
+        data["onnx_providers"] = onnxruntime.get_available_providers()
+    except:
+        data["onnx_providers"] = ["onnxruntime not installed"]
+        
+    return data

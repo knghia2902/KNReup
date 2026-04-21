@@ -1,20 +1,37 @@
 import cv2
 import logging
 from typing import List, Dict
+from app.utils.gpu_detect import _inject_nvidia_dll_paths
 
 logger = logging.getLogger(__name__)
 
 class VideoOcrExtractor:
     def __init__(self, lang: str = "vi"):
+        _inject_nvidia_dll_paths()
         try:
-            # RapidOCR (PaddleOCR v4 ONNX) is SOTA for handling multiline & English/Chinese mixes.
-            # Using onnxruntime-gpu ensures this runs insanely fast on CUDA.
+            import onnxruntime
+            providers = onnxruntime.get_available_providers()
+            logger.info(f"Available ONNX providers: {providers}")
+            
             from rapidocr_onnxruntime import RapidOCR
-            logger.info("Initializing RapidOCR (ONNX GPU) Engine")
-            self.reader = RapidOCR(print_verbose=True)
-        except ImportError:
-            logger.error("RapidOCR not installed. Run: pip install rapidocr-onnxruntime onnxruntime-gpu")
-            self.reader = None
+            # RapidOCR doesn't allow passing providers to __init__ easily in some versions,
+            # but it uses onnxruntime under the hood which follows the provider order.
+            self.reader = RapidOCR(print_verbose=False)
+            
+            # Ghi log provider ra file riêng để dễ debug
+            with open("gpu_debug.log", "a") as f:
+                import datetime
+                f.write(f"\n--- {datetime.datetime.now()} ---\n")
+                f.write(f"ONNX Providers: {onnxruntime.get_available_providers()}\n")
+                try:
+                    if hasattr(self.reader, 'text_det'):
+                        f.write(f"Det Provider: {self.reader.text_det.session.get_providers()}\n")
+                    if hasattr(self.reader, 'text_rec'):
+                        f.write(f"Rec Provider: {self.reader.text_rec.session.get_providers()}\n")
+                except Exception as e:
+                    f.write(f"Log error: {e}\n")
+            
+            logger.info("RapidOCR initialized")
         except Exception as e:
             logger.error(f"Failed to load RapidOCR: {e}")
             self.reader = None
@@ -42,16 +59,30 @@ class VideoOcrExtractor:
         # We keep a bit of padding to ensure the text isn't tightly cropped
         pad = 10
 
+        import time
         sec = 0
+        skip_frames = int(fps * 2) # OCR every 2 seconds for performance
+        count = 0
+        
         while cap.isOpened():
-            frame_id = int(fps * sec)
-            if frame_id >= frame_count:
+            # grab() is much faster than read() as it doesn't decode the image
+            if not cap.grab():
                 break
-                
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
-            ret, frame = cap.read()
+            
+            if count % skip_frames != 0:
+                count += 1
+                continue
+            
+            # Only decode the frame we actually need
+            ret, frame = cap.retrieve()
             if not ret:
                 break
+                
+            sec = count // int(fps)
+            count += 1
+            
+            # Tiny sleep to prevent 100% CPU thread lock
+            time.sleep(0.01)
                 
             x, y, w, h = int(region.get("x", 0)), int(region.get("y", 0)), int(region.get("w", 0)), int(region.get("h", 0))
             if w > 0 and h > 0:

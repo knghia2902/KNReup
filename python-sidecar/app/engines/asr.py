@@ -5,37 +5,14 @@ VAD Silero + chunked processing.
 """
 import logging
 import os
-import site
 from pathlib import Path
 from typing import Optional
+from app.utils.gpu_detect import _inject_nvidia_dll_paths
 
 logger = logging.getLogger(__name__)
 
-def _inject_nvidia_dll_paths():
-    """Tự động tiêm đường dẫn DLL của các gói nvidia-* (cu12) cài qua pip vào Windows.
-    Giúp CTranslate2 tải được cublas64_12.dll mà user không cần cài nguyên bộ CUDA Toolkit.
-    """
-    if os.name != "nt":
-        return
-    try:
-        packages = site.getsitepackages()
-        for sp in packages:
-            # Danh sách các thư viện nvidia thường chứa DLL
-            for lib in ["cublas", "cudnn", "cufft", "curand", "cusolver", "cusparse"]:
-                bin_path = os.path.join(sp, "nvidia", lib, "bin")
-                if os.path.exists(bin_path):
-                    try:
-                        os.add_dll_directory(bin_path)
-                    except AttributeError:
-                        pass
-                    if bin_path not in os.environ.get("PATH", ""):
-                        os.environ["PATH"] = bin_path + os.pathsep + os.environ.get("PATH", "")
-                    logger.debug(f"Added DLL directory: {bin_path}")
-    except Exception as e:
-        logger.warning(f"Failed to inject NVIDIA DLL paths: {e}")
-
-
 class WhisperASR:
+
     """Speech recognition sử dụng faster-whisper (CTranslate2-based)."""
 
     def __init__(

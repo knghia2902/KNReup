@@ -11,6 +11,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { NLELayout, type AppModule } from './components/layout/NLELayout';
+import { getMediaSrc } from './utils/url';
 import { Titlebar } from './components/layout/Titlebar';
 import { Timeline } from './components/editor/Timeline';
 import { DependencyChecker } from './components/setup/DependencyChecker';
@@ -48,7 +49,7 @@ function App() {
       setActiveFile(selectedPath);
       useSubtitleStore.getState().setActiveFile(selectedPath);
       useProjectStore.getState().setActiveFile(selectedPath);
-      setVideoSrc(convertFileSrc(selectedPath));
+      setVideoSrc(getMediaSrc(selectedPath));
     },
     [],
   );
@@ -57,7 +58,7 @@ function App() {
     setActiveFile(path);
     useSubtitleStore.getState().setActiveFile(path);
     useProjectStore.getState().setActiveFile(path);
-    setVideoSrc(convertFileSrc(path));
+    setVideoSrc(getMediaSrc(path));
   }, []);
 
   const handleFileRemove = useCallback((path: string) => {
@@ -68,7 +69,7 @@ function App() {
         setActiveFile(nextActive);
         useSubtitleStore.getState().setActiveFile(nextActive);
         useProjectStore.getState().setActiveFile(nextActive);
-        setVideoSrc(nextActive ? convertFileSrc(nextActive) : null);
+        setVideoSrc(getMediaSrc(nextActive));
       }
       return newPaths;
     });

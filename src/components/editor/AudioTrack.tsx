@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { getMediaSrc } from '../../utils/url';
 import { sidecar } from '../../lib/sidecar';
 
 interface AudioTrackProps {
@@ -18,9 +18,8 @@ export function AudioTrack({ url, pixelsPerSecond, color, clipStart = 0, clipDur
 
   useEffect(() => {
     if (!url) return;
-    const cleanUrl = url.trim();
-    const isRemote = cleanUrl.startsWith('http');
-    const finalUrl = isRemote ? `${sidecar.getBaseUrl()}/api/proxy?url=${encodeURIComponent(cleanUrl)}` : convertFileSrc(cleanUrl);
+    const finalUrl = getMediaSrc(url);
+    if (!finalUrl) return;
 
     const audio = new Audio();
     audio.src = finalUrl;
@@ -75,9 +74,8 @@ function AudioChunk({ url, pixelsPerSecond, color, startTime, duration }: any) {
       minPxPerSec: pixelsPerSecond,
     });
 
-    const cleanUrl = url.trim();
-    const isRemote = cleanUrl.startsWith('http');
-    const tauriUrl = isRemote ? `${sidecar.getBaseUrl()}/api/proxy?url=${encodeURIComponent(cleanUrl)}` : convertFileSrc(cleanUrl);
+    const tauriUrl = getMediaSrc(url);
+    if (!tauriUrl) return;
 
     wavesurfer.current.load(tauriUrl).then(() => {
        wavesurfer.current?.setTime(startTime);

@@ -2,10 +2,39 @@
 import subprocess
 import ctypes
 import os
+import site
+import logging
 
+logger = logging.getLogger(__name__)
+
+def _inject_nvidia_dll_paths():
+    """Tự động tiêm đường dẫn DLL của các gói nvidia-* (cu12/cu11) cài qua pip vào Windows."""
+    if os.name != "nt":
+        return
+    try:
+        import sys
+        # Ưu tiên các site-packages từ sys.path để bao quát cả venv
+        potential_bases = [sys.prefix] + site.getsitepackages()
+        for base in potential_bases:
+            sp = os.path.join(base, "Lib", "site-packages")
+            if not os.path.exists(sp):
+                sp = base # fallback cho custom layouts
+            
+            for lib in ["cublas", "cudnn", "cufft", "curand", "cusolver", "cusparse"]:
+                bin_path = os.path.join(sp, "nvidia", lib, "bin")
+                if os.path.exists(bin_path):
+                    try:
+                        os.add_dll_directory(bin_path)
+                    except AttributeError:
+                        pass
+                    if bin_path not in os.environ.get("PATH", ""):
+                        os.environ["PATH"] = bin_path + os.pathsep + os.environ.get("PATH", "")
+    except Exception as e:
+        pass
 
 def detect_gpu() -> dict:
     """Detect NVIDIA GPU và CUDA version."""
+    _inject_nvidia_dll_paths()
     result = {
         "gpu_available": False,
         "gpu_name": None,
@@ -31,20 +60,39 @@ def detect_gpu() -> dict:
     except (FileNotFoundError, subprocess.SubprocessError):
         pass
 
-    # Check CUDA version
+    # Check CUDA & cuDNN DLLs on Windows
     if result["gpu_available"]:
-        for cuda_ver, dll_name in [
-            ("12", "cublas64_12.dll"),
-            ("11", "cublas64_11.dll")
-        ]:
+        has_cublas = False
+        has_cudnn = False
+        
+        # Check cuBLAS
+        for dll in ["cublas64_12.dll", "cublas64_11.dll"]:
             try:
-                ctypes.CDLL(dll_name)
-                result["cuda_version"] = cuda_ver
-                result["cuda_major"] = int(cuda_ver)
-                result["compute_type"] = "float16"
+                ctypes.CDLL(dll)
+                has_cublas = True
+                result["cuda_version"] = "12" if "12" in dll else "11"
+                result["cuda_major"] = 12 if "12" in dll else 11
                 break
             except OSError:
                 continue
+        
+        # Check cuDNN
+        for dll in ["cudnn64_9.dll", "cudnn64_8.dll"]:
+            try:
+                ctypes.CDLL(dll)
+                has_cudnn = True
+                break
+            except OSError:
+                continue
+
+        if has_cublas and has_cudnn:
+            result["compute_type"] = "float16"
+        else:
+            if not has_cublas: logger.warning("Missing cuBLAS DLL")
+            if not has_cudnn: logger.warning("Missing cuDNN DLL")
+            # If missing one of them, we might still try CUDA but it's risky.
+            # For faster-whisper (CTranslate2), both are usually needed for 'cuda' device.
+            result["compute_type"] = "float32" 
 
     return result
 

@@ -110,7 +110,7 @@ function SubtitleBlock({ segment, pixelsPerSecond, isSelected, onClick, onTrim }
 
   return (
     <div 
-      onPointerDown={onClick}
+      onPointerDown={(e) => { e.stopPropagation(); onClick(); }}
       style={{ 
         position: 'absolute', 
         left: leftPx, 
