@@ -41,7 +41,7 @@ export interface ProjectConfig {
   original_volume: number;
   // Output
   container: 'mp4' | 'mkv';
-  codec: 'h264' | 'h265' | 'vp9';
+  codec: 'h264' | 'h265' | 'h264_nvenc' | 'hevc_nvenc' | 'vp9';
   crf: number;
   preset: string;
   resolution: string;

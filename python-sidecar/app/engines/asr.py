@@ -46,6 +46,7 @@ class WhisperASR:
                     self.model_size,
                     device=self.device,
                     compute_type=self.compute_type,
+                    num_workers=1
                 )
             except Exception as e:
                 logger.error(f"Failed to load model on {self.device} (error: {e}).")

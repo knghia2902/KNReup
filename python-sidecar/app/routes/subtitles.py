@@ -8,7 +8,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/subtitles")
+router = APIRouter(prefix="/subtitles")
 
 
 # ─── Models ───────────────────────────────────────────────

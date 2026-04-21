@@ -456,12 +456,31 @@ class FFmpegOutputBuilder:
         map_args = ["-map", f"[{v_current}]", "-map", "[aout]"]
         cmd.extend(map_args)
 
-        if codec == "libx264" or codec == "libx265":
-            cmd.extend(["-c:v", codec, "-preset", preset, "-crf", str(crf)])
-        elif codec == "h264_nvenc" or codec == "hevc_nvenc":
-            cmd.extend(["-c:v", codec, "-preset", preset, "-cq", str(crf), "-b:v", "0"]) # NVENC uses -cq
+        # Tự động chọn bộ mã hóa phần cứng nếu có GPU
+        actual_codec = codec
+        from app.utils.gpu_detect import detect_gpu
+        gpu_info = detect_gpu()
+        
+        if gpu_info.get("gpu_available"):
+            if codec == "h264" or codec == "libx264":
+                actual_codec = "h264_nvenc"
+            elif codec == "h265" or codec == "libx265" or codec == "hevc":
+                actual_codec = "hevc_nvenc"
+            logger.info(f"GPU detected! Switching encoder to: {actual_codec}")
+
+        if actual_codec == "libx264" or actual_codec == "libx265":
+            cmd.extend(["-c:v", actual_codec, "-preset", preset, "-crf", str(crf)])
+        elif actual_codec == "h264_nvenc" or actual_codec == "hevc_nvenc":
+            # NVENC uses -cq for quality, -preset p1 to p7 (fast to slow), and requires -pix_fmt
+            cmd.extend([
+                "-c:v", actual_codec, 
+                "-preset", "p4", # p4 is balanced
+                "-cq", str(crf), 
+                "-b:v", "0", 
+                "-pix_fmt", "yuv420p" # Đảm bảo tương thích mọi trình phát
+            ])
         else:
-            cmd.extend(["-c:v", codec, "-crf", str(crf)])
+            cmd.extend(["-c:v", actual_codec, "-crf", str(crf)])
         cmd.extend(["-c:a", "aac", "-b:a", "192k"])
         cmd.append(self.output_path)
 

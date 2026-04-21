@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/pipeline")
+router = APIRouter(prefix="/pipeline")
 
 # ─── Models ───────────────────────────────────────────────
 class TranscribeRequest(BaseModel):

@@ -8,29 +8,41 @@ import logging
 logger = logging.getLogger(__name__)
 
 def _inject_nvidia_dll_paths():
-    """Tự động tiêm đường dẫn DLL của các gói nvidia-* (cu12/cu11) cài qua pip vào Windows."""
+    """Đăng ký bộ thư viện CUDA 12.4 thống nhất từ Torch Lib cho toàn bộ ứng dụng."""
     if os.name != "nt":
         return
     try:
         import sys
-        # Ưu tiên các site-packages từ sys.path để bao quát cả venv
+        import site
+        
         potential_bases = [sys.prefix] + site.getsitepackages()
+        
         for base in potential_bases:
             sp = os.path.join(base, "Lib", "site-packages")
             if not os.path.exists(sp):
-                sp = base # fallback cho custom layouts
+                sp = base
             
-            for lib in ["cublas", "cudnn", "cufft", "curand", "cusolver", "cusparse"]:
+            # ƯU TIÊN SỐ 1: Torch Lib (Chứa CUDA 12.4 chuẩn, ổn định nhất)
+            torch_lib = os.path.join(sp, "torch", "lib")
+            if os.path.exists(torch_lib):
+                try:
+                    os.add_dll_directory(torch_lib)
+                    # Cần thêm vào PATH cho một số thư viện cũ vẫn dùng cơ chế cũ
+                    if torch_lib not in os.environ.get("PATH", ""):
+                        os.environ["PATH"] = torch_lib + os.pathsep + os.environ.get("PATH", "")
+                    logger.info(f"Unified CUDA 12.4 (Torch): {torch_lib}")
+                except: pass
+
+            # Dự phòng: Các thư viện NVIDIA lẻ
+            nvidia_libs = ["cuda_runtime", "cublas", "cudnn", "cufft", "curand", "cusolver", "cusparse", "nvjitlink", "cuda_nvrtc"]
+            for lib in nvidia_libs:
                 bin_path = os.path.join(sp, "nvidia", lib, "bin")
                 if os.path.exists(bin_path):
                     try:
                         os.add_dll_directory(bin_path)
-                    except AttributeError:
-                        pass
-                    if bin_path not in os.environ.get("PATH", ""):
-                        os.environ["PATH"] = bin_path + os.pathsep + os.environ.get("PATH", "")
+                    except: pass
     except Exception as e:
-        pass
+        logger.warning(f"CUDA Unification warning: {e}")
 
 def detect_gpu() -> dict:
     """Detect NVIDIA GPU và CUDA version."""
