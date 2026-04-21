@@ -125,6 +125,19 @@ Plans:
 - [x] TBD (run /gsd-plan-phase 07.1 to break down) (completed 2026-04-17)
 **Status**: ✅ Complete (2026-04-17)
 
+## Phase 7.2: Advanced Timeline Interactions
+> **Mục tiêu**: Kéo thả clip, snapping chuyên nghiệp và kéo thả từ library.
+> **Output**: Timeline hoạt động mượt mà ngang tầm Capcut.
+
+- **Clip Repositioning**: Kéo di chuyển clip (VID/BGM) trên track.
+- **Snapping Logic**: Tự động hít vào playhead/cạnh clip khi kéo.
+- **Library Drag & Drop**: Kéo video/audio từ Media Bin/Audio Library thả xuống timeline.
+- **Visual Feedback**: Hiện vạch snap, bóng mờ khi kéo thả.
+
+**UAT**: Nắm thân clip kéo đi → clip tự hít vào playhead → kéo nhạc từ Audio Library thả vào timeline.
+
+---
+
 ## Phase 8.0: Editor Upgrade & AI Enhancement
 > **Mục tiêu**: Nâng cấp toàn diện UX Editor — Timeline tương tác chi tiết, Properties Panel nâng cao, và AI tối ưu nội dung.
 > **Requirements**: M3-ED-01, M3-ED-02, M3-ED-03, M3-ED-04
