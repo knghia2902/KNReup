@@ -1,4 +1,6 @@
 import { useProjectStore } from '../../stores/useProjectStore';
+import { useSidecar } from '../../hooks/useSidecar';
+import { DependencyChecker } from '../setup/DependencyChecker';
 
 export function SettingsTab() {
   const { 
@@ -6,9 +8,22 @@ export function SettingsTab() {
     updateConfig 
   } = useProjectStore();
 
+  const { systemCheck, loading, error, retrySystemCheck } = useSidecar();
+
   return (
     <div style={{ padding: '0 24px', maxWidth: 640, margin: '24px auto', color: 'var(--fg)', height: 'calc(100% - 48px)', overflowY: 'auto' }}>
-       <h2 style={{ marginBottom: 32, borderBottom: '1px solid var(--border)', paddingBottom: 16, fontSize: '20px', fontWeight: 600 }}>API Keys Configuration</h2>
+       <h2 style={{ marginBottom: 32, borderBottom: '1px solid var(--border)', paddingBottom: 16, fontSize: '20px', fontWeight: 600 }}>Cấu hình Hệ thống</h2>
+       
+       <div style={{ marginBottom: 40 }}>
+         <DependencyChecker 
+           systemCheck={systemCheck}
+           loading={loading}
+           error={error}
+           onRetry={retrySystemCheck}
+         />
+       </div>
+
+       <h2 style={{ marginBottom: 32, borderBottom: '1px solid var(--border)', paddingBottom: 16, fontSize: '20px', fontWeight: 600 }}>API Keys</h2>
        
        <div className="pgrp" style={{ marginBottom: 20 }}>
          <label style={{ marginBottom: 8, display: 'block', fontWeight: 500 }}>Google Gemini API Key</label>

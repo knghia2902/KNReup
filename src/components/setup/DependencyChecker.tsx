@@ -3,7 +3,7 @@
  * No emojis. Phosphor Icons. Liquid glass card.
  * Skeleton shimmer loading. Tactile feedback.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import {
   CheckCircle, Warning, XCircle,
   Circuitry, FilmStrip, Cpu, CircleNotch,
@@ -20,83 +20,67 @@ interface DependencyCheckerProps {
 }
 
 export function DependencyChecker({
-  systemCheck, loading, error, onComplete, onRetry,
-}: DependencyCheckerProps) {
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    if (systemCheck?.all_ok && !dismissed) {
-      const timer = setTimeout(() => { setDismissed(true); onComplete(); }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [systemCheck, dismissed, onComplete]);
-
-  if (dismissed) return null;
-
+  systemCheck, loading, error, onRetry,
+}: Omit<DependencyCheckerProps, 'onComplete'>) {
   return (
-    <div className="dep-overlay">
-      <div className="dep-card glass-panel">
-        <div className="dep-header">
-          <Cpu size={20} weight="duotone" className="dep-header-icon" />
-          <div>
-            <h2 className="dep-title">System Check</h2>
-            <p className="dep-desc">Verifying dependencies...</p>
-          </div>
+    <div className="dep-card glass-panel" style={{ position: 'relative', transform: 'none', top: 0, left: 0, border: '1px solid var(--border)' }}>
+      <div className="dep-header">
+        <Cpu size={20} weight="duotone" className="dep-header-icon" />
+        <div>
+          <h2 className="dep-title">System Check</h2>
+          <p className="dep-desc">Verifying dependencies...</p>
         </div>
-
-        {error && (
-          <div className="dep-alert danger">
-            <Warning size={14} weight="bold" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {loading && !systemCheck && (
-          <div className="dep-loading">
-            <CircleNotch size={18} className="dep-spin" />
-            <span>Connecting to backend...</span>
-          </div>
-        )}
-
-        {systemCheck && (
-          <div className="dep-list">
-            <DepItem
-              icon={<Circuitry size={16} weight="duotone" />}
-              label="GPU"
-              detail={systemCheck.gpu.gpu_available
-                ? `${systemCheck.gpu.gpu_name} ${systemCheck.gpu.cuda_version ? `/ CUDA ${systemCheck.gpu.cuda_version}` : ''}`
-                : 'Not found — CPU mode'}
-              status={systemCheck.gpu.gpu_available ? 'ok' : 'warn'}
-            />
-            <DepItem
-              icon={<FilmStrip size={16} weight="duotone" />}
-              label="FFmpeg"
-              detail={systemCheck.ffmpeg.available
-                ? (systemCheck.ffmpeg.version?.split(' ').slice(0, 3).join(' ') || 'Installed')
-                : 'Not installed'}
-              status={systemCheck.ffmpeg.available ? 'ok' : 'fail'}
-            />
-          </div>
-        )}
-
-        {systemCheck && (
-          <div className="dep-footer">
-            {systemCheck.all_ok ? (
-              <div className="dep-ok">
-                <CheckCircle size={14} weight="fill" />
-                <span>All clear</span>
-              </div>
-            ) : (
-              <div className="dep-actions">
-                <button className="dep-btn primary" onClick={onRetry}>Retry</button>
-                <button className="dep-btn" onClick={() => { setDismissed(true); onComplete(); }}>
-                  Skip
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      {error && (
+        <div className="dep-alert danger">
+          <Warning size={14} weight="bold" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {loading && !systemCheck && (
+        <div className="dep-loading">
+          <CircleNotch size={18} className="dep-spin" />
+          <span>Connecting to backend...</span>
+        </div>
+      )}
+
+      {systemCheck && (
+        <div className="dep-list">
+          <DepItem
+            icon={<Circuitry size={16} weight="duotone" />}
+            label="GPU"
+            detail={systemCheck.gpu.gpu_available
+              ? `${systemCheck.gpu.gpu_name} ${systemCheck.gpu.cuda_version ? `/ CUDA ${systemCheck.gpu.cuda_version}` : ''}`
+              : 'Not found — CPU mode'}
+            status={systemCheck.gpu.gpu_available ? 'ok' : 'warn'}
+          />
+          <DepItem
+            icon={<FilmStrip size={16} weight="duotone" />}
+            label="FFmpeg"
+            detail={systemCheck.ffmpeg.available
+              ? (systemCheck.ffmpeg.version?.split(' ').slice(0, 3).join(' ') || 'Installed')
+              : 'Not installed'}
+            status={systemCheck.ffmpeg.available ? 'ok' : 'fail'}
+          />
+        </div>
+      )}
+
+      {systemCheck && (
+        <div className="dep-footer">
+          {systemCheck.all_ok ? (
+            <div className="dep-ok">
+              <CheckCircle size={14} weight="fill" />
+              <span>All clear</span>
+            </div>
+          ) : (
+            <div className="dep-actions" style={{ justifyContent: 'flex-start' }}>
+              <button className="dep-btn primary" onClick={onRetry}>Retry</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

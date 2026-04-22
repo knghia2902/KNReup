@@ -3,7 +3,7 @@
  * Phase 3: Added VideoPreview, Zustand stores, Properties panel
  */
 import { useState, useCallback, useEffect } from 'react';
-import { CheckCircle, XCircle, CircleNotch } from '@phosphor-icons/react';
+import { CheckCircle, CircleNotch } from '@phosphor-icons/react';
 import { useSidecar } from './hooks/useSidecar';
 import { useQueueStore } from './stores/queueStore';
 import { usePipeline } from './hooks/usePipeline';
@@ -13,7 +13,6 @@ import { NLELayout, type AppModule } from './components/layout/NLELayout';
 import { getVideoSrc } from './utils/url';
 import { Titlebar } from './components/layout/Titlebar';
 import { Timeline } from './components/editor/Timeline';
-import { DependencyChecker } from './components/setup/DependencyChecker';
 import { UploadPanel } from './components/editor/UploadPanel';
 import { JobMonitor } from './components/editor/JobMonitor';
 import { CategoryBar, type AssetCategory } from './components/editor/CategoryBar';
@@ -27,9 +26,8 @@ import { useSubtitleStore } from './stores/useSubtitleStore';
 import './styles/design-system.css';
 
 function App() {
-  const { connected, health, systemCheck, error, loading, retrySystemCheck } = useSidecar();
+  const { connected, health } = useSidecar();
   const { processing, progress, error: pipelineError, analyzeVideo, renderVideo, cancelPipeline, resetPipeline } = usePipeline();
-  const [showSetup, setShowSetup] = useState(true);
   
   // Get active module from URL param (no state needed as it doesn't change after load)
   const activeModule: AppModule = (() => {
@@ -42,7 +40,7 @@ function App() {
     } catch { /* ignore */ }
     return 'editor';
   })();
-  
+
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [filePaths, setFilePaths] = useState<string[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -50,8 +48,6 @@ function App() {
 
   // Zustand stores
   const projectConfig = useProjectStore();
-
-  const handleSetupComplete = useCallback(() => setShowSetup(false), []);
 
   const handleFileSelected = useCallback(
     async (selectedPath: string) => {
@@ -283,17 +279,7 @@ function App() {
 
   return (
     <>
-      {showSetup && (
-        <DependencyChecker
-          systemCheck={systemCheck}
-          loading={loading}
-          error={error}
-          onComplete={handleSetupComplete}
-          onRetry={retrySystemCheck}
-        />
-      )}
-
-      {(processing || error || (progress && progress.stage === 'done')) && progress && (
+      {(processing || (progress && progress.stage === 'done')) && progress && (
         <JobMonitor progress={progress} onCancel={cancelPipeline} onDismiss={resetPipeline} />
       )}
 
@@ -334,13 +320,11 @@ function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
               {connected ? (
                 <CheckCircle size={12} weight="fill" style={{ color: 'var(--success)' }} />
-              ) : error ? (
-                <XCircle size={12} weight="fill" style={{ color: 'var(--danger)' }} />
               ) : (
                 <CircleNotch size={12} className="dep-spin" style={{ color: 'var(--accent)' }} />
               )}
               <span className="status-mono">
-                {connected ? `Backend connected / ${systemCheck?.gpu.gpu_available ? 'GPU' : 'CPU'}` : error || 'Connecting...'}
+                {connected ? 'Backend connected' : 'Connecting...'}
               </span>
               {pipelineError && <span className="status-mono" style={{ color: 'var(--danger)' }}>Pipeline: {pipelineError}</span>}
               {health && <span className="status-mono" style={{ marginLeft: 'auto' }}>v{health.version}</span>}
