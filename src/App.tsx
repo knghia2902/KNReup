@@ -41,9 +41,21 @@ function App() {
     return 'editor';
   })();
 
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
-  const [filePaths, setFilePaths] = useState<string[]>([]);
-  const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [filePaths, setFilePaths] = useState<string[]>(() => {
+    return Object.keys(useProjectStore.getState().fileConfigs || {});
+  });
+  const [activeFile, setActiveFile] = useState<string | null>(() => {
+    const state = useProjectStore.getState();
+    const files = Object.keys(state.fileConfigs || {});
+    if (state.activeFile && files.includes(state.activeFile)) return state.activeFile;
+    return files.length > 0 ? files[0] : null;
+  });
+  const [videoSrc, setVideoSrc] = useState<string | null>(() => {
+    const state = useProjectStore.getState();
+    const files = Object.keys(state.fileConfigs || {});
+    const target = (state.activeFile && files.includes(state.activeFile)) ? state.activeFile : (files.length > 0 ? files[0] : null);
+    return target ? getVideoSrc(target) : null;
+  });
   const [assetCategory, setAssetCategory] = useState<AssetCategory>('media');
 
   // Zustand stores
