@@ -133,8 +133,13 @@ Plans:
 - **Snapping Logic**: Tự động hít vào playhead/cạnh clip khi kéo.
 - **Library Drag & Drop**: Kéo video/audio từ Media Bin/Audio Library thả xuống timeline.
 - **Visual Feedback**: Hiện vạch snap, bóng mờ khi kéo thả.
+- **Split Functionality**: Hỗ trợ Split, Split Left, Split Right tương tự Capcut.
 
-**UAT**: Nắm thân clip kéo đi → clip tự hít vào playhead → kéo nhạc từ Audio Library thả vào timeline.
+**UAT**: Nắm thân clip kéo đi → clip tự hít vào playhead → kéo nhạc từ Audio Library thả vào timeline → Split clip thành công.
+
+Plans:
+- [x] 07.2-01-PLAN.md — Magnetic snapping, dragging and basic split.
+- [ ] 07.2-02-PLAN.md — Advanced Split Toolbar (Split Left, Split Right, Icons).
 
 ---
 
