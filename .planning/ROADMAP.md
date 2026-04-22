@@ -139,7 +139,7 @@ Plans:
 
 Plans:
 - [x] 07.2-01-PLAN.md — Magnetic snapping, dragging and basic split.
-- [ ] 07.2-02-PLAN.md — Advanced Split Toolbar (Split Left, Split Right, Icons).
+- [x] 07.2-02-PLAN.md — Timeline Header Refactor, Trash Icon, BGM Deletion and Time Display fixes.
 
 ---
 
