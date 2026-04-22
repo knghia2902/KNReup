@@ -39,6 +39,43 @@
   border-radius: 4px;
 }
 
+/* Search */
+.launcher-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 8px;
+  padding: 6px 12px;
+  width: 200px;
+  transition: border-color 0.15s ease;
+}
+
+.launcher-search:focus-within {
+  border-color: var(--accent, #7c6aef);
+}
+
+.launcher-search-input {
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+  width: 100%;
+}
+
+.launcher-search-input::placeholder {
+  color: var(--text-muted, #888);
+}
+
+/* Main layout */
+.launcher-main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
 /* Body */
 .launcher-body {
   flex: 1;
@@ -47,6 +84,48 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
+}
+
+/* Hero Actions */
+.launcher-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.launcher-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.launcher-open-btn:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--accent, #7c6aef);
+}
+
+/* Tool description */
+.launcher-tool-desc {
+  font-size: 10px;
+  color: var(--text-muted, #666);
+  margin-top: -4px;
+}
+
+/* Count badge */
+.launcher-count {
+  font-weight: 400;
+  color: var(--text-muted, #888);
+  font-size: 12px;
 }
 
 /* Hero Section */
