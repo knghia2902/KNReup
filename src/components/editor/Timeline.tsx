@@ -7,12 +7,11 @@ import { VideoTrack } from './VideoTrack';
 import { SubtitleTrack } from './SubtitleTrack';
 
 function formatTime(secs: number) {
-  if (isNaN(secs) || !isFinite(secs)) return '00:00:00:00';
+  if (isNaN(secs) || !isFinite(secs)) return '00:00:00';
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = Math.floor(secs % 60);
-  const f = Math.floor((secs % 1) * 30);
-  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}:${f.toString().padStart(2,'0')}`;
+  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
 }
 
 function formatTimeShort(secs: number) {
@@ -101,6 +100,28 @@ export function Timeline({ filePaths }: TimelineProps) {
       useSubtitleStore.getState().splitSegment(selectedId, currentTime);
     }
     // Video split deferred until multi-clip support
+  };
+
+  const handleSplitLeft = () => {
+    if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
+      const seg = segments.find(s => s.id === selectedId);
+      if (seg && currentTime > seg.start && currentTime < seg.end) {
+        useSubtitleStore.getState().trimSegment(selectedId, currentTime, seg.end);
+      }
+    } else {
+      config.splitLeft(currentTime, videoDuration);
+    }
+  };
+
+  const handleSplitRight = () => {
+    if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
+      const seg = segments.find(s => s.id === selectedId);
+      if (seg && currentTime > seg.start && currentTime < seg.end) {
+        useSubtitleStore.getState().trimSegment(selectedId, seg.start, currentTime);
+      }
+    } else {
+      config.splitRight(currentTime, videoDuration);
+    }
   };
 
   useEffect(() => {
@@ -250,15 +271,20 @@ export function Timeline({ filePaths }: TimelineProps) {
       }
 
       if (e.key.toLowerCase() === 'q') {
-         config.splitLeft(currentTime, videoDuration);
-         e.preventDefault();
-      } else if (e.key.toLowerCase() === 'w') {
-         config.splitRight(currentTime, videoDuration);
+         handleSplitLeft();
          e.preventDefault();
       }
-      
+      if (e.key.toLowerCase() === 'w') {
+         handleSplitRight();
+         e.preventDefault();
+      }
+
       if ((e.key === 'Delete' || e.key === 'Backspace')) {
-        const { selectedId } = useSubtitleStore.getState();
+        if (selectedClipId === 'bgm-main') {
+          useProjectStore.getState().updateConfig({ bgm_enabled: false, bgm_file: '', selectedClipId: null });
+          e.preventDefault();
+          return;
+        }
         if (selectedId !== null) {
           if (e.shiftKey) {
             useSubtitleStore.getState().deleteAndRippleSubtitle(selectedId);
@@ -271,7 +297,7 @@ export function Timeline({ filePaths }: TimelineProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentTime]);
+  }, [currentTime, selectedClipId, selectedId, segments]);
 
   const handleZoomIn = () => updateConfig({ timelineZoom: Math.min(10, timelineZoom + 0.5) });
   const handleZoomOut = () => updateConfig({ timelineZoom: Math.max(0.1, timelineZoom - 0.5) });
@@ -288,13 +314,13 @@ export function Timeline({ filePaths }: TimelineProps) {
         </span>
 
         <div style={{ marginLeft: 20, display: 'flex', gap: 2, alignItems: 'center', background: 'var(--bg-primary)', padding: '2px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
-           <button className="tlb-split" onClick={() => config.splitLeft(currentTime, videoDuration)} title="Split Left (Q)" disabled={!selectedClipId}>
+           <button className="tlb-split" onClick={handleSplitLeft} title="Split Left (Q)" disabled={!selectedClipId}>
               <ArrowLineLeft size={16} />
            </button>
            <button className="tlb-split" onClick={handleSplitAtPlayhead} title="Split (Ctrl+B)" disabled={!selectedClipId}>
               <Scissors size={16} />
            </button>
-           <button className="tlb-split" onClick={() => config.splitRight(currentTime, videoDuration)} title="Split Right (W)" disabled={!selectedClipId}>
+           <button className="tlb-split" onClick={handleSplitRight} title="Split Right (W)" disabled={!selectedClipId}>
               <ArrowLineRight size={16} />
            </button>
         </div>
