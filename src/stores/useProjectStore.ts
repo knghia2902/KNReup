@@ -95,6 +95,8 @@ interface ProjectStore extends ProjectConfig {
   updateConfig: (partial: Partial<ProjectConfig>) => void;
   resetConfig: () => void;
   applyPreset: (preset: Partial<ProjectConfig>) => void;
+  splitLeft: (time: number, videoDuration: number) => void;
+  splitRight: (time: number, videoDuration: number) => void;
 }
 
 const DEFAULT_CONFIG: ProjectConfig = {
@@ -177,7 +179,7 @@ const DEFAULT_CONFIG: ProjectConfig = {
 
 export const useProjectStore = create<ProjectStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...DEFAULT_CONFIG,
       fileConfigs: {},
       activeFile: null,
@@ -269,6 +271,45 @@ export const useProjectStore = create<ProjectStore>()(
           }
         };
       }),
+
+      splitLeft: (time, videoDuration) => {
+        const state = get();
+        const { selectedClipId, vid_clip_start, vid_clip_duration, bgm_timeline_start, bgm_clip_duration, bgm_clip_start } = state;
+        
+        if (selectedClipId === 'vid-main') {
+          const dur = vid_clip_duration || videoDuration;
+          if (time > vid_clip_start && time < vid_clip_start + dur) {
+            state.updateConfig({ vid_clip_start: time, vid_clip_duration: Math.max(0.1, dur - (time - vid_clip_start)) });
+          }
+        } else if (selectedClipId === 'bgm-main') {
+          const dur = bgm_clip_duration || 200;
+          if (time > bgm_timeline_start && time < bgm_timeline_start + dur) {
+            const cutLength = time - bgm_timeline_start;
+            state.updateConfig({ 
+              bgm_timeline_start: time, 
+              bgm_clip_start: bgm_clip_start + cutLength,
+              bgm_clip_duration: Math.max(0.1, dur - cutLength) 
+            });
+          }
+        }
+      },
+
+      splitRight: (time, videoDuration) => {
+        const state = get();
+        const { selectedClipId, vid_clip_start, vid_clip_duration, bgm_timeline_start, bgm_clip_duration } = state;
+        
+        if (selectedClipId === 'vid-main') {
+          const dur = vid_clip_duration || videoDuration;
+          if (time > vid_clip_start && time < vid_clip_start + dur) {
+            state.updateConfig({ vid_clip_duration: Math.max(0.1, time - vid_clip_start) });
+          }
+        } else if (selectedClipId === 'bgm-main') {
+          const dur = bgm_clip_duration || 200;
+          if (time > bgm_timeline_start && time < bgm_timeline_start + dur) {
+            state.updateConfig({ bgm_clip_duration: Math.max(0.1, time - bgm_timeline_start) });
+          }
+        }
+      },
     }),
     { name: 'knreup-project-config' }
   )
