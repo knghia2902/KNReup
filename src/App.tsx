@@ -23,37 +23,40 @@ import { PropertiesPanel } from './components/properties/PropertiesPanel';
 import { SettingsTab } from './components/properties/SettingsTab';
 import { useProjectStore } from './stores/useProjectStore';
 import { useSubtitleStore } from './stores/useSubtitleStore';
+import { useLauncherStore } from './stores/useLauncherStore';
 import './styles/design-system.css';
 
 function App() {
   const { connected, health } = useSidecar();
   const { processing, progress, error: pipelineError, analyzeVideo, renderVideo, cancelPipeline, resetPipeline } = usePipeline();
   
-  // Get active module from URL param (no state needed as it doesn't change after load)
-  const activeModule: AppModule = (() => {
+  // Get route params
+  const params = (() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const mod = params.get('module');
-      if (mod && ['editor', 'downloader', 'monitor', 'settings'].includes(mod)) {
-        return mod as AppModule;
-      }
-    } catch { /* ignore */ }
+      return new URLSearchParams(window.location.search);
+    } catch { return new URLSearchParams(); }
+  })();
+  const projectId = params.get('id');
+  const activeModule: AppModule = (() => {
+    const mod = params.get('module');
+    if (mod && ['editor', 'downloader', 'monitor', 'settings'].includes(mod)) return mod as AppModule;
     return 'editor';
   })();
-
+  
   const [filePaths, setFilePaths] = useState<string[]>(() => {
-    return Object.keys(useProjectStore.getState().fileConfigs || {});
+    if (!projectId) return [];
+    return useLauncherStore.getState().getProjectById(projectId)?.filePaths || [];
   });
   const [activeFile, setActiveFile] = useState<string | null>(() => {
     const state = useProjectStore.getState();
-    const files = Object.keys(state.fileConfigs || {});
-    if (state.activeFile && files.includes(state.activeFile)) return state.activeFile;
-    return files.length > 0 ? files[0] : null;
+    const pFiles = projectId ? useLauncherStore.getState().getProjectById(projectId)?.filePaths || [] : [];
+    if (state.activeFile && pFiles.includes(state.activeFile)) return state.activeFile;
+    return pFiles.length > 0 ? pFiles[0] : null;
   });
   const [videoSrc, setVideoSrc] = useState<string | null>(() => {
     const state = useProjectStore.getState();
-    const files = Object.keys(state.fileConfigs || {});
-    const target = (state.activeFile && files.includes(state.activeFile)) ? state.activeFile : (files.length > 0 ? files[0] : null);
+    const pFiles = projectId ? useLauncherStore.getState().getProjectById(projectId)?.filePaths || [] : [];
+    const target = (state.activeFile && pFiles.includes(state.activeFile)) ? state.activeFile : (pFiles.length > 0 ? pFiles[0] : null);
     return target ? getVideoSrc(target) : null;
   });
   const [assetCategory, setAssetCategory] = useState<AssetCategory>('media');
@@ -63,7 +66,12 @@ function App() {
 
   const handleFileSelected = useCallback(
     async (selectedPath: string) => {
-      setFilePaths(prev => prev.includes(selectedPath) ? prev : [...prev, selectedPath]);
+      setFilePaths(prev => {
+        if (prev.includes(selectedPath)) return prev;
+        const newPaths = [...prev, selectedPath];
+        if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: newPaths });
+        return newPaths;
+      });
       setActiveFile(selectedPath);
       useSubtitleStore.getState().setActiveFile(selectedPath);
       useProjectStore.getState().setActiveFile(selectedPath);
@@ -80,7 +88,7 @@ function App() {
         }
       }, 500);
     },
-    [],
+    [projectId]
   );
 
   const handleFileSwitch = useCallback((path: string) => {
@@ -90,22 +98,26 @@ function App() {
     setVideoSrc(getVideoSrc(path));
   }, []);
 
-  const handleFileRemove = useCallback((path: string) => {
-    useSubtitleStore.getState().removeFileData(path);
-    useProjectStore.getState().removeFileData(path);
-
-    setFilePaths(prev => {
-      const newPaths = prev.filter(p => p !== path);
-      if (activeFile === path) {
-        const nextActive = newPaths.length > 0 ? newPaths[0] : null;
-        setActiveFile(nextActive);
-        useSubtitleStore.getState().setActiveFile(nextActive);
-        useProjectStore.getState().setActiveFile(nextActive);
-        setVideoSrc(getVideoSrc(nextActive));
-      }
-      return newPaths;
-    });
-  }, [activeFile]);
+  const handleFileRemove = useCallback(
+    (removePath: string) => {
+      let nextActive: string | null = null;
+      setFilePaths(prev => {
+        const newPaths = prev.filter(p => p !== removePath);
+        if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: newPaths });
+        
+        if (activeFile === removePath) {
+          nextActive = newPaths.length > 0 ? newPaths[newPaths.length - 1] : null;
+          setActiveFile(nextActive);
+          useSubtitleStore.getState().setActiveFile(nextActive);
+          useProjectStore.getState().setActiveFile(nextActive);
+          setVideoSrc(nextActive ? getVideoSrc(nextActive) : null);
+        }
+        return newPaths;
+      });
+      useProjectStore.getState().removeFileData(removePath);
+    },
+    [activeFile, projectId]
+  );
 
   const handleAnalyze = useCallback(async () => {
     if (!activeFile) return;

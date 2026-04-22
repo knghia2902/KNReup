@@ -6,6 +6,7 @@ export interface ProjectMetadata {
   name: string;
   path: string;
   thumbnailPath?: string;
+  filePaths?: string[];
   lastModified: number; // timestamp
   createdAt: number;
   videoPath?: string;
