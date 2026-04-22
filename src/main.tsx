@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { getWindowType, getToolIdFromUrl } from "./utils/windowManager";
+import { getWindowType, getToolIdFromUrl, setupWindowLifecycle } from "./utils/windowManager";
 
 /**
  * Multi-window entry point.
@@ -36,6 +36,11 @@ function RootApp() {
         break;
     }
   }, [windowType]);
+
+  // Setup window lifecycle events (editor close → focus launcher)
+  React.useEffect(() => {
+    setupWindowLifecycle();
+  }, []);
 
   if (!View) {
     return (

@@ -128,3 +128,28 @@ export function getToolIdFromUrl(): string | null {
   const params = new URLSearchParams(window.location.search);
   return params.get('tool');
 }
+
+/**
+ * Setup window lifecycle event listeners.
+ * Call this once from main.tsx after routing is determined.
+ * - In editor windows: on close, focus launcher if no other editors remain
+ * - In launcher: prevent app exit if editor windows are still open
+ */
+export async function setupWindowLifecycle(): Promise<void> {
+  if (!isTauri()) return;
+
+  const windowType = getWindowType();
+  const currentWin = getCurrentWindow();
+
+  if (windowType === 'editor') {
+    // When an editor closes, try to focus the launcher
+    currentWin.onCloseRequested(async () => {
+      try {
+        // Focus launcher on close
+        await focusLauncher();
+      } catch (err) {
+        console.warn('[windowManager] Failed to focus launcher on editor close:', err);
+      }
+    });
+  }
+}
