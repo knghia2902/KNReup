@@ -1,25 +1,11 @@
 import { useEffect, useRef, useState, memo } from 'react';
-import { Scissors, ArrowLineLeft, ArrowLineRight, Trash } from '@phosphor-icons/react';
+import { Scissors, ArrowLineLeft, ArrowLineRight, Trash, MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsOut } from '@phosphor-icons/react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { AudioTrack } from './AudioTrack';
 import { VideoTrack } from './VideoTrack';
 import { SubtitleTrack } from './SubtitleTrack';
-
-function formatTime(secs: number) {
-  if (isNaN(secs) || !isFinite(secs)) return '00:00:00';
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = Math.floor(secs % 60);
-  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-}
-
-function formatTimeShort(secs: number) {
-  if (!isFinite(secs) || isNaN(secs)) return '00:00';
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+import { formatTime, formatTimeShort } from '../../utils/time';
 
 const TIMELINE_OFFSET_X = 4;
 
@@ -28,6 +14,7 @@ const TimelineRuler = memo(({ width, pixelsPerSecond, scrollLeft, viewportWidth 
   if (pixelsPerSecond > 100) labelInterval = 1;
   else if (pixelsPerSecond < 10) labelInterval = 10;
   else if (pixelsPerSecond < 2) labelInterval = 60;
+  else if (pixelsPerSecond < 0.5) labelInterval = 300; // 5 mins for very long videos
 
   const startIdx = Math.floor(scrollLeft / pixelsPerSecond / labelInterval);
   const endIdx = Math.ceil((scrollLeft + viewportWidth) / pixelsPerSecond / labelInterval);
@@ -39,7 +26,7 @@ const TimelineRuler = memo(({ width, pixelsPerSecond, scrollLeft, viewportWidth 
     labels.push({
       id: i,
       text: formatTimeShort(time),
-      style: { position: 'absolute', left: x + TIMELINE_OFFSET_X, top: 4, fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', pointerEvents: 'none' }
+      style: { position: 'absolute', left: x + TIMELINE_OFFSET_X, top: 4, fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', pointerEvents: 'none', fontFamily: 'var(--font-mono)' }
     });
   }
 
@@ -93,7 +80,8 @@ export function Timeline({ filePaths }: TimelineProps) {
   const rawDuration = Math.max(videoDuration || 0, maxSubTime, 1);
   const safeDuration = isFinite(rawDuration) ? rawDuration : 3600;
   
-  const timelineWidthPx = Math.min(safeDuration * pixelsPerSecond + (100 * pixelsPerSecond), 10000000);
+  // Cap at 30M pixels which is safe for most browsers
+  const timelineWidthPx = Math.min(safeDuration * pixelsPerSecond + (200 * pixelsPerSecond), 30000000);
 
   const handleSplitAtPlayhead = () => {
     if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
@@ -317,30 +305,42 @@ export function Timeline({ filePaths }: TimelineProps) {
       
       <div className="tlhd" style={{ height: 40, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
         
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-           <button className="tlb-split" onClick={handleSplitAtPlayhead} title="Split (Ctrl+B)" disabled={!selectedClipId && selectedId === null}>
-              <Scissors size={18} />
+        {/* TOOLBAR: LEFT GROUP */}
+        <div style={{ display: 'flex', gap: 2, alignItems: 'center', background: 'var(--bg-primary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+           <button className="tlb-split" onClick={handleSplitAtPlayhead} title="Split (Ctrl+B)" disabled={!selectedClipId}>
+              <Scissors size={16} weight="regular" />
            </button>
-           <button className="tlb-split" onClick={handleSplitLeft} title="Split Left (Q)" disabled={!selectedClipId && selectedId === null}>
-              <ArrowLineLeft size={18} />
+           <button className="tlb-split" onClick={handleSplitLeft} title="Split Left (Q)" disabled={!selectedClipId}>
+              <ArrowLineLeft size={16} weight="regular" />
            </button>
-           <button className="tlb-split" onClick={handleSplitRight} title="Split Right (W)" disabled={!selectedClipId && selectedId === null}>
-              <ArrowLineRight size={18} />
+           <button className="tlb-split" onClick={handleSplitRight} title="Split Right (W)" disabled={!selectedClipId}>
+              <ArrowLineRight size={16} weight="regular" />
            </button>
-           <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 4px' }} />
-           <button className="tlb-split" onClick={handleDeleteSelected} title="Delete (Del)" disabled={!selectedClipId && selectedId === null}>
-              <Trash size={18} />
+           <div style={{ width: 1, height: 14, background: 'var(--border-subtle)', margin: '0 4px' }} />
+           <button className="tlb-split" onClick={handleDeleteSelected} title="Delete (Del)" disabled={selectedClipId !== 'bgm-main' && selectedId === null}>
+              <Trash size={16} weight="regular" />
            </button>
         </div>
 
-        <div style={{ marginLeft: 24, fontSize: '13px', color: 'var(--text-primary)', fontFamily: 'monospace', letterSpacing: '0.5px', fontWeight: 500 }}>
-           {formatTime(currentTime)}
-        </div>
+        {/* ZOOM CONTROLS: RIGHT GROUP */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
+          <button className="tlb-split" onClick={handleZoomOut} title="Zoom Out">
+            <MagnifyingGlassMinus size={17} weight="regular" />
+          </button>
+          
+          <div style={{ width: 80, height: 4, background: 'var(--border-subtle)', borderRadius: 2, position: 'relative', margin: '0 4px' }}>
+             <div style={{ position: 'absolute', left: `${(timelineZoom / 10) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)', border: '2px solid #fff' }} />
+          </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button className="tlb" style={{ width: 28, height: 24, padding: 0 }} onClick={handleZoomOut}>-</button>
-          <button className="tlb" style={{ width: 28, height: 24, padding: 0 }} onClick={handleZoomIn}>+</button>
-          <button className="tlb" style={{ height: 24, padding: '0 10px' }} onClick={() => updateConfig({ timelineZoom: 1 })}>fit</button>
+          <button className="tlb-split" onClick={handleZoomIn} title="Zoom In">
+            <MagnifyingGlassPlus size={17} weight="regular" />
+          </button>
+          
+          <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 4px' }} />
+          
+          <button className="tlb-split" onClick={() => updateConfig({ timelineZoom: 1 })} title="Fit to View">
+            <ArrowsOut size={17} weight="regular" />
+          </button>
         </div>
       </div>
       

@@ -1,15 +1,9 @@
 import { useState, useEffect, useCallback, type RefObject } from 'react';
+import { Play, Pause, SkipBack, SkipForward } from '@phosphor-icons/react';
+import { formatTime } from '../../utils/time';
 
 interface VideoControlsProps {
   videoRef: RefObject<HTMLVideoElement | null>;
-}
-
-function formatTime(seconds: number): string {
-  if (isNaN(seconds)) return '00:00:00';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 export function VideoControls({ videoRef }: VideoControlsProps) {
@@ -73,34 +67,26 @@ export function VideoControls({ videoRef }: VideoControlsProps) {
   return (
     <div className="pvctrl">
       <div className="cb" onClick={skipBackward} title="Skip backward 5s">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
-        </svg>
+        <SkipBack size={18} weight="fill" />
       </div>
       
       <div className="cb play" onClick={togglePlay}>
         {isPlaying ? (
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-          </svg>
+          <Pause size={18} weight="fill" />
         ) : (
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
+          <Play size={18} weight="fill" />
         )}
       </div>
       
       <div className="cb" onClick={skipForward} title="Skip forward 5s">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/>
-        </svg>
+        <SkipForward size={18} weight="fill" />
       </div>
 
       <div className="scrub" onClick={handleSeek}>
         <div className="scrubf" style={{ width: `${pct}%` }}></div>
       </div>
 
-      <div className="tcd">
+      <div className="tcd" style={{ fontFamily: 'var(--font-mono)', minWidth: 100 }}>
         {formatTime(currentTime)} / {formatTime(duration)}
       </div>
     </div>
