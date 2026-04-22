@@ -36,16 +36,16 @@ os.environ["OPENBLAS_NUM_THREADS"] = "8"
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import health, system, pipeline, subtitles, proxy
+from app.routes import health, system, pipeline, subtitles, proxy, tts_profiles
 from app.routes.downloader import router as downloader_router
 
 app = FastAPI(title="KNReup Sidecar")
 
-# CORS middleware — Frontend Tauri (localhost:1420) gọi Backend (localhost:8008)
+# CORS middleware — Cấu hình chuẩn cho Tauri
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Trong dev cho phép tất cả, production nên giới hạn
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -57,6 +57,7 @@ app.include_router(system.router, prefix="/api")
 app.include_router(pipeline.router, prefix="/api")
 app.include_router(subtitles.router, prefix="/api")
 app.include_router(proxy.router, prefix="/api")
+app.include_router(tts_profiles.router, prefix="/api")
 app.include_router(downloader_router, prefix="/api")
 
 def find_free_port():

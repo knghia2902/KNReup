@@ -133,26 +133,30 @@ async def translate(req: TranslateRequest):
 
 
 # ─── TTS engine factory ──────────────────────────────────
-def get_tts_engine(engine_name: str):
+def get_tts_engine(engine_name: str, api_key: str = ""):
     """Factory: tạo TTS engine instance."""
     if engine_name == "edge_tts":
         from app.engines.tts.edge_tts_engine import EdgeTTSEngine
 
         return EdgeTTSEngine()
-    elif engine_name == "piper":
-        from app.engines.tts.piper_engine import PiperTTSEngine
+    elif engine_name == "omnivoice":
+        from app.engines.tts.omnivoice_engine import OmniVoiceTTSEngine
 
-        return PiperTTSEngine()
+        return OmniVoiceTTSEngine()
+    elif engine_name == "elevenlabs":
+        from app.engines.tts.elevenlabs_engine import ElevenLabsTTSEngine
+
+        return ElevenLabsTTSEngine(api_key=api_key)
     else:
         raise HTTPException(400, f"Unknown TTS engine: {engine_name}")
 
 
 # ─── TTS Voices ───────────────────────────────────────────
 @router.get("/voices")
-async def list_voices(engine: str = "edge_tts"):
+async def list_voices(engine: str = "edge_tts", api_key: str = ""):
     """Liệt kê available voices cho engine."""
     try:
-        tts = get_tts_engine(engine)
+        tts = get_tts_engine(engine, api_key)
         voices = await tts.list_voices()
         return {"voices": voices, "engine": engine}
     except HTTPException:
@@ -170,19 +174,27 @@ class TTSRequest(BaseModel):
     rate: float = 1.0
     volume: float = 1.0
     pitch: float = 0.5
+    speed: float = 1.0
+    profile_name: Optional[str] = None
+    api_key: str = ""
 
 
 @router.post("/tts-preview")
 async def tts_preview(req: TTSRequest):
     """Tạo audio preview cho 1 đoạn text."""
     try:
-        tts = get_tts_engine(req.engine)
+        tts = get_tts_engine(req.engine, req.api_key)
         output_path = tempfile.mktemp(suffix=".mp3")
+        
+        # Map profile_name to voice if needed for omnivoice
+        voice = req.profile_name if req.profile_name else req.voice
+        
+        # Pass speed to rate
         await tts.synthesize(
             text=req.text,
-            voice=req.voice,
+            voice=voice,
             output_path=output_path,
-            rate=req.rate,
+            rate=req.speed,
             volume=req.volume,
             pitch=req.pitch,
         )
@@ -198,13 +210,16 @@ async def tts_demo(req: TTSRequest):
     """Tạo audio preview và trả về Binary để nghe trực tiếp."""
     from fastapi.responses import FileResponse
     try:
-        tts = get_tts_engine(req.engine)
+        tts = get_tts_engine(req.engine, req.api_key)
         output_path = tempfile.mktemp(suffix=".mp3")
+        
+        voice = req.profile_name if req.profile_name else req.voice
+        
         await tts.synthesize(
             text=req.text,
-            voice=req.voice,
+            voice=voice,
             output_path=output_path,
-            rate=req.rate,
+            rate=req.speed,
             volume=req.volume,
             pitch=req.pitch,
         )
