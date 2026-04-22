@@ -86,7 +86,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 08.1 | UI Adjustments & Time Format Fix | ✅ Complete |
 | 08.2 | Audio System Refactor | 🚧 Wave 1 Complete |
 | 08.0 | Editor Upgrade & AI Enhancement | 🚧 Wave 2 Complete |
-| 09 | Home/Launcher Redesign & Tools | 💬 Discussed |
+| 09 | Home/Launcher Redesign & Tools | ✅ Complete |
 
 ---
 *Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*
