@@ -26,11 +26,22 @@ export function getWindowLabel(): string {
   }
 }
 
-/** Determine the view type from current window label */
+/** Determine the view type from current window label + URL params fallback */
 export function getWindowType(): 'launcher' | 'editor' | 'tool' {
   const label = getWindowLabel();
   if (label.startsWith('editor')) return 'editor';
   if (label.startsWith('tool')) return 'tool';
+
+  // Fallback: check URL params (for spawned windows where label might not propagate)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlType = params.get('type');
+    if (urlType === 'editor') return 'editor';
+    if (urlType === 'tool') return 'tool';
+  } catch {
+    // ignore
+  }
+
   return 'launcher';
 }
 
@@ -110,10 +121,31 @@ export async function openDownloader(): Promise<WebviewWindow | null> {
 export async function focusLauncher(): Promise<void> {
   if (!isTauri()) return;
 
-  const launcher = await WebviewWindow.getByLabel('launcher');
-  if (launcher) {
-    await launcher.show();
-    await launcher.setFocus();
+  try {
+    // Try getByLabel first
+    let launcher = await WebviewWindow.getByLabel('launcher');
+
+    // Fallback: search all windows
+    if (!launcher) {
+      const { getAllWindows } = await import('@tauri-apps/api/window');
+      const allWindows = await getAllWindows();
+      launcher = allWindows.find((w) => w.label === 'launcher') as unknown as WebviewWindow ?? null;
+    }
+
+    if (launcher) {
+      await launcher.show();
+      await launcher.setFocus();
+      await launcher.unminimize();
+    }
+
+    // Close the current editor window after focusing launcher
+    const currentType = getWindowType();
+    if (currentType === 'editor') {
+      const current = getCurrentWindow();
+      await current.close();
+    }
+  } catch (err) {
+    console.error('[windowManager] focusLauncher failed:', err);
   }
 }
 

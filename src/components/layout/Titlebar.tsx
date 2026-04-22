@@ -35,15 +35,13 @@ export function Titlebar({ activeModule, onModuleChange }: TitlebarProps) {
     <div className="tb" data-tauri-drag-region>
       <div className="tb-logo" data-tauri-drag-region>
         {/* Home button — return to launcher */}
-        {windowType === 'editor' && (
-          <button
-            className="tb-home-btn"
-            onClick={() => focusLauncher()}
-            title="Quay lại Home"
-          >
-            <House size={16} weight="fill" />
-          </button>
-        )}
+        <button
+          className="tb-home-btn"
+          onClick={() => focusLauncher()}
+          title="Quay lại Home"
+        >
+          <House size={16} weight="fill" />
+        </button>
         <span className="tb-wordmark">kn<em>reup</em></span>
         <span className="tb-v">v1.0.1</span>
       </div>
