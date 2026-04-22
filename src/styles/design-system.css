@@ -705,6 +705,45 @@ textarea,input[type=text],input[type=number],input[type=password]{user-select:te
   cursor:pointer;color:var(--text-muted);font-size:11px;transition:all var(--tr) var(--ease);
 }
 .tlb:hover{background:var(--accent-subtle);color:var(--accent);border-color:var(--accent-border);}
+
+.tlb-split {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all var(--tr) var(--ease);
+}
+
+.tlb-split:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.tlb-split:active:not(:disabled) {
+  transform: scale(0.92);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.tlb-split:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tlb-split.active {
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+}
+
 .tlbody{flex:1;display:flex;overflow:hidden;}
 .tllbls{
   width:52px;border-right:1px solid var(--border);
