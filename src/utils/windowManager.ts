@@ -46,7 +46,7 @@ export function getWindowType(): 'launcher' | 'editor' | 'tool' {
 }
 
 /** Open an Editor window for a project */
-export async function openEditor(projectId?: string): Promise<WebviewWindow | null> {
+export async function openEditor(projectId?: string, options?: { module?: string }): Promise<WebviewWindow | null> {
   if (!isTauri()) {
     console.warn('[windowManager] Not in Tauri — cannot open editor window');
     return null;
@@ -62,8 +62,13 @@ export async function openEditor(projectId?: string): Promise<WebviewWindow | nu
     return existing;
   }
 
+  let url = `index.html?type=editor&id=${encodeURIComponent(id)}`;
+  if (options?.module) {
+    url += `&module=${encodeURIComponent(options.module)}`;
+  }
+
   const editorWindow = new WebviewWindow(label, {
-    url: `index.html?type=editor&id=${encodeURIComponent(id)}`,
+    url,
     title: `KNReup Editor — ${projectId || 'New Project'}`,
     width: 1400,
     height: 900,

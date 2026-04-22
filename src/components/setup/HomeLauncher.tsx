@@ -3,7 +3,7 @@
  * Phase 09, Plan 02: Full dashboard with hero, tools, and recent projects.
  */
 import { useState, useCallback, useEffect } from 'react';
-import { openEditor, openDownloader, openTool } from '../../utils/windowManager';
+import { openEditor, openTool } from '../../utils/windowManager';
 import { useLauncherStore } from '../../stores/useLauncherStore';
 import {
   DownloadSimple,
@@ -125,7 +125,7 @@ export function HomeLauncher() {
           <div className="launcher-tools">
             <h2 className="launcher-section-title">Công cụ</h2>
             <div className="launcher-tools-grid">
-              <button className="launcher-tool-card" onClick={() => openDownloader()}>
+              <button className="launcher-tool-card" onClick={() => openEditor(undefined, { module: 'downloader' })}>
                 <DownloadSimple size={24} weight="duotone" />
                 <span>Downloader</span>
                 <span className="launcher-tool-desc">Tải video Douyin, TikTok</span>
