@@ -154,93 +154,34 @@ Plans:
 
 **UAT**: Preview time display cân đối → Timeline Header không còn thời gian ở giữa → Độ dài video hiển thị theo mm:ss:ff.
 
-Plans:
-- [x] 08.1-01-PLAN.md — UI adjustments and time format fix.
-
 ---
 
-## Phase 8.0: Editor Upgrade & AI Enhancement
+## Phase 08.0: Editor Upgrade & AI Enhancement
 > **Mục tiêu**: Nâng cấp toàn diện UX Editor — Timeline tương tác chi tiết, Properties Panel nâng cao, và AI tối ưu nội dung.
 > **Requirements**: M3-ED-01, M3-ED-02, M3-ED-03, M3-ED-04
 > **Output**: Editor chuyên nghiệp ngang cấp CapCut/Premiere.
 
 - **Interactive Timeline Tracks**: Tất cả 4 track (VID/TTS/SUB/BGM) đều chỉnh sửa trực tiếp.
-  - VID: Trim đầu/cuối clip, kéo di chuyển, thumbnail chi tiết.
-  - TTS: Waveform hiển thị, trim/offset audio theo segment.
-  - SUB: Giữ drag/trim/split hiện tại + snapping.
-  - BGM: Trim nhạc nền, điểm bắt đầu, fade in/out trực quan.
 - **Timeline Snapping**: Magnetic timeline — hút giữa các track khi kéo.
 - **Advanced Properties Panels**:
   - STYLE: Preset phong cách phụ đề (Cinematic, Minimal...).
-  - TTS: Chọn giọng đọc per-segment + preview audio.
+  - TTS: OmniVoice (Offline) & ElevenLabs (Cloud) integration, Piper removal.
   - SUB: Bulk edit, tìm kiếm/thay thế, AI Refine button.
   - OUT: Batch Export Presets (lưu/tải cấu hình export).
 - **AI Subtitle Refiner**: Gọi LLM (Gemini/DeepSeek) hiệu đính phụ đề tự động.
 - **AI Subtitle Masking**: OCR phát hiện hardsub cũ → auto Blur zone.
+- **Speaker Diarization**: Nhận diện người nói và gán giọng đọc tự động.
 
 **UAT**: Trim VID track → kéo BGM offset → AI Refine phụ đề → lưu Export Preset → Auto-mask sub cũ.
 
----
-
-## Phase 8.1: Auto-Monitor (RENUMBERED TO 8.2)
-> **Mục tiêu**: Tự động theo dõi accounts + AI pro tools
-> **Output**: Set & forget monitoring + AI-powered editing
-
-- Account tracking + periodic polling
-- Cookie extraction + JIT auth + health check
-- Proxy rotation + anti-ban — **đây là arms race, cần maintain thường xuyên**
-- Monitor module UI (Account list + Video feed trong titlebar tab Monitor)
-- AI Video Summarizer (key moments → short video)
-- Auto Copyright Analyzer
-
-**UAT**: Tab Monitor → thêm Douyin account → scan 10 video mới → auto queue download
+**Plans:** 1/5 plans executed
+- [x] 08.0-01-PLAN.md — Sidecar TTS Integration (OmniVoice, ElevenLabs) & Piper Removal.
+- [ ] 08.0-02-PLAN.md — Frontend TTS UI, State & Per-segment config.
+- [ ] 08.0-03-PLAN.md — Professional Timeline Interactions & Smart Snapping.
+- [ ] 08.0-04-PLAN.md — AI Core Sidecar (Refiner, Masking, Diarization).
+- [ ] 08.0-05-PLAN.md — Advanced Properties Panel & AI UI Integration.
 
 ---
 
-## Phase 9: Polish + License System
-> **Mục tiêu**: Sản phẩm hoàn thiện sẵn sàng phân phối
-> **Output**: App ổn định, có license, sẵn sàng release
-
-- **Dùng SaaS license** (Keygen.sh hoặc LemonSqueezy) thay vì tự xây
-- Auto-update mechanism
-- Error reporting / crash analytics
-- Performance optimization + memory management
-- Documentation / User guide
-- Installer / packaging (PyInstaller cho sidecar, Tauri bundler cho app)
-- Beta testing + bug fixes
-
-**UAT**: User cài app → nhập license → sử dụng đầy đủ tính năng → auto update khi có bản mới
-
----
-
-## Milestones
-
-### Milestone 1 — MVP Release (sau Phase 3.1)
-> Pipeline + Editor cơ bản đủ để có user thực tế.
-> ✅ SHIPPED 2026-03-25
-
-### Milestone 2 — Pro Release (sau Phase 7.1)
-> Multi-engine + effects + timeline + Downloader → sản phẩm pro.
-> ✅ SHIPPED 2026-04-17
-
-### Milestone 3 — Full Release (sau Phase 9)
-> Pro Editor + Auto-Monitor + AI + License → sản phẩm hoàn chỉnh thương mại.
-
----
-
-## Kỹ thuật Notes (từ tech review)
-
-| Chủ đề | Quyết định |
-|--------|-----------|
-| Panel resize | Dùng `react-resizable-panels` (battle-tested library) |
-| Waveform | Dùng `wavesurfer.js` |
-| License system | Dùng SaaS (Keygen.sh / LemonSqueezy) |
-| API fallback | Circuit breaker pattern (cool-down period) |
-| SSE trên Windows | Test sớm Phase 1 (Defender có thể chặn) |
-| Canvas tiếng Việt | Test FontFaceObserver cho dấu tiếng Việt |
-| Hardsub strategy | Canvas = preview, ASS = export |
-| PaddleOCR | ~500MB model, cân nhắc easyocr alternative |
-| SmartVoice ali33.site | API không chính thức, rủi ro cao |
-| Anti-ban downloader | Arms race, cần maintain liên tục |
-| Sidecar health-check | Exponential backoff, không fixed interval |
-| Whisper model | base (CPU) / large-v3 (GPU), strategy theo VRAM |
+### Phase 08.2: Audio System Refactor & Local Import (INSERTED)
+... (rest of the file remains same)

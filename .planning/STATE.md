@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: complete
-last_updated: "2026-04-22T09:40:00.000Z"
+status: completed
+last_updated: "2026-04-22T09:47:23.135Z"
 last_activity: 2026-04-22
 progress:
-  total_phases: 12
-  completed_phases: 11
-  total_plans: 1
-  completed_plans: 1
-  percent: 100
+  total_phases: 10
+  completed_phases: 7
+  total_plans: 19
+  completed_plans: 16
+  percent: 84
 ---
 
 # STATE.md — KNReup Project State
@@ -60,6 +60,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 - Phase 6.1 inserted after Phase 6: OCR Subtitle Extraction (URGENT)
 - Phase 07.1 inserted after Phase 07: Refactor Stitch UI and Implement Tauri WebView Auth (URGENT)
+
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
 | 2026-04-22 | Removed center time display in Timeline header | Clean header layout |
@@ -81,9 +82,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 07.1 | Refactor Stitch UI & Auth | ✅ Complete |
 | 07.2 | Advanced Timeline Interactions | ✅ Complete |
 | 08.1 | UI Adjustments & Time Format Fix | ✅ Complete |
+| 08.2 | Audio System Refactor | 🚧 Wave 1 Complete |
 | 08.0 | Editor Upgrade & AI Enhancement | 📝 Planning Ready |
-| 8.2 | Auto-Monitor | — |
-| 9 | Polish + License | — |
 
 ---
 *Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*
