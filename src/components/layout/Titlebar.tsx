@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, House, ArrowSquareOut } from '@phosphor-icons/react';
+import { Sun, Moon, ArrowSquareOut } from '@phosphor-icons/react';
 import { type AppModule } from './NLELayout';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { getWindowType, focusLauncher, openDownloader } from '../../utils/windowManager';
+import { openDownloader } from '../../utils/windowManager';
 
 interface TitlebarProps {
   activeModule: AppModule;
@@ -29,19 +29,10 @@ export function Titlebar({ activeModule, onModuleChange }: TitlebarProps) {
   const translation_engine = useProjectStore((state) => state.translation_engine) || 'argos';
   const tts_engine = useProjectStore((state) => state.tts_engine) || 'edge_tts';
   const { isDark, toggle } = useTheme();
-  const windowType = getWindowType();
 
   return (
     <div className="tb" data-tauri-drag-region>
       <div className="tb-logo" data-tauri-drag-region>
-        {/* Home button — return to launcher */}
-        <button
-          className="tb-home-btn"
-          onClick={() => focusLauncher()}
-          title="Quay lại Home"
-        >
-          <House size={16} weight="fill" />
-        </button>
         <span className="tb-wordmark">kn<em>reup</em></span>
         <span className="tb-v">v1.0.1</span>
       </div>
