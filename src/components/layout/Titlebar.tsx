@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon } from '@phosphor-icons/react';
+import { Sun, Moon, House, ArrowSquareOut } from '@phosphor-icons/react';
 import { type AppModule } from './NLELayout';
 import { useProjectStore } from '../../stores/useProjectStore';
+import { getWindowType, focusLauncher, openDownloader } from '../../utils/windowManager';
 
 interface TitlebarProps {
   activeModule: AppModule;
@@ -28,12 +29,23 @@ export function Titlebar({ activeModule, onModuleChange }: TitlebarProps) {
   const translation_engine = useProjectStore((state) => state.translation_engine) || 'argos';
   const tts_engine = useProjectStore((state) => state.tts_engine) || 'edge_tts';
   const { isDark, toggle } = useTheme();
+  const windowType = getWindowType();
 
   return (
     <div className="tb" data-tauri-drag-region>
       <div className="tb-logo" data-tauri-drag-region>
+        {/* Home button — return to launcher */}
+        {windowType === 'editor' && (
+          <button
+            className="tb-home-btn"
+            onClick={() => focusLauncher()}
+            title="Quay lại Home"
+          >
+            <House size={16} weight="fill" />
+          </button>
+        )}
         <span className="tb-wordmark">kn<em>reup</em></span>
-        <span className="tb-v">v0.4.2</span>
+        <span className="tb-v">v1.0.1</span>
       </div>
       <div className="tb-nav" data-tauri-drag-region>
         <div 
@@ -43,10 +55,12 @@ export function Titlebar({ activeModule, onModuleChange }: TitlebarProps) {
           Editor
         </div>
         <div 
-          className={`tb-tab ${activeModule === 'downloader' ? 'active' : ''}`}
-          onClick={() => onModuleChange('downloader')}
+          className="tb-tab tb-tab-popup"
+          onClick={() => openDownloader()}
+          title="Mở Downloader trong cửa sổ mới"
         >
           Downloader
+          <ArrowSquareOut size={10} weight="bold" style={{ marginLeft: 4, opacity: 0.5 }} />
         </div>
         <div 
           className={`tb-tab ${activeModule === 'monitor' ? 'active' : ''}`}
@@ -81,3 +95,4 @@ export function Titlebar({ activeModule, onModuleChange }: TitlebarProps) {
     </div>
   );
 }
+

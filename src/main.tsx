@@ -21,8 +21,7 @@ function RootApp() {
       case 'tool': {
         const toolId = getToolIdFromUrl();
         if (toolId === 'downloader') {
-          // For now, reuse the existing downloader module
-          import('./App').then((m) => setView(() => m.default));
+          import('./components/downloader/DownloaderWindow').then((m) => setView(() => m.DownloaderWindow));
         } else if (toolId === 'voice-clone') {
           import('./components/tools/VoiceCloneWindow').then((m) => setView(() => m.VoiceCloneWindow));
         } else {
