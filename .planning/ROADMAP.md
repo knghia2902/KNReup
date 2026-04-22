@@ -143,6 +143,22 @@ Plans:
 
 ---
 
+### Phase 08.1: UI Adjustments & Time Format Fix (INSERTED)
+> **Mục tiêu**: Fix UI feedback và cập nhật format thời gian mm:ss:ff.
+> **Requirements**: UI-FIX-01, UI-FIX-02, TIME-FIX-01
+> **Output**: UI tinh gọn và format thời gian chuẩn frame.
+
+- VideoControls time display width adjustment (minWidth: 100).
+- Timeline Header cleanup (remove center time display).
+- Time format update to `mm:ss:ff`.
+
+**UAT**: Preview time display cân đối → Timeline Header không còn thời gian ở giữa → Độ dài video hiển thị theo mm:ss:ff.
+
+Plans:
+- [x] 08.1-01-PLAN.md — UI adjustments and time format fix.
+
+---
+
 ## Phase 8.0: Editor Upgrade & AI Enhancement
 > **Mục tiêu**: Nâng cấp toàn diện UX Editor — Timeline tương tác chi tiết, Properties Panel nâng cao, và AI tối ưu nội dung.
 > **Requirements**: M3-ED-01, M3-ED-02, M3-ED-03, M3-ED-04
@@ -166,7 +182,7 @@ Plans:
 
 ---
 
-## Phase 8.1: Auto-Monitor
+## Phase 8.1: Auto-Monitor (RENUMBERED TO 8.2)
 > **Mục tiêu**: Tự động theo dõi accounts + AI pro tools
 > **Output**: Set & forget monitoring + AI-powered editing
 
