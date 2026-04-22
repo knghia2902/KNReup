@@ -13,6 +13,9 @@ import {
   MagnifyingGlass,
   FolderOpen,
   Plus,
+  VideoCamera,
+  ChartBar,
+  GearSix,
 } from '@phosphor-icons/react';
 import { RecentProjects } from './RecentProjects';
 import '../../styles/launcher.css';
@@ -125,10 +128,25 @@ export function HomeLauncher() {
           <div className="launcher-tools">
             <h2 className="launcher-section-title">Công cụ</h2>
             <div className="launcher-tools-grid">
+              <button className="launcher-tool-card" onClick={() => openEditor(undefined, { module: 'editor' })}>
+                <VideoCamera size={24} weight="duotone" />
+                <span>Editor</span>
+                <span className="launcher-tool-desc">Chỉnh sửa video chuyên nghiệp</span>
+              </button>
               <button className="launcher-tool-card" onClick={() => openEditor(undefined, { module: 'downloader' })}>
                 <DownloadSimple size={24} weight="duotone" />
                 <span>Downloader</span>
                 <span className="launcher-tool-desc">Tải video Douyin, TikTok</span>
+              </button>
+              <button className="launcher-tool-card" onClick={() => openEditor(undefined, { module: 'monitor' })}>
+                <ChartBar size={24} weight="duotone" />
+                <span>Monitor</span>
+                <span className="launcher-tool-desc">Theo dõi tiến trình xử lý</span>
+              </button>
+              <button className="launcher-tool-card" onClick={() => openEditor(undefined, { module: 'settings' })}>
+                <GearSix size={24} weight="duotone" />
+                <span>Settings</span>
+                <span className="launcher-tool-desc">Cấu hình engine & tùy chỉnh</span>
               </button>
               <button className="launcher-tool-card" onClick={() => openTool('voice-clone')}>
                 <Microphone size={24} weight="duotone" />

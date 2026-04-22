@@ -30,7 +30,9 @@ function App() {
   const { connected, health, systemCheck, error, loading, retrySystemCheck } = useSidecar();
   const { processing, progress, error: pipelineError, analyzeVideo, renderVideo, cancelPipeline, resetPipeline } = usePipeline();
   const [showSetup, setShowSetup] = useState(true);
-  const [activeModule, setActiveModule] = useState<AppModule>(() => {
+  
+  // Get active module from URL param (no state needed as it doesn't change after load)
+  const activeModule: AppModule = (() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const mod = params.get('module');
@@ -39,7 +41,8 @@ function App() {
       }
     } catch { /* ignore */ }
     return 'editor';
-  });
+  })();
+  
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [filePaths, setFilePaths] = useState<string[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -294,7 +297,7 @@ function App() {
         <JobMonitor progress={progress} onCancel={cancelPipeline} onDismiss={resetPipeline} />
       )}
 
-      <Titlebar activeModule={activeModule} onModuleChange={setActiveModule} />
+      <Titlebar />
       <div className="app">
         <NLELayout
           activeModule={activeModule}
