@@ -68,22 +68,47 @@ export function DownloadHistory({
     };
   }, [connected, onFetch]);
 
-  // Check existence for completed items
+  // Check existence for completed items - Optimized to reduce log spam
   useEffect(() => {
+    let isMounted = true;
     const checkMissing = async () => {
-      if (!checkFileExistence) return;
+      if (!checkFileExistence || history.length === 0) return;
+      
       const completedItems = history.filter(item => item.status === 'completed');
-      const results: Record<number, boolean> = {};
+      if (completedItems.length === 0) return;
+
+      const results: Record<number, boolean> = { ...missingFiles };
+      let changed = false;
       
-      await Promise.all(completedItems.map(async (item) => {
-        const exists = await checkFileExistence(item.title, item.platform, item.video_id);
-        results[item.id] = !exists;
-      }));
+      // Only check items we haven't checked or that were missing (in case they were restored)
+      for (const item of completedItems) {
+        if (!isMounted) return;
+        
+        // If we don't have a result for this ID yet, or if it was marked missing
+        if (results[item.id] === undefined || results[item.id] === true) {
+          try {
+            const exists = await checkFileExistence(item.title, item.platform, item.video_id);
+            if (results[item.id] !== !exists) {
+              results[item.id] = !exists;
+              changed = true;
+            }
+          } catch (err) {
+            console.error('Failed to check file existence:', err);
+          }
+        }
+      }
       
-      setMissingFiles(results);
+      if (changed && isMounted) {
+        setMissingFiles(results);
+      }
     };
 
-    checkMissing();
+    // Debounce the check to avoid spamming on rapid history updates
+    const timer = setTimeout(checkMissing, 1000);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [history, checkFileExistence]);
 
   // Combine queue and history, ensuring uniqueness by id

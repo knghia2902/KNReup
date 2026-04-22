@@ -7,5 +7,5 @@ if __name__ == "__main__":
         host="127.0.0.1",
         port=8008,
         reload=True,
-        log_level="warning"
+        log_level="info" # Đổi từ warning sang info để debug proxy và các lỗi đọc file
     )

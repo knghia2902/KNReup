@@ -412,27 +412,27 @@ class FFmpegOutputBuilder:
         audio_streams_to_mix.append("[aorig]")
 
         # Dubbed Audio
-        bgm_file = getattr(config, "bgm_file", "") if config else ""
-        has_bgm = getattr(config, "bgm_enabled", False) and bgm_file and os.path.exists(bgm_file)
+        audio_file = getattr(config, "audio_file", "") if config else ""
+        has_audio = getattr(config, "audio_enabled", False) and audio_file and os.path.exists(audio_file)
         
         if self._dubbed_audio:
             input_index += 1
             cmd.extend(["-i", self._dubbed_audio])
             a_dub = f"{input_index}:a"
-            if has_bgm:
-                # Split dubbed audio: one for final mix, one for BGM sidechain ducking trigger
+            if has_audio:
+                # Split dubbed audio: one for final mix, one for audio sidechain ducking trigger
                 filter_complex_parts.append(f"[{a_dub}]aresample=48000,volume=1.0,asplit=2[adub_mix][adub_sc]")
                 audio_streams_to_mix.append("[adub_mix]")
             else:
                 filter_complex_parts.append(f"[{a_dub}]aresample=48000,volume=1.0[adub]")
                 audio_streams_to_mix.append("[adub]")
 
-        # BGM Audio
-        if has_bgm:
+        # Background Audio (Music)
+        if has_audio:
             input_index += 1
-            cmd.extend(["-stream_loop", "-1", "-i", bgm_file])
-            a_bgm = f"{input_index}:a"
-            bgm_vol = getattr(config, "bgm_volume", 0.5)
+            cmd.extend(["-stream_loop", "-1", "-i", audio_file])
+            a_music = f"{input_index}:a"
+            audio_vol = getattr(config, "audio_volume", 0.5)
             duck_str = float(getattr(config, "ducking_strength", 0.2))
             
             # Map duck_str (0.0-1.0) to ratio (1.0-20.0)
@@ -440,12 +440,12 @@ class FFmpegOutputBuilder:
             
             # Apply sidechain ducking if dubbed audio exists
             if self._dubbed_audio:
-                filter_complex_parts.append(f"[{a_bgm}]aresample=48000,volume={bgm_vol}[abgm_base]")
-                filter_complex_parts.append(f"[abgm_base][adub_sc]sidechaincompress=threshold=0.1:ratio={ratio_val:.1f}:attack=5:release=50[abgm]")
-                audio_streams_to_mix.append("[abgm]")
+                filter_complex_parts.append(f"[{a_music}]aresample=48000,volume={audio_vol}[audio_base]")
+                filter_complex_parts.append(f"[audio_base][adub_sc]sidechaincompress=threshold=0.1:ratio={ratio_val:.1f}:attack=5:release=50[audio_mix]")
+                audio_streams_to_mix.append("[audio_mix]")
             else:
-                filter_complex_parts.append(f"[{a_bgm}]aresample=48000,volume={bgm_vol}[abgm]")
-                audio_streams_to_mix.append("[abgm]")
+                filter_complex_parts.append(f"[{a_music}]aresample=48000,volume={audio_vol}[audio_mix]")
+                audio_streams_to_mix.append("[audio_mix]")
 
         mix_inputs = "".join(audio_streams_to_mix)
         filter_complex_parts.append(f"{mix_inputs}amix=inputs={len(audio_streams_to_mix)}:duration=first:normalize=0[aout]")

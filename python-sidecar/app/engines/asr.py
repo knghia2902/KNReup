@@ -49,17 +49,11 @@ class WhisperASR:
                     num_workers=1
                 )
             except Exception as e:
-                logger.error(f"Failed to load model on {self.device} (error: {e}).")
-                # Fallback to CPU
-                logger.warning("Rơi vào Fallback CPU (tháo gỡ CUDA lỗi).")
-                self.device = "cpu"
-                self.compute_type = "int8"
-                self.model_size = "base"
-                from faster_whisper import WhisperModel
-                self._model = WhisperModel(
-                    self.model_size,
-                    device=self.device,
-                    compute_type=self.compute_type,
+                logger.error(f"CRITICAL: Failed to load model on {self.device} (error: {e}).")
+                # MANDATORY GPU: Không tự ý quay về CPU theo yêu cầu của người dùng
+                raise RuntimeError(
+                    f"GPU Mandatory mode failed: Could not load Whisper on {self.device}. "
+                    f"Reason: {str(e)}. Please check CUDA/cuDNN installation."
                 )
         return self._model
 
@@ -78,8 +72,13 @@ class WhisperASR:
         except Exception as e:
             logger.warning(f"GPU detection failed: {e}")
 
-        # Fallback hoặc Override tạm để test UAT nhanh chóng
-        return ("base", "cuda" if gpu_available else "cpu", "int8_float16" if gpu_available else "int8")
+        # Ưu tiên large-v3 cho GPU, base cho CPU
+        if gpu_available:
+            logger.info("GPU identified: Forcing large-v3 on CUDA.")
+            return ("large-v3", "cuda", "int8_float16")
+        
+        logger.info("GPU not found: Falling back to base on CPU.")
+        return ("base", "cpu", "int8")
 
     def transcribe(
         self,

@@ -10,6 +10,8 @@ export interface RenderJob {
   segments: any[];
   config: Record<string, any>; // Lưu PipelineConfig dùng để render
   createdAt: number;
+  duration?: number;
+  videoDimensions?: { w: number; h: number };
 }
 
 interface QueueStore {

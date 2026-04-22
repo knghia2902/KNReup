@@ -7,11 +7,10 @@ import { CheckCircle, XCircle, CircleNotch } from '@phosphor-icons/react';
 import { useSidecar } from './hooks/useSidecar';
 import { useQueueStore } from './stores/queueStore';
 import { usePipeline } from './hooks/usePipeline';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { NLELayout, type AppModule } from './components/layout/NLELayout';
-import { getMediaSrc, getVideoSrc } from './utils/url';
+import { getVideoSrc } from './utils/url';
 import { Titlebar } from './components/layout/Titlebar';
 import { Timeline } from './components/editor/Timeline';
 import { DependencyChecker } from './components/setup/DependencyChecker';
@@ -39,7 +38,6 @@ function App() {
 
   // Zustand stores
   const projectConfig = useProjectStore();
-  const { segments } = useSubtitleStore();
 
   const handleSetupComplete = useCallback(() => setShowSetup(false), []);
 
@@ -50,6 +48,17 @@ function App() {
       useSubtitleStore.getState().setActiveFile(selectedPath);
       useProjectStore.getState().setActiveFile(selectedPath);
       setVideoSrc(getVideoSrc(selectedPath));
+
+      // Auto-fit to view when a new video is added
+      setTimeout(() => {
+        const video = document.querySelector('video');
+        const tlbody = document.querySelector('.tlbody');
+        if (video && tlbody && video.duration > 0) {
+           const viewportWidth = tlbody.clientWidth;
+           const fitZoom = viewportWidth / (video.duration * 50);
+           useProjectStore.getState().updateConfig({ timelineZoom: Math.max(0.0001, Math.min(1.0, fitZoom * 0.95)) });
+        }
+      }, 500);
     },
     [],
   );
@@ -62,6 +71,9 @@ function App() {
   }, []);
 
   const handleFileRemove = useCallback((path: string) => {
+    useSubtitleStore.getState().removeFileData(path);
+    useProjectStore.getState().removeFileData(path);
+
     setFilePaths(prev => {
       const newPaths = prev.filter(p => p !== path);
       if (activeFile === path) {
@@ -98,7 +110,12 @@ function App() {
           confidence: s.confidence || 1.0,
           tts_status: 'pending' as const
         }));
-        useSubtitleStore.getState().setSegments(mappedSegments, activeFile);
+        
+        // Wrap in timeout to prevent "Cannot update a component while rendering another"
+        // as this runs right after usePipeline's state update
+        setTimeout(() => {
+          useSubtitleStore.getState().setSegments(mappedSegments, activeFile);
+        }, 0);
       }
     } catch (err) {
       console.error("Analyze failed:", err);
@@ -117,10 +134,7 @@ function App() {
       const savePath = await save({
         title: "Xác nhận nơi lưu Video",
         defaultPath: defaultName,
-        filters: [{
-          name: 'Video',
-          extensions: [projectConfig.container]
-        }]
+        filters: [{ name: 'Video', extensions: [projectConfig.container] }]
       });
 
       if (savePath) {
@@ -128,6 +142,8 @@ function App() {
           videoPath: activeFile,
           outputPath: savePath,
           segments: useSubtitleStore.getState().segments,
+          duration: useSubtitleStore.getState().videoDuration,
+          videoDimensions: useSubtitleStore.getState().videoDimensions || undefined,
           config: {
             ...projectConfig,
             subtitle_config: {
@@ -144,7 +160,6 @@ function App() {
             }
           },
         });
-        // Queue tab auto-focus removed (sidebar removed)
       }
     } catch (err) {
       console.error("Save dialog failed:", err);
@@ -155,7 +170,6 @@ function App() {
   const jobs = useQueueStore(state => state.jobs);
 
   useEffect(() => {
-    // Start next job if pipeline is idle
     const isIdle = !processing && (!progress || progress.stage === 'done' || progress.stage === 'error' || progress.stage === 'cancelled');
     if (isIdle) {
       const currentJobs = useQueueStore.getState().jobs;
@@ -164,20 +178,20 @@ function App() {
 
       if (nextJob && !hasProcessing) {
         if (progress) resetPipeline();
-        
         useQueueStore.getState().updateJobStatus(nextJob.id, 'processing');
         
-        // Ensure 100% frame pixel-perfect precision on backend by calculating 
-        // the greedy wrap here in an offscreen JS canvas using our utility
         import('./utils/subtitleLayout').then(({ calculateSubtitleLayout }) => {
-          const videoDimensions = useSubtitleStore.getState().videoDimensions;
-          const layoutSegments = calculateSubtitleLayout(nextJob.segments, nextJob.config, videoDimensions || {w: 1920, h: 1080});
+          const layoutSegments = calculateSubtitleLayout(
+            nextJob.segments, 
+            nextJob.config, 
+            nextJob.videoDimensions || {w: 1920, h: 1080}
+          );
           
           renderVideo(
             nextJob.videoPath,
             nextJob.config,
             layoutSegments,
-            0,
+            nextJob.duration || 0,
             nextJob.outputPath
           ).then(() => {
             useQueueStore.getState().updateJobStatus(nextJob.id, 'completed');
@@ -206,33 +220,21 @@ function App() {
     let unlistenDrag: (() => void) | undefined;
 
     const setupListeners = async () => {
-      // Check if we are in tauri environment to avoid crash in browser
-      if (typeof window !== 'undefined' && !(window as any).__TAURI_INTERNALS__) {
-        console.warn("Tauri internals not found. skipping file-drop listeners.");
-        return;
-      }
-
+      if (typeof window !== 'undefined' && !(window as any).__TAURI_INTERNALS__) return;
       try {
         unlistenFile = await listen('tauri://file-drop', (event) => {
           const paths = event.payload as string[];
-          if (paths && paths.length > 0) {
-            handleFileSelected(paths[0]);
-          }
+          if (paths && paths.length > 0) handleFileSelected(paths[0]);
         });
-
         unlistenDrag = await listen('tauri://drag-drop', (event) => {
           const payload = event.payload as any;
-          if (payload && payload.paths && payload.paths.length > 0) {
-            handleFileSelected(payload.paths[0]);
-          }
+          if (payload && payload.paths && payload.paths.length > 0) handleFileSelected(payload.paths[0]);
         });
       } catch (err) {
         console.error("Failed to setup Tauri listeners:", err);
       }
     };
-
     setupListeners();
-
     return () => {
       if (unlistenFile) unlistenFile();
       if (unlistenDrag) unlistenDrag();
@@ -260,15 +262,12 @@ function App() {
             subtitles: useSubtitleStore.getState().segments
           };
           await writeTextFile(savePath, JSON.stringify(projectData, null, 2));
-          console.log("Saved project to", savePath);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-
 
   return (
     <>
@@ -312,7 +311,6 @@ function App() {
           videoPreview={
             <VideoPreview
               videoSrc={videoSrc}
-              segments={segments}
               videoRatio={projectConfig.video_ratio as 'original' | '16:9' | '9:16'}
             />
           }
@@ -330,20 +328,10 @@ function App() {
                 <CircleNotch size={12} className="dep-spin" style={{ color: 'var(--accent)' }} />
               )}
               <span className="status-mono">
-                {connected
-                  ? `Backend connected / ${systemCheck?.gpu.gpu_available ? 'GPU' : 'CPU'}`
-                  : error || 'Connecting...'}
+                {connected ? `Backend connected / ${systemCheck?.gpu.gpu_available ? 'GPU' : 'CPU'}` : error || 'Connecting...'}
               </span>
-              {pipelineError && (
-                <span className="status-mono" style={{ color: 'var(--danger)' }}>
-                  Pipeline: {pipelineError}
-                </span>
-              )}
-              {health && (
-                <span className="status-mono" style={{ marginLeft: 'auto' }}>
-                  v{health.version}
-                </span>
-              )}
+              {pipelineError && <span className="status-mono" style={{ color: 'var(--danger)' }}>Pipeline: {pipelineError}</span>}
+              {health && <span className="status-mono" style={{ marginLeft: 'auto' }}>v{health.version}</span>}
             </div>
           }
         />

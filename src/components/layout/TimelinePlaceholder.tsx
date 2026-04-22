@@ -36,7 +36,7 @@ export function TimelinePlaceholder({ filePaths = [] }: TimelinePlaceholderProps
           <div className="tlll"><div className="tlldot" style={{ background: 'var(--i4)' }}></div> VID</div>
           <div className="tlll"><div className="tlldot" style={{ background: 'var(--green)' }}></div> TTS</div>
           <div className="tlll"><div className="tlldot" style={{ background: 'var(--ac)' }}></div> SUB</div>
-          <div className="tlll"><div className="tlldot" style={{ background: 'var(--i3)' }}></div> BGM</div>
+          <div className="tlll"><div className="tlldot" style={{ background: 'var(--i3)' }}></div> AUDIO</div>
         </div>
         <div className="tltracks">
           <div className="playhead"></div>
@@ -101,9 +101,9 @@ export function TimelinePlaceholder({ filePaths = [] }: TimelinePlaceholderProps
             )}
           </div>
           
-          {/* BGM track */}
+          {/* Audio track */}
           <div className="tltr">
-            <div className="tlblock bgm" style={segments.length > 0 ? {position: 'absolute', left: 0, width: '100%'} : undefined}>
+            <div className="tlblock audio" style={segments.length > 0 ? {position: 'absolute', left: 0, width: '100%'} : undefined}>
               <div className="tlbi">
                 <div className="wf">
                   <div className="wfb" style={{ height: '20%' }}></div>

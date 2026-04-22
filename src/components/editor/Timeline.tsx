@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, memo } from 'react';
+import { useEffect, useRef, useState, useMemo, memo } from 'react';
 import { Scissors, ArrowLineLeft, ArrowLineRight, Trash, MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsOut } from '@phosphor-icons/react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
@@ -7,14 +7,38 @@ import { VideoTrack } from './VideoTrack';
 import { SubtitleTrack } from './SubtitleTrack';
 import { formatTime, formatTimeShort } from '../../utils/time';
 
+// Định nghĩa trực tiếp ở đây để đảm bảo không bị lỗi import/cache
+function formatTimeLocal(secs: number): string {
+  if (isNaN(secs) || !isFinite(secs) || secs < 0) return '00:00:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function formatTimeShortLocal(secs: number): string {
+  if (isNaN(secs) || !isFinite(secs) || secs < 0) return '00:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 const TIMELINE_OFFSET_X = 4;
 
 const TimelineRuler = memo(({ width, pixelsPerSecond, scrollLeft, viewportWidth }: any) => {
-  let labelInterval = 5;
-  if (pixelsPerSecond > 100) labelInterval = 1;
-  else if (pixelsPerSecond < 10) labelInterval = 10;
-  else if (pixelsPerSecond < 2) labelInterval = 60;
-  else if (pixelsPerSecond < 0.5) labelInterval = 300; // 5 mins for very long videos
+  // Nice intervals in seconds
+  const niceIntervals = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 7200, 14400, 28800, 43200, 86400];
+  const minSpacing = 100; // pixels
+  
+  let labelInterval = niceIntervals[niceIntervals.length - 1];
+  for (const interval of niceIntervals) {
+    if (interval * pixelsPerSecond >= minSpacing) {
+      labelInterval = interval;
+      break;
+    }
+  }
 
   const startIdx = Math.floor(scrollLeft / pixelsPerSecond / labelInterval);
   const endIdx = Math.ceil((scrollLeft + viewportWidth) / pixelsPerSecond / labelInterval);
@@ -25,7 +49,7 @@ const TimelineRuler = memo(({ width, pixelsPerSecond, scrollLeft, viewportWidth 
     const x = time * pixelsPerSecond;
     labels.push({
       id: i,
-      text: formatTimeShort(time),
+      text: formatTimeShortLocal(time),
       style: { position: 'absolute', left: x + TIMELINE_OFFSET_X, top: 4, fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', pointerEvents: 'none', fontFamily: 'var(--font-mono)' }
     });
   }
@@ -60,7 +84,7 @@ interface TimelineProps {
 
 export function Timeline({ filePaths }: TimelineProps) {
   const config = useProjectStore();
-  const { timelineZoom, updateConfig, bgm_enabled, bgm_file, snapEnabled, snapThreshold, selectedClipId } = config;
+  const { timelineZoom, updateConfig, audio_enabled, audio_file, snapEnabled, snapThreshold, selectedClipId } = config;
   const { videoDuration, segments, activeFile, selectedId } = useSubtitleStore();
 
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -70,18 +94,57 @@ export function Timeline({ filePaths }: TimelineProps) {
   const [currentTime, setCurrentTime] = useState(0);
 
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
-  const [resizingClip, setResizingClip] = useState<{ type: 'vid' | 'bgm' | 'sub', side: 'left' | 'right' } | null>(null);
-  const [draggingClip, setDraggingClip] = useState<'vid' | 'bgm' | null>(null);
+  const [resizingClip, setResizingClip] = useState<{ type: 'vid' | 'audio' | 'sub', side: 'left' | 'right' } | null>(null);
+  const [draggingClip, setDraggingClip] = useState<'vid' | 'audio' | null>(null);
   const [activeSnapTime, setActiveSnapTime] = useState<number | null>(null);
 
-  const pixelsPerSecond = Math.max(0.1, 50 * timelineZoom);
+  const pixelsPerSecond = Math.max(0.0001, 50 * timelineZoom);
   const currentVideoPath = activeFile || (filePaths.length > 0 ? filePaths[0] : null);
   const maxSubTime = segments.length > 0 ? segments[segments.length - 1].end : 0;
-  const rawDuration = Math.max(videoDuration || 0, maxSubTime, 1);
-  const safeDuration = isFinite(rawDuration) ? rawDuration : 3600;
   
+  // Use config duration if set, otherwise fallback to store video duration
+  const activeDuration = config.vid_clip_duration || videoDuration || 0;
+  
+  // AUTO-FIX: If the cached clip duration is shorter than the actual video, 
+  // and we just loaded the metadata, expand it to full.
+  useEffect(() => {
+    if (videoDuration > 1) {
+       // If config duration is 0, smaller than actual, or non-finite, reset to full
+       if (!config.vid_clip_duration || config.vid_clip_duration < videoDuration - 0.1 || !isFinite(config.vid_clip_duration)) {
+          console.log('[timeline-v3] Expanding clip duration to full:', videoDuration);
+          updateConfig({ vid_clip_duration: videoDuration, vid_clip_start: 0 });
+       }
+    }
+  }, [videoDuration]);
+
+  const rawDuration = Math.max(activeDuration, maxSubTime, 1);
+  const safeDuration = isFinite(rawDuration) ? rawDuration : 3600;
+
+  // CapCut logic: Minimum zoom should be exactly what's needed to fit the whole video on screen
+  // Reduced by factor of 5 to allow more zoom out as requested by user
+  const minZoom = useMemo(() => {
+    if (safeDuration > 0 && viewportWidth > 0) {
+      return ((viewportWidth - 40) / (safeDuration * 50)) * 0.2;
+    }
+    return 0.0001;
+  }, [safeDuration, viewportWidth]);
+
+  // Ensure current zoom is never less than minZoom
+  useEffect(() => {
+    if (timelineZoom < minZoom && minZoom > 0) {
+      updateConfig({ timelineZoom: minZoom });
+    }
+  }, [minZoom, timelineZoom, updateConfig]);
+
+  // Log for debugging duration issues
+  useEffect(() => {
+    console.log('[timeline-v4] videoDuration from store:', videoDuration);
+    console.log('[timeline-v4] vid_clip_duration from config:', config.vid_clip_duration);
+    console.log('[timeline-v4] activeDuration calculated:', activeDuration);
+  }, [videoDuration, config.vid_clip_duration]);
+
   // Cap at 30M pixels which is safe for most browsers
-  const timelineWidthPx = Math.min(safeDuration * pixelsPerSecond + (200 * pixelsPerSecond), 30000000);
+  const timelineWidthPx = Math.min(safeDuration * pixelsPerSecond + (500 * pixelsPerSecond), 30000000);
 
   const handleSplitAtPlayhead = () => {
     if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
@@ -97,7 +160,7 @@ export function Timeline({ filePaths }: TimelineProps) {
         useSubtitleStore.getState().trimSegment(selectedId, currentTime, seg.end);
       }
     } else {
-      config.splitLeft(currentTime, videoDuration);
+      config.splitLeft(currentTime, activeDuration);
     }
   };
 
@@ -108,13 +171,13 @@ export function Timeline({ filePaths }: TimelineProps) {
         useSubtitleStore.getState().trimSegment(selectedId, seg.start, currentTime);
       }
     } else {
-      config.splitRight(currentTime, videoDuration);
+      config.splitRight(currentTime, activeDuration);
     }
   };
 
   const handleDeleteSelected = () => {
-    if (selectedClipId === 'bgm-main') {
-      updateConfig({ bgm_enabled: false, bgm_file: '', selectedClipId: null });
+    if (selectedClipId === 'audio-main') {
+      updateConfig({ audio_enabled: false, audio_file: '', selectedClipId: null });
     } else if (selectedId !== null) {
       useSubtitleStore.getState().deleteSegment(selectedId);
     }
@@ -142,7 +205,7 @@ export function Timeline({ filePaths }: TimelineProps) {
     const snapPoints = [0, videoDuration];
     const vidEnd = config.vid_clip_start + (config.vid_clip_duration || videoDuration);
     snapPoints.push(config.vid_clip_start, vidEnd);
-    if (bgm_enabled) snapPoints.push(config.bgm_timeline_start);
+    if (audio_enabled) snapPoints.push(config.audio_timeline_start);
     segments.forEach(s => snapPoints.push(s.start, s.end));
     
     const threshold = snapThreshold / pixelsPerSecond;
@@ -215,12 +278,12 @@ export function Timeline({ filePaths }: TimelineProps) {
            } else {
              updateConfig({ vid_clip_duration: Math.max(0.1, t - vid_clip_start) });
            }
-        } else if (resizingClip.type === 'bgm') {
-           const { bgm_timeline_start, bgm_clip_duration } = useProjectStore.getState();
+        } else if (resizingClip.type === 'audio') {
+           const { audio_timeline_start, audio_clip_duration } = useProjectStore.getState();
            if (resizingClip.side === 'left') {
-             updateConfig({ bgm_timeline_start: t, bgm_clip_duration: Math.max(0.1, bgm_clip_duration - (t - bgm_timeline_start)) });
+             updateConfig({ audio_timeline_start: t, audio_clip_duration: Math.max(0.1, audio_clip_duration - (t - audio_timeline_start)) });
            } else {
-             updateConfig({ bgm_clip_duration: Math.max(0.1, t - bgm_timeline_start) });
+             updateConfig({ audio_clip_duration: Math.max(0.1, t - audio_timeline_start) });
            }
         }
       }
@@ -232,8 +295,8 @@ export function Timeline({ filePaths }: TimelineProps) {
         setActiveSnapTime(snapped ? t : null);
         if (draggingClip === 'vid') {
            updateConfig({ vid_clip_start: t });
-        } else if (draggingClip === 'bgm') {
-           updateConfig({ bgm_timeline_start: t });
+        } else if (draggingClip === 'audio') {
+           updateConfig({ audio_timeline_start: t });
         }
       }
     };
@@ -276,8 +339,8 @@ export function Timeline({ filePaths }: TimelineProps) {
       }
 
       if ((e.key === 'Delete' || e.key === 'Backspace')) {
-        if (selectedClipId === 'bgm-main') {
-          useProjectStore.getState().updateConfig({ bgm_enabled: false, bgm_file: '', selectedClipId: null });
+        if (selectedClipId === 'audio-main') {
+          useProjectStore.getState().updateConfig({ audio_enabled: false, audio_file: '', selectedClipId: null });
           e.preventDefault();
           return;
         }
@@ -296,14 +359,40 @@ export function Timeline({ filePaths }: TimelineProps) {
   }, [currentTime, selectedClipId, selectedId, segments]);
 
   const handleZoomIn = () => updateConfig({ timelineZoom: Math.min(10, timelineZoom + 0.5) });
-  const handleZoomOut = () => updateConfig({ timelineZoom: Math.max(0.1, timelineZoom - 0.5) });
+  const handleZoomOut = () => updateConfig({ timelineZoom: Math.max(minZoom, timelineZoom - 0.5) });
+
+  const handleFitToView = () => {
+    if (minZoom > 0) {
+      updateConfig({ timelineZoom: minZoom }); 
+    } else {
+      updateConfig({ timelineZoom: 1 });
+    }
+  };
 
   const TRACK_HEIGHT = 50;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        const currentZoom = useProjectStore.getState().timelineZoom;
+        const newZoom = Math.max(minZoom, Math.min(10, currentZoom + (currentZoom * delta * 2)));
+        updateConfig({ timelineZoom: newZoom });
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [updateConfig]);
 
   return (
     <div className="tl" style={{ flexShrink: 0, height: '100%', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', userSelect: 'none' }}>
       
-      <div className="tlhd" style={{ height: 40, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
+      <div className="tlhd" style={{ position: 'relative', height: 40, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
         
         {/* TOOLBAR: LEFT GROUP */}
         <div style={{ display: 'flex', gap: 2, alignItems: 'center', background: 'var(--bg-primary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
@@ -316,8 +405,11 @@ export function Timeline({ filePaths }: TimelineProps) {
            <button className="tlb-split" onClick={handleSplitRight} title="Split Right (W)" disabled={!selectedClipId}>
               <ArrowLineRight size={16} weight="regular" />
            </button>
+           <button className="tlb-split" onClick={() => updateConfig({ vid_clip_duration: videoDuration })} title="Reset to Full Duration" disabled={!videoDuration}>
+              <ArrowsOut size={16} weight="regular" />
+           </button>
            <div style={{ width: 1, height: 14, background: 'var(--border-subtle)', margin: '0 4px' }} />
-           <button className="tlb-split" onClick={handleDeleteSelected} title="Delete (Del)" disabled={selectedClipId !== 'bgm-main' && selectedId === null}>
+           <button className="tlb-split" onClick={handleDeleteSelected} title="Delete (Del)" disabled={selectedClipId !== 'audio-main' && selectedId === null}>
               <Trash size={16} weight="regular" />
            </button>
         </div>
@@ -328,8 +420,51 @@ export function Timeline({ filePaths }: TimelineProps) {
             <MagnifyingGlassMinus size={17} weight="regular" />
           </button>
           
-          <div style={{ width: 80, height: 4, background: 'var(--border-subtle)', borderRadius: 2, position: 'relative', margin: '0 4px' }}>
-             <div style={{ position: 'absolute', left: `${(timelineZoom / 10) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)', border: '2px solid #fff' }} />
+          <div 
+            style={{ width: 80, height: 16, display: 'flex', alignItems: 'center', cursor: 'pointer', margin: '0 4px' }}
+            onPointerDown={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const updateZoom = (clientX: number) => {
+                const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                let newZoom;
+                if (pct <= 0.5) {
+                  // Map [0, 0.5] to [minZoom, 1] logarithmically
+                  const factor = pct / 0.5;
+                  newZoom = minZoom * Math.pow(1 / minZoom, factor);
+                } else {
+                  // Map [0.5, 1] to [1, 10] logarithmically
+                  const factor = (pct - 0.5) / 0.5;
+                  newZoom = 1 * Math.pow(10 / 1, factor);
+                }
+                updateConfig({ timelineZoom: Math.max(minZoom, Math.min(10, newZoom)) });
+              };
+              updateZoom(e.clientX);
+              const onMove = (me: PointerEvent) => updateZoom(me.clientX);
+              const onUp = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+              };
+              window.addEventListener('pointermove', onMove);
+              window.addEventListener('pointerup', onUp);
+            }}
+          >
+            <div style={{ width: '100%', height: 4, background: 'var(--border-subtle)', borderRadius: 2, position: 'relative' }}>
+               {/* Logarithmic-like mapping for better precision at low zoom levels */}
+               <div style={{ 
+                 position: 'absolute', 
+                 left: `${timelineZoom <= 1 
+                   ? (Math.log10(timelineZoom / minZoom) / Math.log10(1 / minZoom)) * 50 
+                   : 50 + (Math.log10(timelineZoom) / Math.log10(10)) * 50}%`, 
+                 top: '50%', 
+                 transform: 'translate(-50%, -50%)', 
+                 width: 10, 
+                 height: 10, 
+                 borderRadius: '50%', 
+                 background: 'var(--accent)', 
+                 border: '2px solid #fff',
+                 pointerEvents: 'none'
+               }} />
+            </div>
           </div>
 
           <button className="tlb-split" onClick={handleZoomIn} title="Zoom In">
@@ -338,7 +473,7 @@ export function Timeline({ filePaths }: TimelineProps) {
           
           <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 4px' }} />
           
-          <button className="tlb-split" onClick={() => updateConfig({ timelineZoom: 1 })} title="Fit to View">
+          <button className="tlb-split" onClick={handleFitToView} title="Fit to View">
             <ArrowsOut size={17} weight="regular" />
           </button>
         </div>
@@ -352,7 +487,7 @@ export function Timeline({ filePaths }: TimelineProps) {
             {[ 
               { id: 'vid', label: 'VID', color: 'var(--accent)' },
               { id: 'sub', label: 'SUB', color: 'var(--accent)' },
-              { id: 'bgm', label: 'BGM', color: 'var(--success)' }
+              { id: 'audio', label: 'AUDIO', color: 'var(--success)' }
             ].map((tk) => (
               <div key={tk.id} style={{ height: TRACK_HEIGHT, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border-subtle)', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -392,7 +527,7 @@ export function Timeline({ filePaths }: TimelineProps) {
             <div className="tllist" style={{ paddingTop: 26, height: '100%', pointerEvents: 'auto', position: 'relative' }}>
               
               {activeSnapTime !== null && (
-                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: activeSnapTime * pixelsPerSecond + TIMELINE_OFFSET_X - scrollLeft, width: '1px', background: 'rgba(225, 29, 72, 0.6)', zIndex: 50, pointerEvents: 'none' }} />
+                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: activeSnapTime * pixelsPerSecond + TIMELINE_OFFSET_X - scrollLeft, width: '1px', background: '#22c55e', zIndex: 50, pointerEvents: 'none' }} />
               )}
 
               {/* ROW 1: VIDEO (WITH EMBEDDED AUDIO) */}
@@ -401,7 +536,7 @@ export function Timeline({ filePaths }: TimelineProps) {
                   {currentVideoPath && (
                      <div 
                        onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'vid-main' }); setDraggingClip('vid'); }}
-                       style={{ position: 'absolute', height: 42, top: 4, left: config.vid_clip_start * pixelsPerSecond, width: (config.vid_clip_duration || videoDuration || 1) * pixelsPerSecond, background: 'var(--accent-subtle)', borderRadius: 8, border: config.selectedClipId === 'vid-main' ? '2px solid #fff' : '1px solid var(--accent)', overflow: 'hidden', cursor: draggingClip === 'vid' ? 'grabbing' : 'grab' }}>
+                       style={{ position: 'absolute', height: 42, top: 4, left: config.vid_clip_start * pixelsPerSecond, width: activeDuration * pixelsPerSecond, background: 'var(--accent-subtle)', borderRadius: 8, border: config.selectedClipId === 'vid-main' ? '2px solid #fff' : '1px solid var(--accent)', overflow: 'hidden', cursor: draggingClip === 'vid' ? 'grabbing' : 'grab' }}>
                          <VideoTrack videoPath={currentVideoPath} videoDuration={videoDuration} pixelsPerSecond={pixelsPerSecond} clipStart={config.vid_clip_start} scrollLeft={scrollLeft - (config.vid_clip_start * pixelsPerSecond)} viewportWidth={viewportWidth} />
                          <div style={{ position: 'absolute', inset: 0, opacity: 0.6, pointerEvents: 'none' }}>
                             <AudioTrack url={activeFile} pixelsPerSecond={pixelsPerSecond} color="var(--success)" scrollLeft={scrollLeft - (config.vid_clip_start * pixelsPerSecond)} viewportWidth={viewportWidth} />
@@ -420,17 +555,17 @@ export function Timeline({ filePaths }: TimelineProps) {
                  </div>
               </div>
 
-              {/* ROW 3: BGM */}
+              {/* ROW 3: AUDIO */}
               <div className="tltr" style={{ height: TRACK_HEIGHT, borderBottom: '1px solid var(--border-subtle)', position: 'relative', overflow: 'hidden' }}>
                  <div style={{ position: 'absolute', left: -scrollLeft + TIMELINE_OFFSET_X, top: 0, width: timelineWidthPx, height: '100%' }}>
-                   {bgm_enabled && bgm_file && (
+                   {audio_enabled && audio_file && (
                       <div 
-                        onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'bgm-main' }); setDraggingClip('bgm'); }}
-                        style={{ position: 'absolute', top: 4, bottom: 4, left: config.bgm_timeline_start * pixelsPerSecond, width: (config.bgm_clip_duration || 200 / pixelsPerSecond) * pixelsPerSecond, background: 'var(--bg-surface)', borderRadius: 8, border: config.selectedClipId === 'bgm-main' ? '2px solid #fff' : '1px solid var(--accent)', display: 'flex', alignItems: 'center', cursor: draggingClip === 'bgm' ? 'grabbing' : 'grab' }}
+                        onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setDraggingClip('audio'); }}
+                        style={{ position: 'absolute', top: 4, bottom: 4, left: config.audio_timeline_start * pixelsPerSecond, width: (config.audio_clip_duration || 200 / pixelsPerSecond) * pixelsPerSecond, background: 'var(--bg-surface)', borderRadius: 8, border: config.selectedClipId === 'audio-main' ? '2px solid #fff' : '1px solid var(--accent)', display: 'flex', alignItems: 'center', cursor: draggingClip === 'audio' ? 'grabbing' : 'grab' }}
                       >
-                           <AudioTrack url={bgm_file} pixelsPerSecond={pixelsPerSecond} color="var(--accent)" scrollLeft={scrollLeft - (config.bgm_timeline_start * pixelsPerSecond)} viewportWidth={viewportWidth} />
-                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'bgm-main' }); setResizingClip({ type: 'bgm', side: 'left' }); }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize' }} />
-                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'bgm-main' }); setResizingClip({ type: 'bgm', side: 'right' }); }} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize' }} />
+                           <AudioTrack url={audio_file} pixelsPerSecond={pixelsPerSecond} color="var(--accent)" scrollLeft={scrollLeft - (config.audio_timeline_start * pixelsPerSecond)} viewportWidth={viewportWidth} />
+                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setResizingClip({ type: 'audio', side: 'left' }); }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize' }} />
+                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setResizingClip({ type: 'audio', side: 'right' }); }} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize' }} />
                       </div>
                    )}
                  </div>

@@ -1,0 +1,279 @@
+/* launcher.css — Styles for Home Launcher */
+
+.launcher {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(145deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  overflow: hidden;
+  font-family: var(--font-sans, 'Inter', 'Be Vietnam Pro', system-ui, sans-serif);
+}
+
+/* Header */
+.launcher-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.launcher-wordmark {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+}
+.launcher-wordmark em {
+  font-style: normal;
+  color: var(--accent, #7c6aef);
+}
+
+.launcher-version {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Body */
+.launcher-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Hero Section */
+.launcher-hero {
+  text-align: center;
+  padding: 48px 0 24px;
+}
+
+.launcher-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  background: linear-gradient(135deg, var(--accent, #7c6aef), #a78bfa, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.launcher-subtitle {
+  font-size: 14px;
+  color: var(--text-muted, #888);
+  margin: 0 0 24px;
+}
+
+.launcher-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent, #7c6aef) 0%, #a78bfa 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 16px rgba(124, 106, 239, 0.25);
+}
+
+.launcher-create-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(124, 106, 239, 0.35);
+}
+
+.launcher-create-btn:active {
+  transform: translateY(0);
+}
+
+/* Section Titles */
+.launcher-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary, #aaa);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px;
+}
+
+/* Tools Grid */
+.launcher-tools-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.launcher-tool-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 120px;
+  height: 90px;
+  background: var(--surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--text-secondary, #aaa);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.launcher-tool-card:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+  border-color: var(--accent, #7c6aef);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Recent Projects */
+.launcher-recent {
+  flex: 1;
+}
+
+.launcher-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  border: 2px dashed var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  color: var(--text-muted, #888);
+  font-size: 13px;
+}
+
+/* Auth Prompt (RequireAuth) */
+.auth-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.auth-prompt-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  color: var(--accent, #7c6aef);
+}
+
+.auth-prompt-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.auth-prompt-desc {
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  margin: 0;
+  max-width: 300px;
+}
+
+.auth-prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent, #7c6aef);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.auth-prompt-btn:hover {
+  opacity: 0.85;
+}
+
+/* Auth Toast */
+.auth-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface, #2a2a2a);
+  color: var(--text-primary);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  animation: toastIn 0.3s ease forwards;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Recent Project Grid (used in Plan 09-02) */
+.launcher-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.launcher-project-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.launcher-project-card:hover {
+  border-color: var(--accent, #7c6aef);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.launcher-project-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  background: var(--bg-secondary, #1a1a1a);
+}
+
+.launcher-project-info {
+  padding: 10px 12px;
+}
+
+.launcher-project-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.launcher-project-meta {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+}

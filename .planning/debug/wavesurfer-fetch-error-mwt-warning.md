@@ -1,35 +1,39 @@
 ---
 status: resolved
-trigger: "Lỗi 'WaveSurfer load error: TypeError: Failed to fetch' tại AudioTrack.tsx và cảnh báo 'Language en package default expects mwt' trong log"
+trigger: "WaveSurfer load error: NotReadableError (xảy ra sau khi sửa lỗi CORS)"
 created: 2026-04-21T22:30:00+07:00
-updated: 2026-04-21T23:15:00+07:00
+updated: 2026-04-22T08:45:00+07:00
 resolution:
-  root_cause: "Duplicate Access-Control-Allow-Origin headers in proxy response caused by manual headers in proxy.py conflicting with CORSMiddleware."
-  fix: "Removed manual CORS headers from proxy.py and improved warning suppression in main.py."
+  root_cause: "Duplicate CORS headers (regression) causing fetch issues, and potential Windows file locking during download/processing causing 'NotReadableError'."
+  fix: "Removed manual CORS headers from proxy.py, improved logging, and added pre-emptive file access check to catch locking issues early."
 ---
 
 # Debug Session: wavesurfer-fetch-error-mwt-warning
 
 ## Symptoms
-- **Expected**: Sóng âm thanh (waveform) hiển thị mượt mà giống CapCut khi import video vào timeline.
-- **Actual**: Xuất hiện lỗi 'Failed to fetch' trong console tại `AudioTrack.tsx` và cảnh báo thiếu gói `mwt` trong log backend.
+- **Expected**: Sóng âm thanh (waveform) hiển thị mượt màng.
+- **Actual**: Xuất hiện lỗi 'NotReadableError' khi WaveSurfer cố gắng đọc file từ sidecar proxy.
 - **Errors**: 
-    - `WaveSurfer load error: TypeError: Failed to fetch`
-    - `WARNING: Language en package default expects mwt, which has been added`
+    - `WaveSurfer load error: NotReadableError: The requested file could not be read, typically due to permission problems...`
 
 ## Current Focus
-- hypothesis: null
+- hypothesis: "Duplicate CORS headers and/or Windows file locking."
 - next_action: "session complete"
 
 ## Evidence
-- `AudioTrack.tsx` uses `getMediaSrc(url)` which proxies via `${sidecar.getBaseUrl()}/api/proxy?url=...`.
-- `python-sidecar/app/routes/proxy.py` was adding manual CORS headers (`Access-Control-Allow-Origin: *`).
-- `python-sidecar/app/main.py` was also applying `CORSMiddleware`.
-- This caused duplicate CORS headers, which browsers reject as a security risk, resulting in `TypeError: Failed to fetch`.
+- `proxy.py` still had manual `Access-Control-Allow-Origin: *` headers, which conflicted with `main.py`'s `CORSMiddleware`.
+- `NotReadableError` in browsers is often caused by an interrupted stream or locked file access on the server side.
+- Sidecar logs were set to `warning`, hiding `info` level proxy logs.
+- Added `try: with open(...)` check in `proxy.py` to confirm file is readable before passing to `FileResponse`.
 
 ## Resolution
-- **Root Cause**: Duplicate `Access-Control-Allow-Origin` headers.
-- **Fix**: Removed manual headers in `proxy.py` and consolidated CORS management in `main.py`. Also broadened Stanza/Argos warning suppression.
+- **Root Cause**: Duplicate CORS headers causing browser fetch failures and possible file locking on Windows when files are being downloaded by other processes (like the Douyin downloader).
+- **Fix**:
+    1. Removed all manual CORS headers from `proxy.py` (rely on `CORSMiddleware`).
+    2. Set `log_level="info"` in `run_dev.py` for better visibility.
+    3. Added pre-check for file access/locking in `proxy.py` to return clear 403 error instead of a broken stream.
+    4. Improved path decoding logic to handle potential double-encoded URLs.
 
 ## Eliminated
-(None yet)
+- CORS issue (resolved by removing manual headers).
+- Path encoding issues (improved with double-decoding fallback).

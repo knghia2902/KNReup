@@ -6,6 +6,7 @@ import asyncio
 import logging
 import os
 import tempfile
+import gc
 from pathlib import Path
 from typing import AsyncGenerator, Optional
 
@@ -59,9 +60,12 @@ class PipelineConfig:
         blur_regions: Optional[list] = None,
         crop_enabled: bool = False,
         video_ratio: str = "original",
-        bgm_enabled: bool = False,
-        bgm_file: str = "",
-        bgm_volume: float = 0.5,
+        audio_enabled: bool = False,
+        audio_file: str = "",
+        audio_volume: float = 0.5,
+        audio_clip_start: float = 0.0,
+        audio_clip_duration: float = 0.0,
+        audio_timeline_start: float = 0.0,
         ducking_strength: float = 0.2,
         # Image Logo
         image_logo_enabled: bool = False,
@@ -124,9 +128,12 @@ class PipelineConfig:
             })
         self.crop_enabled = crop_enabled
         self.video_ratio = video_ratio
-        self.bgm_enabled = bgm_enabled
-        self.bgm_file = bgm_file
-        self.bgm_volume = bgm_volume
+        self.audio_enabled = audio_enabled
+        self.audio_file = audio_file
+        self.audio_volume = audio_volume
+        self.audio_clip_start = audio_clip_start
+        self.audio_clip_duration = audio_clip_duration
+        self.audio_timeline_start = audio_timeline_start
         self.ducking_strength = ducking_strength
         self.image_logo_enabled = image_logo_enabled
         self.image_logo_file = image_logo_file
@@ -176,6 +183,16 @@ class PipelineRunner:
                 segments = result["segments"]
                 detected_lang = result["language"]
                 duration = result["duration"]
+                
+                # Release Whisper model resources immediately after use
+                del asr
+                gc.collect()
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except ImportError:
+                    pass
             else:
                 yield {"stage": "transcribe", "progress": 10, "message": "Skipping audio transcribe (Hardsub OCR Only)..."}
                 await asyncio.sleep(0.1)
@@ -203,6 +220,10 @@ class PipelineRunner:
                     "h": getattr(config, "ocr_h", 0)
                 }
                 ocr_segments = await asyncio.to_thread(ocr_engine.extract_hardsubs, video_path, region, detected_lang)
+                
+                # Clean up OCR engine
+                del ocr_engine
+                gc.collect()
                 
                 # Dynamic Language Detection based on extracted text (if Auto and ASR bypassed)
                 if not getattr(config, "asr_enabled", True) and detected_lang == "auto":
@@ -325,6 +346,8 @@ class PipelineRunner:
                 "stage": "error", "progress": -1,
                 "message": str(e),
             }
+        finally:
+            gc.collect()
 
     async def run_render(
         self,
@@ -383,6 +406,10 @@ class PipelineRunner:
                 else:
                     dubbed_audio_path = None
 
+                # Clean up TTS engine
+                del tts
+                gc.collect()
+
             yield {"stage": "tts", "progress": 75, "message": "Speech generation complete"}
 
             # ── Stage 4: Merge ──
@@ -421,6 +448,8 @@ class PipelineRunner:
         finally:
             if 'temp_dir_obj' in locals():
                 temp_dir_obj.cleanup()
+            gc.collect()
+
     async def _merge_tts_audio(
         self,
         audio_files: list[dict],

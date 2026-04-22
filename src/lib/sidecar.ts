@@ -125,6 +125,40 @@ class SidecarBridge {
     return new EventSource(`${this.baseUrl}${path}`);
   }
 
+  async uploadReferenceAudio(file: File): Promise<{ temp_path: string, duration: number }> {
+    if (!this.baseUrl) throw new Error('Sidecar chưa khởi tạo');
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${this.baseUrl}/api/tts/profiles/upload-reference`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    return res.json();
+  }
+
+  async saveProfile(name: string, tempPath: string): Promise<{ profile_name: string }> {
+    return this.fetch<{ profile_name: string }>('/api/tts/profiles/save', {
+      method: 'POST',
+      body: JSON.stringify({ name, temp_path: tempPath }),
+    });
+  }
+
+  async getProfiles(): Promise<{ profiles: string[] }> {
+    return this.fetch<{ profiles: string[] }>('/api/tts/profiles');
+  }
+
+  async synthesize(params: any): Promise<Blob> {
+    if (!this.baseUrl) throw new Error('Sidecar chưa khởi tạo');
+    const res = await fetch(`${this.baseUrl}/api/pipeline/tts-demo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) throw new Error('Synthesize failed');
+    return res.blob();
+  }
+
   getPort(): number | null { return this.port; }
   getBaseUrl(): string { return this.baseUrl; }
   isConnected(): boolean { return this.connected; }

@@ -129,7 +129,7 @@ Plans:
 > **Mục tiêu**: Kéo thả clip, snapping chuyên nghiệp và kéo thả từ library.
 > **Output**: Timeline hoạt động mượt mà ngang tầm Capcut.
 
-- **Clip Repositioning**: Kéo di chuyển clip (VID/BGM) trên track.
+- **Clip Repositioning**: Kéo di chuyển clip (VID/BGM) on track.
 - **Snapping Logic**: Tự động hít vào playhead/cạnh clip khi kéo.
 - **Library Drag & Drop**: Kéo video/audio từ Media Bin/Audio Library thả xuống timeline.
 - **Visual Feedback**: Hiện vạch snap, bóng mờ khi kéo thả.
@@ -174,14 +174,41 @@ Plans:
 
 **UAT**: Trim VID track → kéo BGM offset → AI Refine phụ đề → lưu Export Preset → Auto-mask sub cũ.
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 - [x] 08.0-01-PLAN.md — Sidecar TTS Integration (OmniVoice, ElevenLabs) & Piper Removal.
-- [ ] 08.0-02-PLAN.md — Frontend TTS UI, State & Per-segment config.
+- [x] 08.0-02-PLAN.md — Frontend TTS UI, State & Per-segment config.
 - [ ] 08.0-03-PLAN.md — Professional Timeline Interactions & Smart Snapping.
 - [ ] 08.0-04-PLAN.md — AI Core Sidecar (Refiner, Masking, Diarization).
 - [ ] 08.0-05-PLAN.md — Advanced Properties Panel & AI UI Integration.
 
+## Phase 09: Home Launcher Redesign & Tools
+> **Mục tiêu**: Xây dựng Home Launcher quản lý dự án và khởi chạy các cửa sổ độc lập cho Editor và Tools.
+> **Requirements**: M3-HOME-01, M3-HOME-02, M3-HOME-03, M3-HOME-04
+> **Output**: Home Launcher hoạt động + Multi-window architecture.
+
+- **Multi-window Architecture**: Launcher, Editor và Tools chạy trong các cửa sổ riêng biệt (giống CapCut).
+- **Guest Mode Auth**: Cho phép dùng app không cần login; yêu cầu login cho tính năng AI/Premium.
+- **Recent Projects Grid**: Hiển thị danh sách dự án gần đây kèm Thumbnail tự động chụp từ video.
+- **Standalone Tools**: Downloader và Voice Clone mở trong cửa sổ popup độc lập.
+
+**UAT**: Mở App -> Launcher hiện ra -> Tạo dự án -> Mở cửa sổ Editor mới -> Chụp thumbnail thành công -> Quay lại Launcher thấy project.
+
+**Plans:** 4 plans
+- [ ] 09-01-PLAN.md — Multi-window Architecture & Auth Store Foundation.
+- [ ] 09-02-PLAN.md — Home Launcher UI & Project Metadata.
+- [ ] 09-03-PLAN.md — Tool Popups & Feature Guards.
+- [ ] 09-04-PLAN.md — Polishing, Transitions & Final Wiring.
+
 ---
 
 ### Phase 08.2: Audio System Refactor & Local Import (INSERTED)
-... (rest of the file remains same)
+> **Mục tiêu**: Refactor hệ thống Audio để hỗ trợ đa track và import file cục bộ mượt mà.
+> **Requirements**: M3-AU-01, M3-AU-02
+> **Output**: Audio Engine mới, hỗ trợ mượt mà nhiều nguồn âm thanh.
+
+- **Centralized Audio Manager**: Quản lý toàn bộ audio stream qua một hub duy nhất.
+- **Local Asset Provider**: Hỗ trợ import audio/video từ local path thay vì chỉ qua upload.
+- **Waveform Scaling**: Sửa lỗi hiển thị waveform khi zoom sâu timeline.
+
+**Plans:** 1/1 plans executed
+- [x] 08.2-01-PLAN.md — Audio Refactor & Local Import implementation.

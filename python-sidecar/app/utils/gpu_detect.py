@@ -7,40 +7,58 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Lưu trữ handles để tránh bị garbage collected và lặp lại
+_injected_handles = []
+_injected_paths = set()
+
 def _inject_nvidia_dll_paths():
     """Đăng ký bộ thư viện CUDA 12.4 thống nhất từ Torch Lib cho toàn bộ ứng dụng."""
+    global _injected_handles, _injected_paths
     if os.name != "nt":
         return
+    
+    if _injected_handles and _injected_handles[0] is not None:
+        return
+
     try:
         import sys
         import site
         
-        potential_bases = [sys.prefix] + site.getsitepackages()
+        # 1. Tìm đường dẫn Torch Lib
+        torch_lib = None
+        bases = [sys.prefix]
+        try:
+            bases += site.getsitepackages()
+        except: pass
         
-        for base in potential_bases:
-            sp = os.path.join(base, "Lib", "site-packages")
-            if not os.path.exists(sp):
-                sp = base
+        for base in bases:
+            path = os.path.join(base, "Lib", "site-packages", "torch", "lib")
+            if os.path.exists(path):
+                torch_lib = os.path.abspath(path)
+                break
+        
+        if torch_lib:
+            # ƯU TIÊN TUYỆT ĐỐI: Thêm vào đầu PATH và dùng add_dll_directory
+            # Điều này giúp tránh Error 127 (cudnnGetLibConfig) do load nhầm DLL cũ trong System32
+            os.environ["PATH"] = torch_lib + os.pathsep + os.environ.get("PATH", "")
+            try:
+                handle = os.add_dll_directory(torch_lib)
+                _injected_handles.append(handle)
+                logger.info(f"Fixed Error 127: Prioritized CUDA 12.4 from {torch_lib}")
+            except: pass
             
-            # ƯU TIÊN SỐ 1: Torch Lib (Chứa CUDA 12.4 chuẩn, ổn định nhất)
-            torch_lib = os.path.join(sp, "torch", "lib")
-            if os.path.exists(torch_lib):
-                try:
-                    os.add_dll_directory(torch_lib)
-                    # Cần thêm vào PATH cho một số thư viện cũ vẫn dùng cơ chế cũ
-                    if torch_lib not in os.environ.get("PATH", ""):
-                        os.environ["PATH"] = torch_lib + os.pathsep + os.environ.get("PATH", "")
-                    logger.info(f"Unified CUDA 12.4 (Torch): {torch_lib}")
-                except: pass
-
-            # Dự phòng: Các thư viện NVIDIA lẻ
-            nvidia_libs = ["cuda_runtime", "cublas", "cudnn", "cufft", "curand", "cusolver", "cusparse", "nvjitlink", "cuda_nvrtc"]
-            for lib in nvidia_libs:
-                bin_path = os.path.join(sp, "nvidia", lib, "bin")
-                if os.path.exists(bin_path):
-                    try:
-                        os.add_dll_directory(bin_path)
-                    except: pass
+        # 2. Vô hiệu hóa việc tìm kiếm DLL trong thư mục hệ thống để tránh xung đột
+        # (Chỉ áp dụng cho tiến trình này)
+        try:
+            import kernel32
+            kernel32 = ctypes.windll.kernel32
+            # LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS
+            kernel32.SetDefaultDllDirectories(0x00001000 | 0x00000400)
+        except: pass
+            
+        if not _injected_handles:
+            _injected_handles.append(None)
+            
     except Exception as e:
         logger.warning(f"CUDA Unification warning: {e}")
 
@@ -102,8 +120,6 @@ def detect_gpu() -> dict:
         else:
             if not has_cublas: logger.warning("Missing cuBLAS DLL")
             if not has_cudnn: logger.warning("Missing cuDNN DLL")
-            # If missing one of them, we might still try CUDA but it's risky.
-            # For faster-whisper (CTranslate2), both are usually needed for 'cuda' device.
             result["compute_type"] = "float32" 
 
     return result

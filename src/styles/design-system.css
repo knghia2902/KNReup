@@ -784,8 +784,8 @@ textarea,input[type=text],input[type=number],input[type=password]{user-select:te
 .tlblock.s2{left:26%;width:18%;}
 .tlblock.s3{left:46%;width:14%;}
 .tlblock.s4{left:62%;width:20%;}
-.tlblock.bgm{left:2%;width:90%;}
-.tlblock.bgm .tlbi{background:var(--bg-hover);border-color:var(--border-hover);color:var(--text-disabled);}
+.tlblock.audio{left:2%;width:90%;}
+.tlblock.audio .tlbi{background:var(--bg-hover);border-color:var(--border-hover);color:var(--text-disabled);}
 
 /* ===========================
    STATUS BAR

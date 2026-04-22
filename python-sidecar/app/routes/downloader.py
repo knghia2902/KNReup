@@ -16,7 +16,7 @@ from app.engines.downloader import get_download_manager
 logger = logging.getLogger(__name__)
 
 # safe reload test
-router = APIRouter(prefix="/api/download")
+router = APIRouter(prefix="/download")
 
 
 

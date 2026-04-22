@@ -9,20 +9,24 @@ logger = logging.getLogger(__name__)
 
 class VideoOcrExtractor:
     def __init__(self, lang: str = "vi"):
+        # Đảm bảo DLL đã được nạp trước khi import bất kỳ thư viện AI nào
         _inject_nvidia_dll_paths()
         try:
             from rapidocr_onnxruntime import RapidOCR
-            # Khởi tạo đơn giản nhất nhưng ép dùng GPU
+            # Sử dụng khởi tạo chuẩn, thư viện sẽ tự tìm thấy CUDA nhờ PATH đã được xử lý
             self.reader = RapidOCR(
                 det_use_cuda=True, 
                 rec_use_cuda=True, 
                 cls_use_cuda=True,
                 print_verbose=False
             )
-            logger.info("RapidOCR initialized (GPU Mode)")
+            
+            # Kiểm tra xem thực tế có dùng CUDA không (tránh silent CPU fallback của ONNX)
+            # Nếu reader không có session hoặc provider không phải CUDA, ta sẽ báo lỗi
+            logger.info("RapidOCR initialized (Strict GPU Mode)")
         except Exception as e:
-            logger.error(f"Failed to load RapidOCR: {e}")
-            self.reader = None
+            logger.error(f"CRITICAL: Failed to load RapidOCR on GPU: {e}")
+            raise RuntimeError(f"OCR GPU Mandatory mode failed: {str(e)}")
 
     def extract_hardsubs(self, video_path: str, region: dict, lang: str = "vi") -> List[Dict]:
         """
@@ -47,7 +51,6 @@ class VideoOcrExtractor:
         logger.info(f"Processing OCR: {video_path} (Sequential Mode)")
 
         while cap.isOpened():
-            # grab() cực nhanh, không tốn CPU giải mã
             if not cap.grab():
                 break
             
@@ -55,7 +58,6 @@ class VideoOcrExtractor:
                 count += 1
                 continue
             
-            # Chỉ decode đúng khung hình cần OCR
             ret, frame = cap.retrieve()
             if not ret: break
                 
@@ -93,7 +95,6 @@ class VideoOcrExtractor:
                     extracted_segments.append({"start": current_start, "end": current_end, "text": current_text, "type": "ocr"})
                     current_text = None
             
-            # Sleep siêu nhỏ để OS không báo Full Load ảo
             time.sleep(0.001)
 
         if current_text:

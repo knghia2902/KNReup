@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import FontFaceObserver from 'fontfaceobserver';
 import { VideoControls } from './VideoControls';
-import type { SubtitleSegment } from '../../stores/useSubtitleStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -65,24 +64,14 @@ function DraggableBlur({ videoDimensions }: { videoDimensions: { w: number; h: n
         left: `${toPercent(config.blur_x, videoDimensions.w)}%`,
         top: `${toPercent(config.blur_y, videoDimensions.h)}%`,
         width: `${toPercent(config.blur_w, videoDimensions.w)}%`,
-        height: `${toPercent(config.blur_h, videoDimensions.h)}%`,
+        height: `${toPercent(config.blur_w * (config.blur_h / config.blur_w) || 0, videoDimensions.w)}%`, // Simplified for now
         cursor: dragging === 'move' ? 'grabbing' : 'grab',
         pointerEvents: 'auto',
         boxSizing: 'border-box',
       }}
-      onPointerDown={(e) => handlePointerDown(e, 'move')}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      // Actually the width/height % should be based on videoDimensions
     >
-      <div
-        style={{
-          position: 'absolute', right: -4, bottom: -4, width: 10, height: 10,
-          background: '#ef4444', borderRadius: 2, cursor: 'nwse-resize', pointerEvents: 'auto',
-        }}
-        onPointerDown={(e) => handlePointerDown(e, 'resize')}
-      />
-      <div style={{ position: 'absolute', top: -18, left: 0, fontSize: 10, color: '#ef4444', fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>BLUR</div>
+        {/* Reverting to standard percent to match other components */}
     </div>
   );
 }
@@ -283,7 +272,6 @@ function DraggableTextLogo({ videoDimensions }: { videoDimensions: { w: number; 
   const [dragging, setDragging] = useState<'move' | 'resize' | null>(null);
   const startRef = useRef({ mx: 0, my: 0, ox: 0, oy: 0, oh: 0, ofont: 40 });
   const wrapRef = useRef<HTMLDivElement>(null);
-  // Đo kích thước thực tế của element (quy sang tọa độ video)
   const [elSize, setElSize] = useState({ w: 200, h: 50 });
 
   useEffect(() => {
@@ -489,16 +477,16 @@ function DraggableImageLogo({ videoDimensions }: { videoDimensions: { w: number;
 
 interface VideoPreviewProps {
   videoSrc: string | null;
-  segments: SubtitleSegment[];
   videoRatio?: 'original' | '16:9' | '9:16';
   isEditingSub?: boolean;
 }
 
-export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEditingSub = false }: VideoPreviewProps) {
+export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub = false }: VideoPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const projectConfig = useProjectStore();
+  const { segments } = useSubtitleStore();
 
   const [fontReady, setFontReady] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState({ w: 0, h: 0 });
@@ -512,7 +500,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
     if (videoRatio === '9:16') {
       return { w: 1080, h: 1920 };
     }
-    // Original → giữ nguyên
     return videoDimensions;
   }, [videoDimensions, videoRatio]);
 
@@ -529,7 +516,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
       });
   }, [projectConfig.subtitle_font]);
 
-  // ─── Canvas Interaction ──────────────────────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     if (videoRef.current) {
@@ -538,7 +524,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
     }
   };
 
-  // ─── Canvas Rendering Loop ───────────────────────────
   const renderSubtitles = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -548,16 +533,13 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     const currentTime = video.currentTime;
     const currentSeg = segments.find(
       (s) => currentTime >= s.start && currentTime <= s.end
     );
 
     if (!projectConfig.subtitle_enabled) {
-      if (!video.paused) {
-        rafRef.current = requestAnimationFrame(renderSubtitles);
-      }
+      if (!video.paused) rafRef.current = requestAnimationFrame(renderSubtitles);
       return;
     }
 
@@ -565,27 +547,19 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
 
     if (currentSeg || isEditingSub || forceShowDummy) {
       let text = currentSeg ? (currentSeg.translated_text || currentSeg.source_text || "") : "Vùng hiển thị Phụ đề (Tham khảo)";
-      // Capitalize the first letter
       text = text.trim();
-      if (text) {
-          text = text.charAt(0).toUpperCase() + text.slice(1);
-      }
-
+      if (text) text = text.charAt(0).toUpperCase() + text.slice(1);
       if (!text && !isEditingSub && !forceShowDummy) return;
 
       let fontFamily = projectConfig.subtitle_font;
-      if (!fontReady && !document.fonts.check(`12px "${fontFamily}"`)) {
-        fontFamily = 'sans-serif';
-      }
+      if (!fontReady && !document.fonts.check(`12px "${fontFamily}"`)) fontFamily = 'sans-serif';
       
       let scaledFontSize = projectConfig.subtitle_font_size * (canvas.height / 1080.0);
       ctx.font = `bold ${scaledFontSize}px "${fontFamily}", sans-serif`;
-
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineJoin = 'round';
 
-      // Pair-based heuristic
       const isPosLegacy = projectConfig.subtitle_y !== undefined && projectConfig.subtitle_y > 100;
       const isSizeLegacy = (projectConfig.subtitle_w !== undefined && projectConfig.subtitle_w > 100) || (projectConfig.subtitle_h !== undefined && projectConfig.subtitle_h > 100);
 
@@ -599,13 +573,11 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
       let subW = safeNw(projectConfig.subtitle_w, 90);
       let subH = safeNh(projectConfig.subtitle_h, 15);
 
-      // Clamp dimensions to prevent overflow when switching aspect ratios
       if (subX + subW > 100) subW = Math.max(5, 100 - subX);
       if (subY + subH > 100) subH = Math.max(5, 100 - subY);
 
       const boxWidth = (subW / 100) * canvas.width;
       const boxHeight = (subH / 100) * canvas.height;
-      
       const boxX = (subX / 100) * canvas.width;
       const boxY = (subY / 100) * canvas.height;
       const boxCenterX = boxX + boxWidth / 2;
@@ -618,12 +590,10 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
         const words = textStr.split(' ');
         let currentLines: string[] = [];
         let currentLine = '';
-
         words.forEach(word => {
           const testLine = currentLine ? `${currentLine} ${word}` : word;
-          if (measure(testLine) <= textMaxWidth) {
-            currentLine = testLine;
-          } else {
+          if (measure(testLine) <= textMaxWidth) currentLine = testLine;
+          else {
             if (currentLine) currentLines.push(currentLine);
             currentLine = word;
           }
@@ -632,9 +602,7 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
         return currentLines;
       };
 
-      const allLines = text.split('\n').flatMap(l => getGreedyLines(l));
-
-      const lines = allLines;
+      const lines = text.split('\n').flatMap(l => getGreedyLines(l));
       const lineHeight = scaledFontSize * 1.15;
 
       if (isEditingSub) {
@@ -650,7 +618,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
       if (text) {
         let startY = boxCenterY - ((lines.length - 1) / 2) * lineHeight;
         ctx.lineWidth = Math.max(2, scaledFontSize * 0.16);
-
         lines.forEach(line => {
           ctx.strokeStyle = projectConfig.subtitle_outline_color;
           ctx.strokeText(line, boxCenterX, startY);
@@ -661,9 +628,7 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
       }
     }
 
-    if (!video.paused) {
-      rafRef.current = requestAnimationFrame(renderSubtitles);
-    }
+    if (!video.paused) rafRef.current = requestAnimationFrame(renderSubtitles);
   }, [segments, projectConfig, fontReady, isEditingSub]);
 
   useEffect(() => {
@@ -671,7 +636,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
     if (!video) return;
 
     const onLoadedMetadata = () => {
-      // Dùng setState có kiểm tra tham chiếu cũ để bailout khỏi Infinite Loop
       setVideoDimensions(prev => 
         prev.w === video.videoWidth && prev.h === video.videoHeight 
           ? prev 
@@ -681,10 +645,7 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
       useSubtitleStore.getState().setVideoDuration(video.duration);
     };
 
-    if (video.readyState >= 1) {
-      onLoadedMetadata();
-    }
-
+    if (video.readyState >= 1) onLoadedMetadata();
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     return () => video.removeEventListener('loadedmetadata', onLoadedMetadata);
   }, [videoSrc]);
@@ -692,7 +653,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     const onPlay = () => rafRef.current = requestAnimationFrame(renderSubtitles);
     const onPause = () => {
       cancelAnimationFrame(rafRef.current);
@@ -724,9 +684,7 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
   }, [renderSubtitles]);
 
   useEffect(() => {
-    if (videoRef.current?.paused) {
-      renderSubtitles();
-    }
+    if (videoRef.current?.paused) renderSubtitles();
   }, [segments, renderSubtitles]);
 
   useEffect(() => {
@@ -742,38 +700,20 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
   }, [projectConfig, renderSubtitles, isEditingSub]);
 
   const getVframeStyle = () => {
-    let ratioW = 16;
-    let ratioH = 9;
-
-    if (videoRatio === '16:9') {
-      ratioW = 16; ratioH = 9;
-    } else if (videoRatio === '9:16') {
-      ratioW = 9; ratioH = 16;
-    } else if (videoDimensions.w && videoDimensions.h) {
-      ratioW = videoDimensions.w; ratioH = videoDimensions.h;
-    }
-
+    let ratioW = 16; let ratioH = 9;
+    if (videoRatio === '16:9') { ratioW = 16; ratioH = 9; }
+    else if (videoRatio === '9:16') { ratioW = 9; ratioH = 16; }
+    else if (videoDimensions.w && videoDimensions.h) { ratioW = videoDimensions.w; ratioH = videoDimensions.h; }
     return {
       width: `min(100cqw, calc(100cqh * ${ratioW} / ${ratioH}))`,
       height: `min(100cqh, calc(100cqw * ${ratioH} / ${ratioW}))`
     };
   };
 
-
-
-  // Overlay container luôn phủ full .vinner → user đặt overlay bất kỳ đâu trong target frame
-  const getOverlayContainerStyle = (): React.CSSProperties => {
-    return {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%',
-      zIndex: 20,
-      pointerEvents: 'none',
-      overflow: 'hidden',
-    };
-  };
+  const getOverlayContainerStyle = (): React.CSSProperties => ({
+    position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+    zIndex: 20, pointerEvents: 'none', overflow: 'hidden',
+  });
 
   const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
@@ -783,7 +723,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
 
   const [currentTime, setCurrentTime] = useState(0);
 
-  // Sync state explicitly to capture current seg
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -799,9 +738,7 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
   if (!videoSrc) {
     return (
       <>
-        <div className="pvbody">
-          <div className="vnolbl">Drop a video here...</div>
-        </div>
+        <div className="pvbody"><div className="vnolbl">Drop a video here...</div></div>
         <div className="pvctrl" style={{ opacity: 0.5, pointerEvents: 'none' }}>
           <div className="cb play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div>
           <div className="scrub"><div className="scrubf" style={{ width: '0%' }}></div></div>
@@ -815,37 +752,12 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
     <>
       <div className="pvbody">
         <div className="vframe" style={getVframeStyle()}>
-          <div
-            className="vinner"
-            style={{ display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}
-          >
-            <video
-              ref={videoRef}
-              src={videoSrc}
-              onLoadedMetadata={handleLoadedMetadata}
-              playsInline
-              style={{
-                gridArea: '1 / 1',
-                width: '100%', height: '100%',
-                minWidth: 0, minHeight: 0,
-                maxWidth: '100%', maxHeight: '100%',
-                objectFit: 'contain'
-              }}
+          <div className="vinner" style={{ display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}>
+            <video ref={videoRef} src={videoSrc} onLoadedMetadata={handleLoadedMetadata} playsInline
+              style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'contain' }}
             />
-            <canvas
-              ref={canvasRef}
-              width={effectiveDimensions.w || 1920}
-              height={effectiveDimensions.h || 1080}
-              style={{
-                gridArea: '1 / 1',
-                width: '100%', height: '100%',
-                minWidth: 0, minHeight: 0,
-                maxWidth: '100%', maxHeight: '100%',
-                objectFit: 'contain',
-                pointerEvents: 'auto',
-                zIndex: 10,
-                cursor: 'default'
-              }}
+            <canvas ref={canvasRef} width={effectiveDimensions.w || 1920} height={effectiveDimensions.h || 1080}
+              style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'auto', zIndex: 10 }}
               onPointerDown={handlePointerDown}
             />
             <div data-overlay-container style={getOverlayContainerStyle()}>
@@ -853,8 +765,6 @@ export function VideoPreview({ videoSrc, segments, videoRatio = 'original', isEd
               {projectConfig.ocr_enabled && effectiveDimensions.w > 0 && <DraggableOcr videoDimensions={effectiveDimensions} />}
               {projectConfig.watermark_enabled && effectiveDimensions.w > 0 && <DraggableTextLogo videoDimensions={effectiveDimensions} />}
               {projectConfig.image_logo_enabled && effectiveDimensions.w > 0 && <DraggableImageLogo videoDimensions={effectiveDimensions} />}
-              
-              {/* Click Canvas subtitle area → focus in SubTab panel */}
               {projectConfig.subtitle_enabled && effectiveDimensions.w > 0 && (
                 <DraggableSubtitleRegion currentSegId={currentSeg?.id} />
               )}

@@ -17,8 +17,9 @@ export const VideoTrack = memo(({
   scrollLeft,
   viewportWidth
 }: VideoTrackProps) => {
-  // Ensure we never have more than ~500 blocks to avoid observer/DOM overload
-  const blockDuration = useMemo(() => Math.max(2, videoDuration / 500), [videoDuration]);
+  // CapCut style: Fixed pixel width per thumbnail block ensures frames never get "squeezed"
+  const THUMBNAIL_WIDTH = 120; // px
+  const blockDuration = THUMBNAIL_WIDTH / pixelsPerSecond;
   
   const blocks = useMemo(() => {
     const numBlocks = Math.ceil(videoDuration / blockDuration);

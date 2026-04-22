@@ -30,6 +30,7 @@ interface SubtitleStore {
   trimSegment: (id: number, newStart: number, newEnd: number) => void;
   deleteSegment: (id: number) => void;
   deleteAndRippleSubtitle: (id: number) => void;
+  removeFileData: (path: string) => void;
   clearAll: () => void;
 }
 
@@ -230,21 +231,21 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
       };
     }),
 
-  deleteAndRippleSubtitle: (id) =>
+  deleteAndRippleSubtitle: (id: number) =>
     set((state) => {
       if (!state.activeFile) return state;
       const targetIdx = state.segments.findIndex(s => s.id === id);
       if (targetIdx === -1) return state;
       const targetSeg = state.segments[targetIdx];
       const duration = targetSeg.end - targetSeg.start;
-      
+
       const newSegs = state.segments.filter(s => s.id !== id).map(s => {
         if (s.start > targetSeg.start) {
           return { ...s, start: s.start - duration, end: s.end - duration };
         }
         return s;
       });
-      
+
       return {
         segments: newSegs,
         fileSegments: { ...state.fileSegments, [state.activeFile]: newSegs },
@@ -252,5 +253,17 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
       };
     }),
 
-  clearAll: () => set({ segments: [], selectedId: null }),
-}));
+  removeFileData: (path) =>
+    set((state) => {
+      const newFileSegments = { ...state.fileSegments };
+      delete newFileSegments[path];
+      return {
+        fileSegments: newFileSegments,
+        segments: state.activeFile === path ? [] : state.segments,
+        selectedId: state.activeFile === path ? null : state.selectedId,
+      };
+    }),
+
+  clearAll: () => set({ segments: [], selectedId: null, fileSegments: {} }),
+  }));
+

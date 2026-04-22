@@ -24,6 +24,14 @@ export interface PipelineConfig {
   crf?: number;
   preset?: string;
   container?: string;
+  // Audio
+  audio_enabled?: boolean;
+  audio_file?: string;
+  audio_volume?: number;
+  audio_clip_start?: number;
+  audio_clip_duration?: number;
+  audio_timeline_start?: number;
+  ducking_strength?: number;
 }
 
 export interface PipelineProgress {

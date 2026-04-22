@@ -1,0 +1,5 @@
+Attempting to load base on cuda with int8_float16
+Successfully loaded model on cuda
+detect_best_model choosing: ('base', 'cuda', 'int8_float16')
+Attempting to load base on cuda with int8_float16
+Successfully loaded model on cuda

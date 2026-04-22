@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, type RefObject } from 'react';
 import { Play, Pause, SkipBack, SkipForward } from '@phosphor-icons/react';
-import { formatTime } from '../../utils/time';
+
+// Định nghĩa trực tiếp ở đây để đảm bảo không bị lỗi import/cache
+function formatTimeLocal(secs: number): string {
+  if (isNaN(secs) || !isFinite(secs) || secs < 0) return '00:00:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
 
 interface VideoControlsProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -86,8 +94,8 @@ export function VideoControls({ videoRef }: VideoControlsProps) {
         <div className="scrubf" style={{ width: `${pct}%` }}></div>
       </div>
 
-      <div className="tcd" style={{ fontFamily: 'var(--font-mono)', minWidth: 100 }}>
-        {formatTime(currentTime)} / {formatTime(duration)}
+      <div className="tcd" style={{ fontFamily: 'var(--font-mono)', minWidth: 120, textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
+        {formatTimeLocal(currentTime)} / {formatTimeLocal(duration)}
       </div>
     </div>
   );

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-last_updated: "2026-04-22T09:47:23.135Z"
+status: executing
+last_updated: "2026-04-22T12:57:37.518Z"
 last_activity: 2026-04-22
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 7
-  total_plans: 19
-  completed_plans: 16
-  percent: 84
+  total_plans: 23
+  completed_plans: 17
+  percent: 74
 ---
 
 # STATE.md — KNReup Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 08.0 — Editor Upgrade & AI Enhancement
+**Current focus:** Phase 09 — Home Launcher Redesign
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 08.1 (UI Adjustments)
-- **Status:** Complete
+- **Status:** Executing Phase 09
 - **Last activity:** 2026-04-22
 
 ## Context
@@ -60,11 +60,13 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 - Phase 6.1 inserted after Phase 6: OCR Subtitle Extraction (URGENT)
 - Phase 07.1 inserted after Phase 07: Refactor Stitch UI and Implement Tauri WebView Auth (URGENT)
+- Phase 9 added: lên kế hoạch chi tiết để xây dựng một màn hình Home/Launcher tương tự cho dự án KNReup (thay vì vào thẳng Editor như hiện tại và có phần login giống capcut luôn). Và danh sách các tool sẽ có Download video ở phần Downloader, TTS (Voice Clone)...
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
 | 2026-04-22 | Removed center time display in Timeline header | Clean header layout |
 | 2026-04-22 | Time format: mm:ss:ff (total minutes) | Frame-accurate time format |
+| 2026-04-22 | Phase 09: Home Launcher & Login Flow | Chốt mô hình Guest Mode + Editor cửa sổ riêng (giống CapCut) |
 
 ## Phase Progress
 
@@ -83,7 +85,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 07.2 | Advanced Timeline Interactions | ✅ Complete |
 | 08.1 | UI Adjustments & Time Format Fix | ✅ Complete |
 | 08.2 | Audio System Refactor | 🚧 Wave 1 Complete |
-| 08.0 | Editor Upgrade & AI Enhancement | 📝 Planning Ready |
+| 08.0 | Editor Upgrade & AI Enhancement | 🚧 Wave 2 Complete |
+| 09 | Home/Launcher Redesign & Tools | 💬 Discussed |
 
 ---
 *Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*

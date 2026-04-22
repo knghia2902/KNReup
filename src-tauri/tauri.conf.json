@@ -13,11 +13,13 @@
     "withGlobalTauri": false,
     "windows": [
       {
-        "title": "KNReup — Lồng Tiếng Video AI",
-        "width": 1400,
-        "height": 900,
-        "minWidth": 1024,
-        "minHeight": 700,
+        "label": "launcher",
+        "title": "KNReup — Home",
+        "width": 1100,
+        "height": 750,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true,
         "decorations": true
       }
     ],

@@ -13,10 +13,10 @@
 
 | Module | Mô tả |
 |--------|--------|
-| **🎬 NLE Editor** | Giao diện chỉnh sửa chuyên nghiệp — Media Bin, Video Preview, Properties, Timeline (VID/TTS/SUB/BGM) |
+| **🎬 NLE Editor** | Giao diện chỉnh sửa chuyên nghiệp — Media Bin, Video Preview, Properties, Timeline (VID/TTS/SUB/AUDIO) |
 | **🔊 Pipeline AI** | Whisper ASR → Dịch thuật (DeepSeek/Gemini/DeepL/OpenAI) → TTS (Edge TTS/Piper) → FFmpeg Render |
 | **📥 Video Downloader** | Tải video Douyin (no-watermark), YouTube, TikTok — xác thực cookie tự động |
-| **🎨 Output Pro** | Watermark, Blur vùng, Smart Crop 9:16, Audio BGM Ducking, WYSIWYG subtitle preview |
+| **🎨 Output Pro** | Watermark, Blur vùng, Smart Crop 9:16, Audio Ducking, WYSIWYG subtitle preview |
 | **⏱️ Magnetic Timeline** | Multi-clip timeline với snap tự động, kéo thả segment, collision detection |
 
 ## 🛠 Tech Stack
@@ -86,7 +86,7 @@ npm run tauri dev              # Vite @ port 1420 + Tauri window
 - NLE Editor UI 5-panel chuyên nghiệp
 - 4+ engine dịch thuật (DeepSeek, Gemini, DeepL, OpenAI)
 - Video Downloader (Douyin no-watermark, yt-dlp)
-- Output nâng cao (Watermark, Blur, Crop 9:16, BGM Ducking)
+- Output nâng cao (Watermark, Blur, Crop 9:16, Audio Ducking)
 - Magnetic snapping timeline
 
 ### 🔄 Đang phát triển (Milestone 3 — v3.0)
