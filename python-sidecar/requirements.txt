@@ -5,7 +5,10 @@ faster-whisper>=1.1.0
 python-multipart>=0.0.18
 httpx>=0.28.0
 edge-tts>=7.0.0
-piper-tts>=1.2.0
+omnivoice
+elevenlabs>=0.3.0
+pydub
+librosa
 argostranslate>=1.9.0
 opencv-python-headless>=4.0.0
 transformers>=4.0.0
