@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, memo } from 'react';
-import { Scissors, ArrowLineLeft, ArrowLineRight } from '@phosphor-icons/react';
+import { Scissors, ArrowLineLeft, ArrowLineRight, Trash } from '@phosphor-icons/react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { AudioTrack } from './AudioTrack';
@@ -121,6 +121,14 @@ export function Timeline({ filePaths }: TimelineProps) {
       }
     } else {
       config.splitRight(currentTime, videoDuration);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedClipId === 'bgm-main') {
+      updateConfig({ bgm_enabled: false, bgm_file: '', selectedClipId: null });
+    } else if (selectedId !== null) {
+      useSubtitleStore.getState().deleteSegment(selectedId);
     }
   };
 
@@ -307,22 +315,26 @@ export function Timeline({ filePaths }: TimelineProps) {
   return (
     <div className="tl" style={{ flexShrink: 0, height: '100%', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', userSelect: 'none' }}>
       
-      <div className="tlhd" style={{ height: 36, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
-        <span className="tltitle" style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 16 }}>
-           TIMELINE 
-           <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontFamily: 'monospace', letterSpacing: '1px' }}>{formatTime(currentTime)}</span>
-        </span>
+      <div className="tlhd" style={{ height: 40, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
+        
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+           <button className="tlb-split" onClick={handleSplitAtPlayhead} title="Split (Ctrl+B)" disabled={!selectedClipId && selectedId === null}>
+              <Scissors size={18} />
+           </button>
+           <button className="tlb-split" onClick={handleSplitLeft} title="Split Left (Q)" disabled={!selectedClipId && selectedId === null}>
+              <ArrowLineLeft size={18} />
+           </button>
+           <button className="tlb-split" onClick={handleSplitRight} title="Split Right (W)" disabled={!selectedClipId && selectedId === null}>
+              <ArrowLineRight size={18} />
+           </button>
+           <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 4px' }} />
+           <button className="tlb-split" onClick={handleDeleteSelected} title="Delete (Del)" disabled={!selectedClipId && selectedId === null}>
+              <Trash size={18} />
+           </button>
+        </div>
 
-        <div style={{ marginLeft: 20, display: 'flex', gap: 2, alignItems: 'center', background: 'var(--bg-primary)', padding: '2px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
-           <button className="tlb-split" onClick={handleSplitLeft} title="Split Left (Q)" disabled={!selectedClipId}>
-              <ArrowLineLeft size={16} />
-           </button>
-           <button className="tlb-split" onClick={handleSplitAtPlayhead} title="Split (Ctrl+B)" disabled={!selectedClipId}>
-              <Scissors size={16} />
-           </button>
-           <button className="tlb-split" onClick={handleSplitRight} title="Split Right (W)" disabled={!selectedClipId}>
-              <ArrowLineRight size={16} />
-           </button>
+        <div style={{ marginLeft: 24, fontSize: '13px', color: 'var(--text-primary)', fontFamily: 'monospace', letterSpacing: '0.5px', fontWeight: 500 }}>
+           {formatTime(currentTime)}
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
