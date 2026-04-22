@@ -13,6 +13,7 @@ export interface ProjectConfig {
   openai_model: string;
   ollama_url: string;
   ollama_model: string;
+  elevenlabs_api_key: string;
   translation_style: string;
   custom_prompt: string;
   // Subtitle Style
@@ -36,6 +37,8 @@ export interface ProjectConfig {
   tts_engine: string;
   voice: string;
   speed: number;
+  tts_speed: number;
+  voice_mapping: Record<string, { engine?: string, voice?: string, speed?: number }>;
   volume: number;
   pitch: number;
   original_volume: number;
@@ -70,12 +73,12 @@ export interface ProjectConfig {
   image_logo_h: number;
   image_logo_opacity: number;
   crop_enabled: boolean;
-  bgm_enabled: boolean;
-  bgm_file: string;
-  bgm_volume: number;
-  bgm_clip_start: number;
-  bgm_clip_duration: number;
-  bgm_timeline_start: number;
+  audio_enabled: boolean;
+  audio_file: string;
+  audio_volume: number;
+  audio_clip_start: number;
+  audio_clip_duration: number;
+  audio_timeline_start: number;
   vid_clip_start: number;
   vid_clip_duration: number;
   ducking_strength: number;
@@ -90,9 +93,11 @@ export interface ProjectConfig {
 interface ProjectStore extends ProjectConfig {
   fileConfigs: Record<string, Partial<ProjectConfig>>;
   activeFile: string | null;
+  custom_voice_profiles: string[];
 
   setActiveFile: (path: string | null) => void;
   updateConfig: (partial: Partial<ProjectConfig>) => void;
+  removeFileData: (path: string) => void;
   resetConfig: () => void;
   applyPreset: (preset: Partial<ProjectConfig>) => void;
   splitLeft: (time: number, videoDuration: number) => void;
@@ -110,6 +115,7 @@ const DEFAULT_CONFIG: ProjectConfig = {
   openai_model: 'knghia-v1',
   ollama_url: 'http://localhost:11434',
   ollama_model: 'gemma4:e4b',
+  elevenlabs_api_key: '',
   translation_style: 'default',
   custom_prompt: '',
   subtitle_enabled: true,
@@ -131,11 +137,13 @@ const DEFAULT_CONFIG: ProjectConfig = {
   tts_engine: 'edge_tts',
   voice: 'vi-VN-HoaiMyNeural',
   speed: 1.0,
+  tts_speed: 1.0,
+  voice_mapping: {},
   volume: 1.0,
   pitch: 1.0,
   original_volume: 0.1,
   container: 'mp4',
-  codec: 'h264',
+  codec: 'h264_nvenc',
   crf: 23,
   preset: 'fast',
   resolution: '1080p',
@@ -161,12 +169,12 @@ const DEFAULT_CONFIG: ProjectConfig = {
   image_logo_h: 150,
   image_logo_opacity: 0.8,
   crop_enabled: false,
-  bgm_enabled: false,
-  bgm_file: '',
-  bgm_volume: 0.5,
-  bgm_clip_start: 0,
-  bgm_clip_duration: 0, // 0 means use full duration
-  bgm_timeline_start: 0,
+  audio_enabled: false,
+  audio_file: '',
+  audio_volume: 0.5,
+  audio_clip_start: 0,
+  audio_clip_duration: 0, // 0 means use full duration
+  audio_timeline_start: 0,
   vid_clip_start: 0,
   vid_clip_duration: 0, // 0 means use full duration
   ducking_strength: 0.2,
@@ -183,6 +191,7 @@ export const useProjectStore = create<ProjectStore>()(
       ...DEFAULT_CONFIG,
       fileConfigs: {},
       activeFile: null,
+      custom_voice_profiles: [],
 
       setActiveFile: (path) => set((state) => {
         if (state.activeFile === path) return {};
@@ -228,6 +237,12 @@ export const useProjectStore = create<ProjectStore>()(
         };
       }),
 
+      removeFileData: (path) => set((state) => {
+        const newFileConfigs = { ...state.fileConfigs };
+        delete newFileConfigs[path];
+        return { fileConfigs: newFileConfigs };
+      }),
+
       resetConfig: () => set((state) => {
         if (!state.activeFile) return DEFAULT_CONFIG;
         const resetData: Partial<ProjectConfig> = { ...DEFAULT_CONFIG };
@@ -239,6 +254,7 @@ export const useProjectStore = create<ProjectStore>()(
         delete resetData.openai_model;
         delete resetData.ollama_url;
         delete resetData.ollama_model;
+        delete resetData.elevenlabs_api_key;
 
         return {
           ...resetData,
@@ -274,21 +290,21 @@ export const useProjectStore = create<ProjectStore>()(
 
       splitLeft: (time, videoDuration) => {
         const state = get();
-        const { selectedClipId, vid_clip_start, vid_clip_duration, bgm_timeline_start, bgm_clip_duration, bgm_clip_start } = state;
+        const { selectedClipId, vid_clip_start, vid_clip_duration, audio_timeline_start, audio_clip_duration, audio_clip_start } = state;
         
         if (selectedClipId === 'vid-main') {
           const dur = vid_clip_duration || videoDuration;
           if (time > vid_clip_start && time < vid_clip_start + dur) {
             state.updateConfig({ vid_clip_start: time, vid_clip_duration: Math.max(0.1, dur - (time - vid_clip_start)) });
           }
-        } else if (selectedClipId === 'bgm-main') {
-          const dur = bgm_clip_duration || 200;
-          if (time > bgm_timeline_start && time < bgm_timeline_start + dur) {
-            const cutLength = time - bgm_timeline_start;
+        } else if (selectedClipId === 'audio-main') {
+          const dur = audio_clip_duration || 200;
+          if (time > audio_timeline_start && time < audio_timeline_start + dur) {
+            const cutLength = time - audio_timeline_start;
             state.updateConfig({ 
-              bgm_timeline_start: time, 
-              bgm_clip_start: bgm_clip_start + cutLength,
-              bgm_clip_duration: Math.max(0.1, dur - cutLength) 
+              audio_timeline_start: time, 
+              audio_clip_start: audio_clip_start + cutLength,
+              audio_clip_duration: Math.max(0.1, dur - cutLength) 
             });
           }
         }
@@ -296,17 +312,17 @@ export const useProjectStore = create<ProjectStore>()(
 
       splitRight: (time, videoDuration) => {
         const state = get();
-        const { selectedClipId, vid_clip_start, vid_clip_duration, bgm_timeline_start, bgm_clip_duration } = state;
+        const { selectedClipId, vid_clip_start, vid_clip_duration, audio_timeline_start, audio_clip_duration } = state;
         
         if (selectedClipId === 'vid-main') {
           const dur = vid_clip_duration || videoDuration;
           if (time > vid_clip_start && time < vid_clip_start + dur) {
             state.updateConfig({ vid_clip_duration: Math.max(0.1, time - vid_clip_start) });
           }
-        } else if (selectedClipId === 'bgm-main') {
-          const dur = bgm_clip_duration || 200;
-          if (time > bgm_timeline_start && time < bgm_timeline_start + dur) {
-            state.updateConfig({ bgm_clip_duration: Math.max(0.1, time - bgm_timeline_start) });
+        } else if (selectedClipId === 'audio-main') {
+          const dur = audio_clip_duration || 200;
+          if (time > audio_timeline_start && time < audio_timeline_start + dur) {
+            state.updateConfig({ audio_clip_duration: Math.max(0.1, time - audio_timeline_start) });
           }
         }
       },
@@ -314,3 +330,4 @@ export const useProjectStore = create<ProjectStore>()(
     { name: 'knreup-project-config' }
   )
 );
+

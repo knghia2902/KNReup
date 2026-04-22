@@ -161,33 +161,144 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
               No subtitles detected yet. Click Auto to start.
             </div>
           ) : (
-            segments.map((seg, idx) => (
+            segments.map((seg, idx) => {
+              const segVoiceMap = config.voice_mapping[seg.id] || {};
+              const currentEngine = segVoiceMap.engine || config.tts_engine;
+              const currentVoice = segVoiceMap.voice || config.voice;
+              const currentSpeed = segVoiceMap.speed || config.tts_speed;
+
+              return (
               <div key={seg.id} data-seg-row="true" style={{
                 background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '6px',
-                padding: '6px 8px', display: 'flex', gap: '8px', transition: 'all 0.2s'
+                padding: '6px 8px', display: 'flex', gap: '8px', transition: 'all 0.2s', flexDirection: 'column'
               }}>
-                <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-disabled)', width: '20px', textAlign: 'center' }}>{idx + 1}</div>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                      {formatTc(seg.start)} → {formatTc(seg.end)}
-                    </span>
-                    {seg.tts_audio_path && <span style={{ fontSize: '8px', color: 'var(--accent)' }}>TTS</span>}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-disabled)', width: '20px', textAlign: 'center' }}>{idx + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {formatTc(seg.start)} → {formatTc(seg.end)}
+                      </span>
+                      {seg.tts_audio_path && <span style={{ fontSize: '8px', color: 'var(--accent)' }}>TTS</span>}
+                    </div>
+                    <textarea
+                      data-seg-id={seg.id}
+                      style={{ 
+                        fontSize: '11px', color: 'var(--text-primary)', background: 'transparent',
+                        border: 'none', padding: 0, width: '100%', resize: 'none', outline: 'none'
+                      }}
+                      value={seg.translated_text}
+                      onChange={(e) => updateSegment(seg.id, { translated_text: e.target.value })}
+                      spellCheck={false}
+                      rows={1}
+                    />
                   </div>
-                  <textarea
-                    data-seg-id={seg.id}
+                </div>
+                
+                {/* Per-segment Voice Settings */}
+                <div style={{ display: 'flex', gap: '4px', marginTop: '4px', paddingLeft: '28px', alignItems: 'center' }}>
+                  <select 
                     style={{ 
-                      fontSize: '11px', color: 'var(--text-primary)', background: 'transparent',
-                      border: 'none', padding: 0, width: '100%', resize: 'none', outline: 'none'
+                      fontSize: '9px', padding: '2px 4px', background: 'var(--bg-secondary)', 
+                      border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', flex: 1
                     }}
-                    value={seg.translated_text}
-                    onChange={(e) => updateSegment(seg.id, { translated_text: e.target.value })}
-                    spellCheck={false}
-                    rows={1}
+                    value={`${currentEngine}:${currentVoice}`}
+                    onChange={(e) => {
+                      const [eng, ...vParts] = e.target.value.split(':');
+                      const vce = vParts.join(':');
+                      config.updateConfig({ 
+                        voice_mapping: { 
+                          ...config.voice_mapping, 
+                          [seg.id]: { ...segVoiceMap, engine: eng, voice: vce } 
+                        } 
+                      });
+                    }}
+                  >
+                    <optgroup label="Global Default">
+                      <option value={`${config.tts_engine}:${config.voice}`}>Use Global ({config.voice})</option>
+                    </optgroup>
+                    <optgroup label="Edge TTS - Vietnamese">
+                      <option value="edge_tts:vi-VN-HoaiMyNeural">Hoài My (Female)</option>
+                      <option value="edge_tts:vi-VN-NamMinhNeural">Nam Minh (Male)</option>
+                    </optgroup>
+                    <optgroup label="ElevenLabs Voices">
+                      <option value="elevenlabs:Rachel">Rachel</option>
+                      <option value="elevenlabs:Drew">Drew</option>
+                      <option value="elevenlabs:Clyde">Clyde</option>
+                      <option value="elevenlabs:Mimi">Mimi</option>
+                    </optgroup>
+                    <optgroup label="OmniVoice - Standard">
+                      <option value="omnivoice:default_male">Default Male</option>
+                      <option value="omnivoice:default_female">Default Female</option>
+                    </optgroup>
+                    {(config.custom_voice_profiles || []).length > 0 && (
+                      <optgroup label="OmniVoice - Custom">
+                        {config.custom_voice_profiles.map(p => (
+                          <option key={p} value={`omnivoice:${p}`}>{p}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                  
+                  <input 
+                    type="number" 
+                    step="0.1" min="0.5" max="2.0"
+                    style={{ 
+                      width: '40px', fontSize: '9px', padding: '2px', background: 'var(--bg-secondary)', 
+                      border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', textAlign: 'center'
+                    }}
+                    value={currentSpeed}
+                    onChange={(e) => {
+                      config.updateConfig({ 
+                        voice_mapping: { 
+                          ...config.voice_mapping, 
+                          [seg.id]: { ...segVoiceMap, speed: parseFloat(e.target.value) || 1.0 } 
+                        } 
+                      });
+                    }}
+                    title="Speed"
                   />
+                  
+                  {(segVoiceMap.engine || segVoiceMap.voice || segVoiceMap.speed) && (
+                    <button 
+                      style={{ 
+                        fontSize: '9px', padding: '2px 6px', background: 'var(--accent)', 
+                        color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                      }}
+                      onClick={() => {
+                        // Apply this segment's settings globally and clear mappings
+                        config.updateConfig({
+                          tts_engine: currentEngine,
+                          voice: currentVoice,
+                          tts_speed: currentSpeed,
+                          voice_mapping: {}
+                        });
+                      }}
+                      title="Apply to All Segments"
+                    >
+                      Apply All
+                    </button>
+                  )}
+                  {segVoiceMap.voice && (
+                    <button 
+                      style={{ 
+                        fontSize: '9px', padding: '2px 4px', background: 'transparent', 
+                        color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer'
+                      }}
+                      onClick={() => {
+                        const newMapping = { ...config.voice_mapping };
+                        delete newMapping[seg.id];
+                        config.updateConfig({ voice_mapping: newMapping });
+                      }}
+                      title="Clear Override"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
       </div>
