@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, ArrowSquareOut } from '@phosphor-icons/react';
+import { Sun, Moon } from '@phosphor-icons/react';
 import { type AppModule } from './NLELayout';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { openDownloader } from '../../utils/windowManager';
 
 interface TitlebarProps {
   activeModule: AppModule;
@@ -44,12 +43,10 @@ export function Titlebar({ activeModule, onModuleChange }: TitlebarProps) {
           Editor
         </div>
         <div 
-          className="tb-tab tb-tab-popup"
-          onClick={() => openDownloader()}
-          title="Mở Downloader trong cửa sổ mới"
+          className={`tb-tab ${activeModule === 'downloader' ? 'active' : ''}`}
+          onClick={() => onModuleChange('downloader')}
         >
           Downloader
-          <ArrowSquareOut size={10} weight="bold" style={{ marginLeft: 4, opacity: 0.5 }} />
         </div>
         <div 
           className={`tb-tab ${activeModule === 'monitor' ? 'active' : ''}`}
