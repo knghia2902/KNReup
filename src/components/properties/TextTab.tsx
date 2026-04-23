@@ -5,7 +5,8 @@ import { ColorPickerControl } from '../controls/ColorPickerControl';
 import { ChipGroup } from '../controls/ChipGroup';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { sidecar } from '../../lib/sidecar';
 import { Translate, TextT, Eyedropper, ListBullets } from '@phosphor-icons/react';
 
 function formatTc(seconds: number) {
@@ -24,6 +25,21 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
   const config = useProjectStore();
   const { segments, updateSegment } = useSubtitleStore();
   const listRef = useRef<HTMLDivElement>(null);
+  const [clonedVoices, setClonedVoices] = useState<Array<{name: string, id: string, type: string}>>([]);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      if (!sidecar.isConnected()) return;
+      fetch(`${sidecar.getBaseUrl()}/api/tts/profiles/`)
+        .then(r => r.json())
+        .then(data => setClonedVoices(data.profiles || []))
+        .catch(() => {});
+    };
+    // Load once immediately, then on focus
+    setTimeout(loadVoices, 500); // give sidecar time to connect
+    window.addEventListener('focus', loadVoices);
+    return () => window.removeEventListener('focus', loadVoices);
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -231,8 +247,15 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
                       <option value="omnivoice:default_male">Default Male</option>
                       <option value="omnivoice:default_female">Default Female</option>
                     </optgroup>
+                    {clonedVoices.length > 0 && (
+                      <optgroup label="OmniVoice - Cloned (Local)">
+                        {clonedVoices.map(v => (
+                          <option key={v.id} value={`omnivoice:${v.id}`}>🎤 {v.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
                     {(config.custom_voice_profiles || []).length > 0 && (
-                      <optgroup label="OmniVoice - Custom">
+                      <optgroup label="OmniVoice - Custom (Legacy)">
                         {config.custom_voice_profiles.map(p => {
                           const vName = typeof p === 'string' ? p : p.name;
                           return <option key={vName} value={`omnivoice:${vName}`}>🎤 {vName}</option>;
