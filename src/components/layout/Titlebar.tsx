@@ -23,13 +23,6 @@ export function Titlebar() {
           <div className="sysled ok"></div>
           TTS: {tts_engine.toUpperCase()}
         </div>
-        <button
-          className="theme-toggle"
-          onClick={toggle}
-          title={isDark ? 'Chuyển sang Light Mode' : 'Chuyển sang Dark Mode'}
-        >
-          {isDark ? <Sun size={14} weight="bold" /> : <Moon size={14} weight="bold" />}
-        </button>
       </div>
     </div>
   );

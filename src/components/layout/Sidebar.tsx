@@ -60,23 +60,6 @@ export function Sidebar({ activeFocus, onFocusChange }: SidebarProps) {
         </svg>
         <div className="tip">Monitor · 3 new</div>
       </div>
-      
-      <div 
-        className="sb-ico"
-        onClick={toggle}
-      >
-        {isDark ? (
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M14.5 10.5C11 11.5 6 9 5 4 4.5 9 8.5 14.5 14.5 10.5z" fill="currentColor"/>
-          </svg>
-        ) : (
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="8" cy="8" r="2.5"/>
-            <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.5 1.5M11.3 11.3l1.5 1.5M3.2 12.8l1.5-1.5M11.3 4.7l1.5-1.5"/>
-          </svg>
-        )}
-        <div className="tip">Toggle ThemeMode</div>
-      </div>
     </div>
   );
 }
