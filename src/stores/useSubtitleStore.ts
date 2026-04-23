@@ -55,10 +55,14 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
     const path = targetPath || state.activeFile;
     if (!path) return state;
     const newFileSegments = { ...state.fileSegments, [path]: segs };
+    // Always update segments view when targetPath is explicitly provided
+    // This ensures subtitle blocks appear on timeline even if activeFile was mismatched
+    const shouldUpdateView = state.activeFile === path || (targetPath && targetPath !== state.activeFile);
     return {
       fileSegments: newFileSegments,
-      segments: state.activeFile === path ? segs : state.segments,
-      selectedId: state.activeFile === path ? null : state.selectedId
+      activeFile: targetPath ? path : state.activeFile,
+      segments: shouldUpdateView ? segs : state.segments,
+      selectedId: shouldUpdateView ? null : state.selectedId
     };
   }),
 

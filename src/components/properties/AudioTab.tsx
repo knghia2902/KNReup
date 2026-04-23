@@ -23,17 +23,27 @@ export function AudioTab() {
 
   // Load custom profiles on mount and window focus
   const loadProfiles = () => {
-    sidecar.getProfiles().then(res => {
-      if (res.profiles) {
-        useProjectStore.setState({ custom_voice_profiles: res.profiles });
-      }
-    }).catch(e => console.error("Failed to load profiles", e));
+    // Guard: sidecar may not be initialized yet when Editor loads
+    try {
+      sidecar.getProfiles().then(res => {
+        if (res.profiles) {
+          useProjectStore.setState({ custom_voice_profiles: res.profiles });
+        }
+      }).catch(e => console.warn("Profiles not available yet:", e.message));
+    } catch (e: any) {
+      // sidecar not ready — will retry on focus
+      console.warn("Sidecar not ready, will retry on focus");
+    }
   };
 
   useEffect(() => {
-    loadProfiles();
+    // Delay initial load to give sidecar time to boot
+    const timer = setTimeout(loadProfiles, 2000);
     window.addEventListener('focus', loadProfiles);
-    return () => window.removeEventListener('focus', loadProfiles);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', loadProfiles);
+    };
   }, []);
 
   const handleUploadReference = async () => {
