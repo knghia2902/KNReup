@@ -4,6 +4,7 @@
  */
 import { useEffect } from 'react';
 import { useDownloader } from '../../hooks/useDownloader';
+import { useTheme } from '../../hooks/useTheme';
 import { URLInput } from './URLInput';
 import { DownloadOptions } from './DownloadOptions';
 import { DownloadHistory } from './DownloadHistory';
@@ -12,6 +13,7 @@ import { useSidecar } from '../../hooks/useSidecar';
 import '../../styles/downloader.css';
 
 export function DownloaderPanel() {
+  useTheme();
   const { connected } = useSidecar();
 
   const {

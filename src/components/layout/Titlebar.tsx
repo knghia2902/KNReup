@@ -1,22 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon } from '@phosphor-icons/react';
 import { useProjectStore } from '../../stores/useProjectStore';
-
-function useTheme() {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('knreup-theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
-
-  useEffect(() => {
-    document.body.classList.toggle('dark', isDark);
-    localStorage.setItem('knreup-theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
-
-  const toggle = useCallback(() => setIsDark(prev => !prev), []);
-  return { isDark, toggle };
-}
+import { useTheme } from '../../hooks/useTheme';
 
 export function Titlebar() {
   const translation_engine = useProjectStore((state) => state.translation_engine) || 'argos';

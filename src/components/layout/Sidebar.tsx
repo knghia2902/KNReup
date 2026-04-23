@@ -1,23 +1,12 @@
-import { useState, useEffect } from 'react';
-import { type SidebarFocus } from './NLELayout';
+import { useTheme } from '../../hooks/useTheme';
 
 interface SidebarProps {
-  activeFocus: SidebarFocus;
-  onFocusChange: (focus: SidebarFocus) => void;
+  activeFocus: string; // Updated to string since SidebarFocus might be missing from some contexts
+  onFocusChange: (focus: any) => void;
 }
 
 export function Sidebar({ activeFocus, onFocusChange }: SidebarProps) {
-  const [isDark, setIsDark] = useState(() => localStorage.getItem('kn_theme') === 'dark');
-
-  useEffect(() => {
-    if (isDark) {
-      document.body.classList.add('dark');
-      localStorage.setItem('kn_theme', 'dark');
-    } else {
-      document.body.classList.remove('dark');
-      localStorage.setItem('kn_theme', 'light');
-    }
-  }, [isDark]);
+  const { isDark, toggle } = useTheme();
 
   return (
     <div className="sb">
@@ -74,7 +63,7 @@ export function Sidebar({ activeFocus, onFocusChange }: SidebarProps) {
       
       <div 
         className="sb-ico"
-        onClick={() => setIsDark(!isDark)}
+        onClick={toggle}
       >
         {isDark ? (
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">

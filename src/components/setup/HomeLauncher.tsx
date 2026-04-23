@@ -18,21 +18,10 @@ import {
   GearSix,
 } from '@phosphor-icons/react';
 import { RecentProjects } from './RecentProjects';
+import '../../styles/design-system.css';
 import '../../styles/launcher.css';
 
-function useTheme() {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('knreup-theme');
-    if (saved) return saved === 'dark';
-    return true; // default dark
-  });
-  useEffect(() => {
-    document.body.classList.toggle('dark', isDark);
-    localStorage.setItem('knreup-theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
-  const toggle = useCallback(() => setIsDark((prev) => !prev), []);
-  return { isDark, toggle };
-}
+import { useTheme } from '../../hooks/useTheme';
 
 export function HomeLauncher() {
   const { isDark, toggle } = useTheme();

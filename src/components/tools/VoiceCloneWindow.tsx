@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSidecar } from '../../hooks/useSidecar';
-import { Microphone, Play, Pause, Trash, UploadSimple, MagicWand, WarningCircle, XCircle } from '@phosphor-icons/react';
+import { useTheme } from '../../hooks/useTheme';
+import { 
+  Microphone, Play, Pause, Trash, UploadSimple, 
+  MagicWand, WarningCircle, XCircle, 
+  Waveform, MusicNotes, Sparkle 
+} from '@phosphor-icons/react';
 import './VoiceCloneWindow.css';
 
 interface Profile {
@@ -13,7 +18,8 @@ interface Profile {
 
 export function VoiceCloneWindow() {
   const { connected } = useSidecar();
-  const [activeTab, setActiveTab] = useState<'clone' | 'design' | 'profiles'>('clone');
+  useTheme(); // Initializes theme for this window
+  const [activeTab, setActiveTab] = useState<'clone' | 'design'>('clone');
   
   // Clone State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -28,7 +34,7 @@ export function VoiceCloneWindow() {
   const [description, setDescription] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female' | null>(null);
   const [age, setAge] = useState<'Young' | 'Middle' | 'Senior' | null>(null);
-  const [pitch, setPitch] = useState<'Low' | 'Normal' | 'High' | null>(null);
+  const [pitch] = useState<'Low' | 'Normal' | 'High' | null>(null); // Kept state, removed unused setter
   const [sampleText, setSampleText] = useState('Xin chào, tôi là trợ lý AI của KNReup');
   const [customText, setCustomText] = useState('');
   const [isDesigning, setIsDesigning] = useState(false);
@@ -69,10 +75,8 @@ export function VoiceCloneWindow() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'profiles') {
-      fetchProfiles();
-    }
-  }, [activeTab, fetchProfiles]);
+    fetchProfiles();
+  }, [fetchProfiles]);
 
   const handleFileSelect = (file: File) => {
     const validExts = ['wav', 'mp3', 'ogg', 'flac', 'm4a'];
@@ -86,7 +90,6 @@ export function VoiceCloneWindow() {
     setCloneError(null);
     setCloneResult(null);
 
-    // Get duration
     const audio = new Audio(URL.createObjectURL(file));
     audio.onloadedmetadata = () => {
       setFileInfo({
@@ -122,15 +125,13 @@ export function VoiceCloneWindow() {
       if (!res.ok) throw new Error('Clone thất bại');
       const data = await res.json();
       
-      // Setup preview
       setCloneResult({
         original_audio: URL.createObjectURL(selectedFile),
-        cloned_audio: `http://localhost:8000${data.sample_url || ''}` // Assume API returns sample
+        cloned_audio: `http://localhost:8000${data.sample_url || ''}`
       });
       setCloneName('');
       setSelectedFile(null);
       setFileInfo(null);
-      // Fetch profiles implicitly to update list
       fetchProfiles();
     } catch (err: any) {
       setCloneError(`Clone thất bại: ${err.message}. Thử lại với file audio khác.`);
@@ -144,7 +145,6 @@ export function VoiceCloneWindow() {
     setIsDesigning(true);
     setDesignError(null);
     
-    // Combine description from chips and text
     const attrs = [];
     if (gender) attrs.push(gender);
     if (age) attrs.push(age);
@@ -188,12 +188,11 @@ export function VoiceCloneWindow() {
     }
   };
 
-  const togglePlay = (id: string, audioRef: React.RefObject<HTMLAudioElement>) => {
+  const togglePlay = (id: string, audioRef: React.RefObject<HTMLAudioElement | null>) => {
     if (playingId === id) {
       audioRef.current?.pause();
       setPlayingId(null);
     } else {
-      // Pause current
       if (playingId && playingId === 'original' && originalAudioRef.current) originalAudioRef.current.pause();
       if (playingId && playingId === 'cloned' && clonedAudioRef.current) clonedAudioRef.current.pause();
       if (playingId && playingId === 'design' && designAudioRef.current) designAudioRef.current.pause();
@@ -212,338 +211,340 @@ export function VoiceCloneWindow() {
   };
 
   return (
-    <div className="vc-window">
-      {/* Header */}
-      <div className="vc-header" data-tauri-drag-region>
-        <Microphone size={20} weight="duotone" style={{ color: 'var(--accent)' }} />
-        <span className="vc-title">KNReup Voice Clone</span>
-        <span className={`vc-status ${connected ? 'connected' : ''}`}>
-          {connected ? '● Connected' : '○ Offline'}
-        </span>
-      </div>
-
-      {/* Tabs */}
-      <div className="vc-tabs">
-        <button className={`vc-tab ${activeTab === 'clone' ? 'active' : ''}`} onClick={() => setActiveTab('clone')}>
-          Clone Giọng
-        </button>
-        <button className={`vc-tab ${activeTab === 'design' ? 'active' : ''}`} onClick={() => setActiveTab('design')}>
-          Thiết Kế Giọng
-        </button>
-        <button className={`vc-tab ${activeTab === 'profiles' ? 'active' : ''}`} onClick={() => setActiveTab('profiles')}>
-          Profiles
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="vc-content">
-        {!connected ? (
-          <div className="vc-empty">
-            <WarningCircle size={40} weight="duotone" color="var(--warning)" />
-            <div className="vc-empty-heading">OmniVoice chưa sẵn sàng</div>
-            <div className="vc-empty-body">Kiểm tra cài đặt trong Settings để đảm bảo Sidecar đang hoạt động.</div>
+    <div className="vc-layout-wrapper" data-tauri-drag-region>
+      <div className="vc-container">
+        
+        {/* Top Section */}
+        <section className="vc-top-section">
+          <div className="vc-hero-header">
+            <div className="vc-top-row">
+              <Waveform size={42} weight="duotone" color="var(--vc-accent)" />
+              <h1>Voice Studio</h1>
+              <div className={`vc-status-pill ${connected ? 'connected' : ''}`}>
+                <div className="vc-status-dot"></div>
+                {connected ? 'Engine Ready' : 'Offline'}
+              </div>
+            </div>
+            <p>Tạo bản sao giọng đọc chân thực hoặc thiết kế giọng AI mới hoàn toàn. Cấu hình được đồng bộ tự động vào TTS Editor.</p>
           </div>
-        ) : activeTab === 'clone' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {!selectedFile ? (
-              <div 
-                className={`vc-dropzone ${isDragOver ? 'dragover' : ''}`}
-                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                onDragLeave={() => setIsDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  style={{ display: 'none' }} 
-                  accept=".wav,.mp3,.ogg,.flac,.m4a"
-                  onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]); }}
-                />
-                <UploadSimple size={40} weight="duotone" color="var(--text-muted)" />
-                <span className="vc-dropzone-label">Kéo thả hoặc chọn file audio</span>
-                <span className="vc-dropzone-sub">WAV, MP3 · Khuyến nghị 3-10 giây</span>
-              </div>
-            ) : (
-              <div className="vc-audio-info">
-                <FileAudio size={16} weight="duotone" color="var(--accent)" />
-                <span>{fileInfo?.name}</span>
-                <span>·</span>
-                <span>{fileInfo?.format}</span>
-                <span>·</span>
-                <span>{formatDuration(fileInfo?.duration || 0)}s</span>
-                <button 
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                  onClick={() => { setSelectedFile(null); setFileInfo(null); }}
-                >
-                  <XCircle size={16} weight="fill" />
-                </button>
-              </div>
-            )}
 
-            {fileInfo && fileInfo.duration > 10 && fileInfo.duration <= 30 && (
-              <div className="vc-banner warning">
-                ⚠ File dài hơn 10 giây. Chất lượng tốt nhất với 3-10 giây audio.
-              </div>
-            )}
-            
-            {fileInfo && fileInfo.duration > 30 && (
-              <div className="vc-banner error">
-                File vượt quá 30 giây. Vui lòng chọn audio ngắn hơn.
-              </div>
-            )}
-
-            {cloneError && (
-              <div className="vc-banner error">{cloneError}</div>
-            )}
-
-            {cloneResult && (
-              <div className="vc-comparison">
-                <div className="vc-player-card">
-                  <div className="vc-player-label">Giọng Gốc</div>
-                  <div className="vc-audio-player">
-                    <button className="vc-play-btn" onClick={() => togglePlay('original', originalAudioRef)}>
-                      {playingId === 'original' ? <Pause size={14} weight="fill" /> : <Play size={14} weight="fill" />}
-                    </button>
-                    <div className="vc-progress-bar"><div className="vc-progress-fill" style={{ width: '0%' }}></div></div>
-                    <div className="vc-duration">0:00</div>
-                    <audio 
-                      ref={originalAudioRef} 
-                      src={cloneResult.original_audio} 
-                      onEnded={() => setPlayingId(null)}
-                    />
-                  </div>
-                </div>
-                <div className="vc-player-card">
-                  <div className="vc-player-label">Giọng Clone</div>
-                  <div className="vc-audio-player">
-                    <button className="vc-play-btn" onClick={() => togglePlay('cloned', clonedAudioRef)}>
-                      {playingId === 'cloned' ? <Pause size={14} weight="fill" /> : <Play size={14} weight="fill" />}
-                    </button>
-                    <div className="vc-progress-bar"><div className="vc-progress-fill" style={{ width: '0%' }}></div></div>
-                    <div className="vc-duration">0:00</div>
-                    <audio 
-                      ref={clonedAudioRef} 
-                      src={cloneResult.cloned_audio} 
-                      onEnded={() => setPlayingId(null)}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="vc-input-group">
-              <label className="vc-label">Tên giọng</label>
-              <input 
-                type="text" 
-                className="vc-input" 
-                placeholder="Đặt tên cho giọng clone..."
-                value={cloneName}
-                onChange={e => setCloneName(e.target.value)}
-                disabled={isCloning}
-              />
-            </div>
-
-            {isCloning ? (
-              <div className="vc-progress-overlay">
-                <div className="vc-progress-text">Cloning...</div>
-                <div className="vc-progress-track"><div className="vc-progress-fill-track" style={{ width: '60%' }}></div></div>
-              </div>
-            ) : (
-              <button 
-                className="vc-cta" 
-                onClick={handleClone}
-                disabled={!selectedFile || !cloneName.trim() || (fileInfo && fileInfo.duration > 30) ? true : false}
-              >
-                Clone Voice ▶
-              </button>
-            )}
+          {/* Tab Pill Selector */}
+          <div className="vc-tab-selector">
+            <button 
+              className={`vc-tab-btn ${activeTab === 'clone' ? 'active' : ''}`}
+              onClick={() => setActiveTab('clone')}
+            >
+              <Microphone size={18} weight="fill" />
+              Voice Clone
+            </button>
+            <button 
+              className={`vc-tab-btn ${activeTab === 'design' ? 'active' : ''}`}
+              onClick={() => setActiveTab('design')}
+            >
+              <MagicWand size={18} weight="fill" />
+              Voice Design
+            </button>
           </div>
-        ) : activeTab === 'design' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="vc-input-group" style={{ marginTop: 0 }}>
-              <label className="vc-label">Mô tả giọng</label>
-              <textarea 
-                className="vc-textarea" 
-                placeholder="Mô tả giọng bạn muốn tạo (VD: female, low pitch, calm)"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                disabled={isDesigning}
-              ></textarea>
-            </div>
+        </section>
 
-            <div>
-              <label className="vc-label">Quick Attributes</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div className="vc-chips">
-                  {['Male', 'Female'].map(g => (
-                    <div 
-                      key={g} 
-                      className={`vc-chip ${gender === g ? 'active' : ''}`}
-                      onClick={() => setGender(gender === g ? null : g as any)}
-                    >
-                      {g}
-                    </div>
-                  ))}
-                </div>
-                <div className="vc-chips">
-                  {['Young', 'Middle', 'Senior'].map(a => (
-                    <div 
-                      key={a} 
-                      className={`vc-chip ${age === a ? 'active' : ''}`}
-                      onClick={() => setAge(age === a ? null : a as any)}
-                    >
-                      {a}
-                    </div>
-                  ))}
-                </div>
-                <div className="vc-chips">
-                  {['Low', 'Normal', 'High'].map(p => (
-                    <div 
-                      key={p} 
-                      className={`vc-chip ${pitch === p ? 'active' : ''}`}
-                      onClick={() => setPitch(pitch === p ? null : p as any)}
-                    >
-                      {p}
-                    </div>
-                  ))}
-                </div>
+        {/* Main 2-Column Grid */}
+        <div className="vc-main-grid">
+          
+          {/* Left Column: Action Form */}
+          <div className="vc-options-panel">
+            {!connected ? (
+              <div className="vc-empty-placeholder">
+                <WarningCircle size={48} weight="duotone" className="vc-ep-icon" color="var(--vc-danger)" />
+                <h3>Engine Offline</h3>
+                <p>OmniVoice engine chưa khởi động. Vui lòng kiểm tra Python sidecar.</p>
               </div>
-            </div>
+            ) : activeTab === 'clone' ? (
+              <div className="vc-card">
+                <h2 className="vc-card-title">Tạo bản sao giọng</h2>
+                
+                {!selectedFile ? (
+                  <div 
+                    className={`vc-dropzone ${isDragOver ? 'dragover' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      style={{ display: 'none' }} 
+                      accept=".wav,.mp3,.ogg,.flac,.m4a"
+                      onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]); }}
+                    />
+                    <div className="vc-icon-circle">
+                      <UploadSimple size={28} weight="duotone" />
+                    </div>
+                    <div className="vc-dropzone-text">
+                      <strong>Kéo thả file âm thanh</strong>
+                      <span>WAV, MP3, FLAC · Dưới 30 giây</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="vc-file-pill">
+                    <MusicNotes size={20} weight="duotone" color="var(--vc-accent)" />
+                    <span>{fileInfo?.name}</span>
+                    <span style={{ color: 'var(--vc-slate)' }}>{fileInfo?.format}</span>
+                    <span style={{ color: 'var(--vc-slate)' }}>{formatDuration(fileInfo?.duration || 0)}s</span>
+                    <button 
+                      className="vc-file-pill-close"
+                      onClick={() => { setSelectedFile(null); setFileInfo(null); }}
+                    >
+                      <XCircle size={16} weight="bold" />
+                    </button>
+                  </div>
+                )}
 
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-              <label className="vc-label">Preview</label>
-              <select 
-                className="vc-input" 
-                style={{ marginBottom: '8px' }}
-                value={customText ? '' : sampleText}
-                onChange={e => {
-                  if (e.target.value) {
-                    setSampleText(e.target.value);
-                    setCustomText('');
-                  }
-                }}
-                disabled={isDesigning}
-              >
-                <option value="" disabled>Chọn câu mẫu tiếng Việt</option>
-                {sampleTexts.map((text, i) => <option key={i} value={text}>{text}</option>)}
-              </select>
-              <input 
-                type="text" 
-                className="vc-input" 
-                placeholder="Hoặc nhập text tùy ý để test..."
-                value={customText}
-                onChange={e => setCustomText(e.target.value)}
-                disabled={isDesigning}
-              />
-            </div>
+                {fileInfo && fileInfo.duration > 10 && fileInfo.duration <= 30 && (
+                  <div className="vc-banner warning">
+                    <WarningCircle size={18} weight="fill" />
+                    Độ dài {formatDuration(fileInfo.duration)}s. Lý tưởng nhất là 3-10 giây.
+                  </div>
+                )}
+                {fileInfo && fileInfo.duration > 30 && (
+                  <div className="vc-banner error">
+                    <WarningCircle size={18} weight="fill" />
+                    File quá dài (hơn 30s). Vui lòng cắt bớt để clone.
+                  </div>
+                )}
+                {cloneError && (
+                  <div className="vc-banner error">
+                    <WarningCircle size={18} weight="fill" />
+                    {cloneError}
+                  </div>
+                )}
 
-            {designResult && (
-              <div className="vc-player-card">
-                <div className="vc-player-label">Preview Audio</div>
-                <div className="vc-audio-player">
-                  <button className="vc-play-btn" onClick={() => togglePlay('design', designAudioRef)}>
-                    {playingId === 'design' ? <Pause size={14} weight="fill" /> : <Play size={14} weight="fill" />}
-                  </button>
-                  <div className="vc-progress-bar"><div className="vc-progress-fill" style={{ width: '0%' }}></div></div>
-                  <div className="vc-duration">0:00</div>
-                  <audio 
-                    ref={designAudioRef} 
-                    src={designResult.audio} 
-                    onEnded={() => setPlayingId(null)}
+                <div className="vc-input-group">
+                  <label className="vc-label">Tên hồ sơ</label>
+                  <input 
+                    type="text" 
+                    className="vc-input" 
+                    placeholder="VD: Giọng kể chuyện, Trợ lý ảo..."
+                    value={cloneName}
+                    onChange={e => setCloneName(e.target.value)}
+                    disabled={isCloning}
                   />
                 </div>
-              </div>
-            )}
 
-            {designError && (
-              <div className="vc-banner error">{designError}</div>
-            )}
+                <button 
+                  className="vc-btn-primary" 
+                  onClick={handleClone}
+                  disabled={!selectedFile || !cloneName.trim() || (fileInfo && fileInfo.duration > 30) || isCloning}
+                >
+                  {isCloning ? 'Đang phân tích...' : 'Clone Giọng Đọc'}
+                </button>
 
-            <div className="vc-input-group">
-              <label className="vc-label">Tên giọng</label>
-              <input 
-                type="text" 
-                className="vc-input" 
-                placeholder="Đặt tên cho giọng clone..."
-                value={designName}
-                onChange={e => setDesignName(e.target.value)}
-                disabled={isDesigning}
-              />
-            </div>
-
-            {isDesigning ? (
-              <div className="vc-progress-overlay">
-                <div className="vc-progress-text">Designing...</div>
-                <div className="vc-progress-track"><div className="vc-progress-fill-track" style={{ width: '60%' }}></div></div>
-              </div>
-            ) : (
-              <button 
-                className="vc-cta" 
-                onClick={handleDesign}
-                disabled={!designName.trim()}
-              >
-                Design Voice ▶
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ height: '100%' }}>
-            {profiles.length === 0 ? (
-              <div className="vc-empty">
-                <Microphone size={40} weight="duotone" color="var(--text-muted)" />
-                <div className="vc-empty-heading">Chưa có giọng nào</div>
-                <div className="vc-empty-body">Tạo giọng clone hoặc thiết kế giọng mới từ các tab bên trái.</div>
-              </div>
-            ) : (
-              <div className="vc-profile-list">
-                {profiles.map(profile => (
-                  <div key={profile.name} className="vc-profile-item">
-                    <div className="vc-profile-info">
-                      <div className="vc-profile-name">♦ {profile.name}</div>
-                      <div className="vc-profile-meta">
-                        {profile.created_at || '12/04/2026'} · {profile.duration ? `${profile.duration}s` : '—'}
-                      </div>
+                {cloneResult && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                    <div className="vc-player">
+                      <button className="vc-play-btn" onClick={() => togglePlay('original', originalAudioRef)}>
+                        {playingId === 'original' ? <Pause size={18} weight="fill" /> : <Play size={18} weight="fill" />}
+                      </button>
+                      <div className="vc-wave-container"><div className="vc-wave-fill" style={{ width: '0%' }}></div></div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--vc-slate)', width: '60px' }}>Gốc</div>
+                      <audio ref={originalAudioRef} src={cloneResult.original_audio} onEnded={() => setPlayingId(null)} />
                     </div>
-                    <div className="vc-profile-actions">
-                      <button 
-                        className="vc-icon-btn" 
-                        onClick={() => {
-                          if (!profileAudioRefs.current[profile.name]) return;
-                          togglePlay(profile.name, { current: profileAudioRefs.current[profile.name] } as React.RefObject<HTMLAudioElement>);
-                        }}
-                      >
-                        {playingId === profile.name ? <Pause size={14} weight="bold" /> : <Play size={14} weight="bold" />}
+                    <div className="vc-player">
+                      <button className="vc-play-btn" onClick={() => togglePlay('cloned', clonedAudioRef)}>
+                        {playingId === 'cloned' ? <Pause size={18} weight="fill" /> : <Play size={18} weight="fill" />}
                       </button>
-                      <button 
-                        className="vc-icon-btn danger"
-                        onClick={() => setIsDeleting(profile.name)}
-                      >
-                        <Trash size={14} weight="bold" />
-                      </button>
-                      <audio 
-                        ref={el => { if (el) profileAudioRefs.current[profile.name] = el; }} 
-                        src={`http://localhost:8000/api/tts/profiles/${profile.name}/audio`} 
-                        onEnded={() => setPlayingId(null)}
-                      />
+                      <div className="vc-wave-container"><div className="vc-wave-fill" style={{ width: '0%' }}></div></div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--vc-slate)', width: '60px' }}>Bản Sao</div>
+                      <audio ref={clonedAudioRef} src={cloneResult.cloned_audio} onEnded={() => setPlayingId(null)} />
                     </div>
                   </div>
-                ))}
+                )}
+
+              </div>
+            ) : (
+              <div className="vc-card">
+                <h2 className="vc-card-title">Thiết kế giọng AI</h2>
+                
+                <div className="vc-input-group">
+                  <label className="vc-label">Mô tả (Prompt tiếng Anh)</label>
+                  <textarea 
+                    className="vc-textarea" 
+                    placeholder="VD: A calm, deep male voice suitable for documentaries..."
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    disabled={isDesigning}
+                  />
+                </div>
+
+                <div className="vc-input-group">
+                  <label className="vc-label">Thuộc tính</label>
+                  <div className="vc-chips">
+                    {['Male', 'Female'].map(g => (
+                      <div key={g} className={`vc-chip ${gender === g ? 'active' : ''}`} onClick={() => setGender(gender === g ? null : g as any)}>
+                        {g}
+                      </div>
+                    ))}
+                    <div style={{ width: '1px', background: 'var(--vc-border)' }}></div>
+                    {['Young', 'Middle', 'Senior'].map(a => (
+                      <div key={a} className={`vc-chip ${age === a ? 'active' : ''}`} onClick={() => setAge(age === a ? null : a as any)}>
+                        {a}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="vc-input-group" style={{ marginTop: '8px' }}>
+                  <label className="vc-label">Đoạn đọc thử (Tiếng Việt)</label>
+                  <select 
+                    className="vc-select" 
+                    value={customText ? '' : sampleText}
+                    onChange={e => {
+                      if (e.target.value) {
+                        setSampleText(e.target.value);
+                        setCustomText('');
+                      }
+                    }}
+                    disabled={isDesigning}
+                  >
+                    <option value="" disabled>Chọn câu mẫu...</option>
+                    {sampleTexts.map((text, i) => <option key={i} value={text}>{text}</option>)}
+                  </select>
+                  <input 
+                    type="text" 
+                    className="vc-input" 
+                    placeholder="Hoặc nhập tùy ý..."
+                    value={customText}
+                    onChange={e => setCustomText(e.target.value)}
+                    disabled={isDesigning}
+                  />
+                </div>
+
+                <div className="vc-input-group">
+                  <label className="vc-label">Tên hồ sơ lưu trữ</label>
+                  <input 
+                    type="text" 
+                    className="vc-input" 
+                    placeholder="VD: Giọng Design 01"
+                    value={designName}
+                    onChange={e => setDesignName(e.target.value)}
+                    disabled={isDesigning}
+                  />
+                </div>
+
+                {designError && (
+                  <div className="vc-banner error">
+                    <WarningCircle size={18} weight="fill" />
+                    {designError}
+                  </div>
+                )}
+
+                <button 
+                  className="vc-btn-primary" 
+                  onClick={handleDesign}
+                  disabled={!designName.trim() || isDesigning}
+                >
+                  {isDesigning ? 'Đang tổng hợp (Designing)...' : 'Tạo Giọng Design'}
+                </button>
+
+                {designResult && (
+                  <div className="vc-player" style={{ marginTop: '12px' }}>
+                    <button className="vc-play-btn" onClick={() => togglePlay('design', designAudioRef)}>
+                      {playingId === 'design' ? <Pause size={18} weight="fill" /> : <Play size={18} weight="fill" />}
+                    </button>
+                    <div className="vc-wave-container"><div className="vc-wave-fill" style={{ width: '0%' }}></div></div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--vc-slate)', width: '60px' }}>Preview</div>
+                    <audio ref={designAudioRef} src={designResult.audio} onEnded={() => setPlayingId(null)} />
+                  </div>
+                )}
+
               </div>
             )}
           </div>
-        )}
+
+          {/* Right Column: Library */}
+          <div className="vc-library-panel">
+            <div className="vc-card" style={{ height: '100%' }}>
+              <h2 className="vc-card-title" style={{ marginBottom: '8px' }}>
+                Thư viện Profiles
+                <span style={{ marginLeft: 'auto', fontSize: '0.9rem', color: 'var(--vc-slate)', fontWeight: 500 }}>
+                  {profiles.length} giọng
+                </span>
+              </h2>
+
+              {profiles.length === 0 ? (
+                <div className="vc-empty-placeholder" style={{ flex: 1, border: 'none', background: 'transparent' }}>
+                  <Sparkle size={40} weight="duotone" className="vc-ep-icon" />
+                  <p style={{ margin: 0 }}>Chưa có cấu hình nào. Tạo mới từ bảng bên trái.</p>
+                </div>
+              ) : (
+                <div className="vc-profile-list">
+                  {profiles.map(profile => (
+                    <div key={profile.name} className="vc-profile-item">
+                      <div className="vc-profile-info">
+                        <div className="vc-profile-title">{profile.name}</div>
+                        <div className="vc-profile-meta">
+                          {profile.created_at || 'Mới'} · {profile.duration ? `${profile.duration}s` : '—'}
+                        </div>
+                      </div>
+                      <div className="vc-profile-actions">
+                        <button 
+                          className="vc-icon-btn" 
+                          onClick={() => {
+                            if (!profileAudioRefs.current[profile.name]) return;
+                            togglePlay(profile.name, { current: profileAudioRefs.current[profile.name] } as React.RefObject<HTMLAudioElement>);
+                          }}
+                        >
+                          {playingId === profile.name ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" />}
+                        </button>
+                        <button 
+                          className="vc-icon-btn danger"
+                          onClick={() => setIsDeleting(profile.name)}
+                        >
+                          <Trash size={16} weight="fill" />
+                        </button>
+                        <audio 
+                          ref={el => { if (el) profileAudioRefs.current[profile.name] = el; }} 
+                          src={`http://localhost:8000/api/tts/profiles/${profile.name}/audio`} 
+                          onEnded={() => setPlayingId(null)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
 
-      {/* Confirm Dialog */}
+      {/* Delete Dialog Overlay */}
       {isDeleting && (
-        <div className="vc-dialog-overlay">
-          <div className="vc-dialog">
-            <div className="vc-dialog-title">Xóa giọng</div>
-            <div className="vc-dialog-body">Bạn có chắc muốn xóa "{isDeleting}"? Hành động này không thể hoàn tác.</div>
-            <div className="vc-dialog-actions">
-              <button className="vc-dialog-btn cancel" onClick={() => setIsDeleting(null)}>Hủy</button>
-              <button className="vc-dialog-btn delete" onClick={() => handleDeleteProfile(isDeleting)}>Xóa</button>
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="vc-card" style={{ width: '400px', border: '1px solid var(--vc-border)' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Xóa hồ sơ giọng?</h3>
+            <p style={{ margin: 0, color: 'var(--vc-slate)', lineHeight: 1.5 }}>
+              Bạn có chắc muốn xóa "{isDeleting}"? Thao tác này không thể phục hồi và có thể ảnh hưởng đến project NLE đang dùng giọng này.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setIsDeleting(null)}
+                style={{
+                  padding: '10px 20px', borderRadius: '999px', border: '1px solid var(--vc-border)',
+                  background: 'transparent', color: 'var(--vc-text)', fontWeight: 600, cursor: 'pointer'
+                }}
+              >Hủy</button>
+              <button 
+                onClick={() => handleDeleteProfile(isDeleting)}
+                style={{
+                  padding: '10px 20px', borderRadius: '999px', border: 'none',
+                  background: 'var(--vc-danger)', color: '#fff', fontWeight: 600, cursor: 'pointer'
+                }}
+              >Xóa Vĩnh Viễn</button>
             </div>
           </div>
         </div>
