@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-23T07:30:49.695Z"
+last_updated: "2026-04-23T17:47:31.579Z"
 last_activity: 2026-04-23
 progress:
-  total_phases: 13
-  completed_phases: 9
-  total_plans: 29
-  completed_plans: 24
-  percent: 83
+  total_phases: 24
+  completed_phases: 11
+  total_plans: 30
+  completed_plans: 28
+  percent: 93
 ---
 
 # STATE.md — KNReup Project State
@@ -71,6 +71,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 19 added: Favorite Voice Profiles
 - Phase 20 added: Voice Studio Quick Wins (copy clipboard, multi-format, rename)
 - Phase 21 added: CapCut-Style Panel Auto-Switch
+- Phase 22 added: Full Mix Preview
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
