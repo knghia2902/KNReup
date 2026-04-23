@@ -123,19 +123,19 @@ Accent reserved for: Primary CTA ("Clone Voice" / "Design Voice"), active tab un
 └──────────────────────────────────────────────┘
 ```
 
-### Tab 2: Thiết Kế Giọng (Voice Design)
+### Tab 2: Thiết Kế Giọng (Voice Design / TTS)
 ```
 ┌──────────────────────────────────────────────┐
-│ Mô tả giọng:                                │
+│ Mô tả giọng / Nội dung (TTS):               │
 │ ┌────────────────────────────────────────────┐│
-│ │ e.g. "female, low pitch, young, calm"     ││
+│ │ e.g. văn bản mẫu để thiết kế giọng...      ││
 │ └────────────────────────────────────────────┘│
 ├──────────────────────────────────────────────┤
-│ ── Quick Attributes ─────────────────────────│
-│ Gender: [Male] [Female]                      │
-│ Age:    [Young] [Middle] [Senior]            │
-│ Pitch:  [Low]  [Normal] [High]              │
-│ Accent: [ input                        ]    │
+│ ── Tùy Chỉnh (Vietnam Region) ───────────────│
+│ Vùng Miền: [Bắc] [Trung] [Nam]               │
+│ Tuổi:      [Young] [Middle] [Senior]         │
+│ Giọng:     [Nam]  [Nữ]                       │
+│ Tốc độ:    [ input                        ]  │
 ├──────────────────────────────────────────────┤
 │ ── Preview ──────────────────────────────────│
 │ Câu mẫu: [dropdown ▾ ]                      │
@@ -205,7 +205,7 @@ Accent reserved for: Primary CTA ("Clone Voice" / "Design Voice"), active tab un
 | Drop zone label | "Kéo thả hoặc chọn file audio" |
 | Drop zone sublabel | "WAV, MP3 · Khuyến nghị 3-10 giây" |
 | Clone name placeholder | "Đặt tên cho giọng clone..." |
-| Design description placeholder | "Mô tả giọng bạn muốn tạo (VD: female, low pitch, calm)" |
+| Design description placeholder | "Nội dung / mô tả để tạo giọng..." |
 | Sample text dropdown | "Chọn câu mẫu tiếng Việt" |
 | Custom text placeholder | "Hoặc nhập text tùy ý để test..." |
 
@@ -222,7 +222,7 @@ Accent reserved for: Primary CTA ("Clone Voice" / "Design Voice"), active tab un
 | AudioPlayer | NEW | Minimal play/pause + progress bar + duration label |
 | ComparisonPlayer | NEW | Two AudioPlayers side by side (D-08) |
 | ProfileListItem | NEW | Vertical list row: name + date + duration + Play + Delete |
-| QuickAttributeChips | Adapt from `.chip` / `.chiprow` | Gender, Age, Pitch pill selectors |
+| QuickAttributeChips | Adapt from `.chip` / `.chiprow` | Region, Gender, Age pill selectors |
 | ProgressOverlay | Adapt from `.procov` | Linear progress with percentage during clone/generate |
 | WarningBanner | NEW | Yellow tinted banner for >10s audio warning |
 | ConfirmDialog | NEW | Modal for destructive delete confirmation |

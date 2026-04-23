@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Microphone, Play, Pause, Trash, UploadSimple, MagicWand, X } from '@phosphor-icons/react';
+import { Microphone, Trash, UploadSimple } from '@phosphor-icons/react';
 import { useSidecar } from '../../hooks/useSidecar';
 import { sidecar } from '../../lib/sidecar';
 import './VoiceCloneWindow.css';
@@ -21,7 +21,7 @@ export function VoiceCloneWindow() {
   const [designRegion, setDesignRegion] = useState('Bắc');
   const [isDesigning, setIsDesigning] = useState(false);
   const [designError, setDesignError] = useState<string | null>(null);
-  const [previewAudio, setPreviewAudio] = useState<string | null>(null);
+
 
   // Profiles State
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -30,8 +30,6 @@ export function VoiceCloneWindow() {
 
   // Audio Playback
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentPlayingUrl, setCurrentPlayingUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab === 'profiles') {
@@ -131,56 +129,8 @@ export function VoiceCloneWindow() {
     }
   };
 
-  const doPreviewDesign = async () => {
-    if (!designName || !designText) return;
-    setIsDesigning(true);
-    try {
-      const res = await sidecar.fetch<{audio_path: string, history_record: any}>('/api/tts/profiles/preview', {
-        method: 'POST',
-        body: JSON.stringify({
-          profile_name: designName,
-          text: designText
-        })
-      });
-      // the audio is cached contextually but not returned directly as a URL.
-      // Usually, we fetch history API to play, but for this simpler test we'll rely on profiles tab
-    } catch (e: any) {
-      setDesignError(e.message);
-    } finally {
-      setIsDesigning(false);
-    }
-  };
 
-  const togglePlay = (url: string) => {
-    if (!audioRef.current) return;
-    if (currentPlayingUrl === url) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    } else {
-      audioRef.current.src = url;
-      audioRef.current.play();
-      setCurrentPlayingUrl(url);
-      setIsPlaying(true);
-    }
-  };
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const updatePlayState = () => setIsPlaying(!audio.paused);
-    audio.addEventListener('play', updatePlayState);
-    audio.addEventListener('pause', updatePlayState);
-    audio.addEventListener('ended', () => setIsPlaying(false));
-    return () => {
-      audio.removeEventListener('play', updatePlayState);
-      audio.removeEventListener('pause', updatePlayState);
-      audio.removeEventListener('ended', () => setIsPlaying(false));
-    };
-  }, []);
 
   return (
     <div className="vc-window">

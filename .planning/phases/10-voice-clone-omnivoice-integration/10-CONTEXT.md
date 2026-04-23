@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Tích hợp Voice Clone sử dụng model OmniVoice (k2-fsa/OmniVoice), mở dưới dạng standalone popup từ Home Launcher với thiết kế tương tự Downloader. Bao gồm: clone giọng từ audio, tạo giọng từ mô tả text (Voice Design), quản lý voice profile, preview/test giọng, và tích hợp giọng clone vào TTS pipeline của Editor.
+Tích hợp Voice Clone và Text-to-Speech sử dụng model OmniVoice phiên bản tiếng Việt (splendor1811/omnivoice-vietnamese), mở dưới dạng standalone popup từ Home Launcher với thiết kế tương tự Downloader. Bao gồm đầy đủ tính năng: Text to Speech (TTS), Clone giọng từ audio, tùy chỉnh vùng miền (Giọng Bắc, Trung, Nam), tạo giọng từ mô tả text (Voice Design) và các tính năng chuyên sâu khác. Quản lý voice profile, preview/test giọng, và tích hợp vào TTS pipeline của Editor.
 
 </domain>
 
@@ -26,14 +26,18 @@ Tích hợp Voice Clone sử dụng model OmniVoice (k2-fsa/OmniVoice), mở dư
 ### Preview & Test Giọng
 - **D-07:** **Cả hai**: Có câu mẫu tiếng Việt sẵn VÀ cho phép user gõ text tùy ý để test.
 - **D-08:** **Có so sánh** giọng gốc vs giọng clone — hiện cả 2 audio player (gốc bên trái, clone bên phải).
+- **D-08b:** **Lưu Lịch Sử (History)** — Các tệp audio được tạo ra khi test/preview sẽ được lưu lại thành Lịch sử để người dùng có thể nghe lại các bản test cũ.
+- **D-08c:** **Tạo Voice từ Text bằng Giọng Clone** — Sau khi clone xong và đã có profile giọng, người dùng có thể nhập đoạn văn bản dài bất kỳ để tạo ra file audio hoàn chỉnh bằng bản thân giọng đã clone đó (chức năng Text-to-Speech bằng cloned voice ngay tại Voice Studio).
 
 ### Tích Hợp Với Pipeline
-- **D-09:** Giọng clone **xuất hiện trong dropdown TTS tab** của Editor, cùng danh sách với Edge TTS, gTTS, ElevenLabs. User tạo giọng ở Voice Clone tool → dùng luôn khi lồng tiếng.
-- **D-10:** **Có hỗ trợ Voice Design** — Thêm tab/section "Thiết kế giọng" trong tool, user nhập mô tả (VD: "female, low pitch, british accent") → tạo giọng không cần audio tham chiếu.
+- **D-09:** Giọng clone **xuất hiện trong dropdown TTS tab** của Editor, cùng danh sách với Edge TTS, gTTS, ElevenLabs. User tạo giọng ở Voice Studio → dùng luôn khi lồng tiếng.
+- **D-10:** **Voice Design & Chuyên sâu** — Thiết kế tab "Thiết kế giọng" với giao diện chọn vùng miền (Bắc/Trung/Nam) sử dụng cấu trúc **"Chip/Pill selection"** giúp trực quan, nhanh gọn như CapCut.
+
+### Trải Nghiệm Giao Diện Khác
+- **D-11:** **Quản lý Loading** — Sử dụng thanh tiến trình tuyến tính (Linear progress bar có %) kết hợp status text thân thiện trên UI. Các log kĩ thuật chi tiết (như extract, generate embedding...) sẽ **được ghi ngầm vào file log**, không hiện trên UI.
 
 ### Agent's Discretion
 - Chi tiết UI layout (spacing, button styling) theo design system hiện có
-- Cách hiển thị loading/progress khi model đang generate
 - Xử lý lỗi khi OmniVoice chưa cài hoặc model chưa download
 
 </decisions>
@@ -44,10 +48,8 @@ Tích hợp Voice Clone sử dụng model OmniVoice (k2-fsa/OmniVoice), mở dư
 **Downstream agents MUST read these before planning or implementing.**
 
 ### OmniVoice Model
-- `https://github.com/k2-fsa/OmniVoice` — Repo chính, README chứa Python API, CLI tools, voice cloning/design API
-- `https://github.com/k2-fsa/OmniVoice/blob/master/docs/tips.md` — Tips cho voice cloning quality
-- `https://github.com/k2-fsa/OmniVoice/blob/master/docs/voice-design.md` — Full attribute reference cho Voice Design
-- `https://github.com/k2-fsa/OmniVoice/blob/master/docs/generation-parameters.md` — Generation parameters (speed, duration, num_step)
+- `https://huggingface.co/splendor1811/omnivoice-vietnamese` — Repo mô hình OmniVoice tiếng Việt.
+- Tích hợp bộ tính năng đầy đủ: Text-to-Speech (TTS), Voice Clone, Tùy chỉnh giọng Bắc/Trung/Nam, và các parameter chuyên sâu cho ngôn ngữ tiếng Việt.
 
 ### Existing Codebase
 - `python-sidecar/app/engines/tts/omnivoice_engine.py` — Engine hiện có (synthesize, create_voice_profile, list_voices)
@@ -85,18 +87,19 @@ Tích hợp Voice Clone sử dụng model OmniVoice (k2-fsa/OmniVoice), mở dư
 ## Specific Ideas
 
 - Thiết kế **tương tự Downloader**: Header dark với icon + tên tool, body dark, danh sách items dọc
-- OmniVoice zero-shot: Không "train" model, chỉ trích xuất speaker embedding từ audio 3-10s
-- Voice Design: Hỗ trợ attribute mô tả giọng (gender, age, pitch, dialect/accent, whisper)
-- Output audio: 24kHz WAV
+- OmniVoice Vietnamese: Hỗ trợ tạo giọng theo văn bản (TTS), Clone giọng zero-shot từ audio 3-10s.
+- Tùy chỉnh vùng miền: Giao diện chọn giọng Bắc, Trung, Nam trực tiếp.
+- Output audio: 24kHz WAV, các parameter chuyên dụng tối ưu tiếng Việt (speed, pitch, emotion, v.v.).
 
 </specifics>
 
 <deferred>
 ## Deferred Ideas
 
-- Export/import voice profile (chia sẻ giọng clone giữa các máy)
-- Record audio trực tiếp từ micro trên UI
-- Voice fine-tuning (train thêm với nhiều data)
+- Todo: Redesign app using unified core technology like CapCut (chuyển vào backlog, không đưa vào scope Phase 10).
+- Export/import voice profile (chia sẻ giọng clone giữa các máy). Giữ nguyên local-only cho Phase 10.
+- Record audio trực tiếp từ micro trên UI.
+- Voice fine-tuning (train thêm với nhiều data).
 
 </deferred>
 
