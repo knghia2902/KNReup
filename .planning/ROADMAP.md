@@ -414,5 +414,5 @@ Plans:
 
 **Depends on:** Phase 09.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 - [ ] TBD (run /gsd-plan-phase 10 to break down)
