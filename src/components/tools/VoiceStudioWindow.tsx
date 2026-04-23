@@ -11,8 +11,8 @@ import {
 // Import sub-components
 import { CloneTab } from './voicestudio/CloneTab';
 import { DesignTab } from './voicestudio/DesignTab';
-// TTSTab will be imported here in the next wave
-// import { TTSTab } from './voicestudio/TTSTab'; 
+import { TTSTab } from './voicestudio/TTSTab'; 
+import { HistoryPanel } from './voicestudio/HistoryPanel';
 
 import './VoiceStudioWindow.css';
 
@@ -23,9 +23,7 @@ export function VoiceStudioWindow() {
   const { 
     activeTab, 
     setActiveTab, 
-    history, 
     fetchHistory, 
-    deleteHistory 
   } = useVoiceStudioStore();
 
   useEffect(() => {
@@ -36,9 +34,8 @@ export function VoiceStudioWindow() {
     }
   }, [connected, fetchHistory]);
 
-  const handleDeleteHistory = (id: string) => {
-    deleteHistory(sidecar.getBaseUrl(), id);
-  };
+  // Cleanup function removed
+
 
   return (
     <div className="vc-layout-wrapper" data-tauri-drag-region>
@@ -89,58 +86,14 @@ export function VoiceStudioWindow() {
           
           {/* Left Column: Creation Forms per Tab */}
           <div className="vc-options-panel">
-            {activeTab === 'tts' && (
-              <div className="vc-card">
-                <h2 className="vc-card-title">Tổng hợp Text-to-Speech</h2>
-                <div className="vc-empty-placeholder" style={{ padding: '40px' }}>
-                  <SpeakerHifi size={48} weight="duotone" className="vc-ep-icon" />
-                  <p>Content for TTS to be implemented in Wave 3</p>
-                </div>
-              </div>
-            )}
+            {activeTab === 'tts' && <TTSTab connected={connected} />}
             {activeTab === 'clone' && <CloneTab connected={connected} />}
             {activeTab === 'design' && <DesignTab connected={connected} />}
           </div>
 
-          {/* Right Column: Unified History/Library (Placeholder for History Panel) */}
+          {/* Right Column: Unified History/Library */}
           <div className="vc-library-panel">
-            <div className="vc-card" style={{ height: '100%' }}>
-              <h2 className="vc-card-title" style={{ marginBottom: '8px' }}>
-                History / Profiles
-                <span style={{ marginLeft: 'auto', fontSize: '0.9rem', color: 'var(--vc-slate)', fontWeight: 500 }}>
-                  {history.length} items
-                </span>
-              </h2>
-
-              {history.length === 0 ? (
-                <div className="vc-empty-placeholder" style={{ flex: 1, border: 'none', background: 'transparent' }}>
-                  <Sparkle size={40} weight="duotone" className="vc-ep-icon" />
-                  <p style={{ margin: 0 }}>Chưa có nội dung nào trong lịch sử.</p>
-                </div>
-              ) : (
-                <div className="vc-profile-list">
-                  {history.map(item => (
-                    <div key={item.id} className="vc-profile-item">
-                      <div className="vc-profile-info">
-                        <div className="vc-profile-title" title={item.filename}>{item.filename}</div>
-                        <div className="vc-profile-meta">
-                          {new Date(item.created_at).toLocaleString()} · {item.engine}
-                        </div>
-                      </div>
-                      <div className="vc-profile-actions">
-                        <button 
-                          className="vc-icon-btn danger"
-                          onClick={() => handleDeleteHistory(item.id)}
-                        >
-                          <Trash size={16} weight="fill" />
-                        </button>
-                        {/* Play logic to be abstracted into HistoryPanel in Wave 3 */}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <HistoryPanel />
           </div>
 
         </div>
