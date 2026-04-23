@@ -6,7 +6,7 @@
  *  - "launcher"          → Home Launcher (main window)
  *  - "editor-{id}"       → NLE Editor instances
  *  - "tool-downloader"   → Downloader popup
- *  - "tool-voice-clone"  → Voice Clone popup
+ *  - "tool-voice-studio" → Voice Studio popup
  */
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -99,7 +99,7 @@ export async function openTool(toolId: string): Promise<WebviewWindow | null> {
 
   const toolConfigs: Record<string, { title: string; width: number; height: number }> = {
     downloader: { title: 'KNReup Downloader', width: 1000, height: 700 },
-    'voice-clone': { title: 'KNReup Voice Clone', width: 800, height: 600 },
+    'voice-studio': { title: 'KNReup Voice Studio', width: 1000, height: 750 },
   };
 
   const config = toolConfigs[toolId] || { title: `KNReup — ${toolId}`, width: 800, height: 600 };

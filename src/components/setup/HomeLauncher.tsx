@@ -137,10 +137,10 @@ export function HomeLauncher() {
                 <span>Settings</span>
                 <span className="launcher-tool-desc">Cấu hình engine & tùy chỉnh</span>
               </button>
-              <button className="launcher-tool-card" onClick={() => openTool('voice-clone')}>
+              <button className="launcher-tool-card" onClick={() => openTool('voice-studio')}>
                 <Microphone size={24} weight="duotone" />
-                <span>Voice Clone</span>
-                <span className="launcher-tool-desc">Nhân bản giọng nói AI</span>
+                <span>Voice Studio</span>
+                <span className="launcher-tool-desc">Text-to-Speech & Voice Clone</span>
               </button>
             </div>
           </div>
