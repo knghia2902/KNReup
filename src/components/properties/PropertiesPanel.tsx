@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { VideoTab } from './VideoTab';
 import { AudioTab } from './AudioTab';
 import { TextTab } from './TextTab';
@@ -6,6 +6,7 @@ import { AdjustTab } from './AdjustTab';
 import { OutTab } from './OutTab';
 import { QueueTab } from './QueueTab';
 import { FilmStrip, SpeakerHigh, TextT, Faders, Export, ListBullets } from '@phosphor-icons/react';
+import { useProjectStore } from '../../stores/useProjectStore';
 
 export type PropertiesTabID = 'video' | 'audio' | 'text' | 'adjust' | 'out' | 'queue';
 
@@ -15,7 +16,14 @@ interface PropertiesPanelProps {
   processing?: boolean;
 }
 
-
+/** Map selectedClipId prefix → Properties tab */
+function clipIdToTab(clipId: string | null | undefined): PropertiesTabID | null {
+  if (!clipId) return null;
+  if (clipId.startsWith('vid')) return 'video';
+  if (clipId.startsWith('audio')) return 'audio';
+  if (clipId.startsWith('sub')) return 'text';
+  return null;
+}
 
 const TABS: { id: PropertiesTabID; label: string; icon: any }[] = [
   { id: 'video', label: 'Video', icon: FilmStrip },
@@ -28,7 +36,13 @@ const TABS: { id: PropertiesTabID; label: string; icon: any }[] = [
 
 export function PropertiesPanel({ onRender, onAnalyze, processing }: PropertiesPanelProps) {
   const [tab, setTab] = useState<PropertiesTabID>('video');
+  const selectedClipId = useProjectStore((s) => s.selectedClipId);
 
+  // CapCut-style: auto-switch tab when a clip is selected on the timeline
+  useEffect(() => {
+    const targetTab = clipIdToTab(selectedClipId);
+    if (targetTab) setTab(targetTab);
+  }, [selectedClipId]);
 
   return (
     <div className="pp">

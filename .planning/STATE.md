@@ -70,6 +70,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 18 added: TTS Speed Control
 - Phase 19 added: Favorite Voice Profiles
 - Phase 20 added: Voice Studio Quick Wins (copy clipboard, multi-format, rename)
+- Phase 21 added: CapCut-Style Panel Auto-Switch
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |

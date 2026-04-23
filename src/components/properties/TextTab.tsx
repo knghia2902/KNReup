@@ -41,27 +41,39 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
     return () => window.removeEventListener('focus', loadVoices);
   }, []);
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const segId = (e as CustomEvent).detail;
-      if (!listRef.current) return;
-      const el = listRef.current.querySelector(`[data-seg-id="${segId}"]`) as HTMLTextAreaElement | null;
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const parent = el.closest('div[data-seg-row="true"]') as HTMLDivElement;
-        if (parent) {
-          parent.style.transition = 'none';
-          parent.style.backgroundColor = 'var(--ac)';
-          setTimeout(() => {
-            parent.style.transition = 'background-color 0.5s ease';
-            parent.style.backgroundColor = 'var(--bg-surface)';
-          }, 100);
-        }
+  // Scroll to + highlight subtitle when clicked on timeline or preview
+  const scrollToSegment = (segId: number | string) => {
+    if (!listRef.current) return;
+    const el = listRef.current.querySelector(`[data-seg-id="${segId}"]`) as HTMLTextAreaElement | null;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const parent = el.closest('div[data-seg-row="true"]') as HTMLDivElement;
+      if (parent) {
+        parent.style.transition = 'none';
+        parent.style.backgroundColor = 'var(--ac)';
+        setTimeout(() => {
+          parent.style.transition = 'background-color 0.5s ease';
+          parent.style.backgroundColor = 'var(--bg-surface)';
+        }, 100);
       }
-    };
+    }
+  };
+
+  // Listen for subtitle focus events from preview click
+  useEffect(() => {
+    const handler = (e: Event) => scrollToSegment((e as CustomEvent).detail);
     window.addEventListener('focus-subtitle-panel', handler);
     return () => window.removeEventListener('focus-subtitle-panel', handler);
   }, []);
+
+  // CapCut-style: auto-scroll to subtitle when sub block is clicked on timeline
+  const selectedClipId = useProjectStore((s) => s.selectedClipId);
+  useEffect(() => {
+    if (selectedClipId?.startsWith('sub-')) {
+      const segId = selectedClipId.slice(4); // "sub-3" → "3"
+      scrollToSegment(segId);
+    }
+  }, [selectedClipId]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--border-subtle)', height: '100%' }}>
