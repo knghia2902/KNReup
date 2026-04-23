@@ -1,0 +1,44 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Be Vietnam Pro,142,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,11,0,5,0,0,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}DATE Để làm danh sách
+Dialogue: 0,0:00:01.50,0:00:03.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}DATE
+Dialogue: 0,0:00:03.00,0:00:06.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Thật là lộng lẫy và có mùi thơm.
+Dialogue: 0,0:00:06.00,0:00:07.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}D hoàn hảo cho quầy cắm trại mùa xuân.
+Dialogue: 0,0:00:07.50,0:00:09.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Tuyệt vời cho một quầy cắm trại mùa xuân.
+Dialogue: 0,0:00:09.00,0:00:09.59,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Đầu tiên
+Dialogue: 0,0:00:09.59,0:00:12.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Sữa và trà đông lạnh trong một đêm.
+Dialogue: 0,0:00:12.00,0:00:13.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Uống trà đi.
+Dialogue: 0,0:00:13.50,0:00:16.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Và đun sôi nó với ngọn lửa nhỏ nhất của lò nhiệt điện từ.
+Dialogue: 0,0:00:16.50,0:00:18.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Khi nó nóng và trắng.
+Dialogue: 0,0:00:18.00,0:00:19.02,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Sau khi nguội
+Dialogue: 0,0:00:19.02,0:00:21.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Chúng tôi trộn kem đã hết.
+Dialogue: 0,0:00:21.00,0:00:22.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Nó biến kem thành nắp.
+Dialogue: 0,0:00:22.50,0:00:25.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Nhiệt độ ổn định hơn.
+Dialogue: 0,0:00:25.50,0:00:27.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Và sau đó làm cho chữ ký của tôi souffle.
+Dialogue: 0,0:00:27.00,0:00:30.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Tôi sẽ trộn tất cả nguyên liệu với nhau.
+Dialogue: 0,0:00:30.00,0:00:33.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Xem phim trong 25 phút.
+Dialogue: 0,0:00:33.00,0:00:36.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Sau khi bốc hơi, trộn bơ.
+Dialogue: 0,0:00:36.00,0:00:37.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Lại kết thúc rồi.
+Dialogue: 0,0:00:37.50,0:00:39.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Nó rất mềm mại và rực rỡ.
+Dialogue: 0,0:00:39.00,0:00:42.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Nó rất mềm và củ cải.
+Dialogue: 0,0:00:42.00,0:00:43.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Và sau đó là bột gạo chiên.
+Dialogue: 0,0:00:43.50,0:00:45.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Cắt thành từng mảnh nhỏ.
+Dialogue: 0,0:00:45.00,0:00:46.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Anh có thể lấy nó trên tre.
+Dialogue: 0,0:00:46.50,0:00:48.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Mùi trà.
+Dialogue: 0,0:00:48.00,0:00:51.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Hộp sữa có thể dùng nhiều nguyên liệu khác nhau.
+Dialogue: 0,0:00:51.00,0:00:52.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Vị chua và chua.
+Dialogue: 0,0:00:52.50,0:00:55.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Và trà tươi.
+Dialogue: 0,0:00:55.50,0:00:58.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Và quả dâu tây rất màu hồng.
+Dialogue: 0,0:00:58.50,0:01:00.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Để làm danh sách
+Dialogue: 0,0:01:00.00,0:01:01.50,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Tôi không phải B.
+Dialogue: 0,0:01:01.50,0:01:03.00,Default,,0,0,0,,{\an5\fs41\bord2\pos(956.4,987.8)}Hẹn gặp lại.

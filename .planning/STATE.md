@@ -64,6 +64,12 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 07.1 inserted after Phase 07: Refactor Stitch UI and Implement Tauri WebView Auth (URGENT)
 - Phase 9 added: lên kế hoạch chi tiết để xây dựng một màn hình Home/Launcher tương tự cho dự án KNReup (thay vì vào thẳng Editor như hiện tại và có phần login giống capcut luôn). Và danh sách các tool sẽ có Download video ở phần Downloader, TTS (Voice Clone)...
 - Phase 10 added: Voice Clone - OmniVoice Integration
+- Phase 15 added: SRT to MP3 Batch TTS
+- Phase 16 added: TTS Emotion Toggle và Ngữ Điệu
+- Phase 17 added: TTS History Tab
+- Phase 18 added: TTS Speed Control
+- Phase 19 added: Favorite Voice Profiles
+- Phase 20 added: Voice Studio Quick Wins (copy clipboard, multi-format, rename)
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
@@ -91,6 +97,12 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 08.0 | Editor Upgrade & AI Enhancement | 🚧 Wave 2 Complete |
 | 09 | Home/Launcher Redesign & Tools | ✅ Complete |
 | 10 | Voice Clone - OmniVoice Integration | 📝 Not Started |
+| 15 | SRT to MP3 Batch TTS | 📝 Not Started |
+| 16 | TTS Emotion Toggle & Ngữ Điệu | 📝 Not Started |
+| 17 | TTS History Tab | 📝 Not Started |
+| 18 | TTS Speed Control | 📝 Not Started |
+| 19 | Favorite Voice Profiles | 📝 Not Started |
+| 20 | Voice Studio Quick Wins | 📝 Not Started |
 
 ---
 *Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*
