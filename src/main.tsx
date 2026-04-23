@@ -23,8 +23,8 @@ function RootApp() {
         const toolId = getToolIdFromUrl();
         if (toolId === 'downloader') {
           import('./components/downloader/DownloaderWindow').then((m) => setView(() => m.DownloaderWindow));
-        } else if (toolId === 'voice-studio') {
-          import('./components/tools/VoiceStudioWindow').then((m) => setView(() => m.VoiceStudioWindow));
+        } else if (toolId === 'voice-studio' || toolId === 'voice-clone') {
+          import('./components/tools/VoiceCloneWindow').then((m) => setView(() => m.VoiceCloneWindow));
         } else {
           // Fallback — show launcher
           import('./components/setup/HomeLauncher').then((m) => setView(() => m.HomeLauncher));
