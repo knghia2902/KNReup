@@ -34,7 +34,7 @@ async def clone_voice(profile_name: str = Form(...), file: UploadFile = File(...
     temp_output = tempfile.mktemp(suffix=".wav")
     engine.preprocess_reference_audio(temp_input, temp_output)
     
-    safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', profile_name)
+    safe_name = re.sub(r'[^\w\-]', '_', profile_name, flags=re.UNICODE).strip('_')
     profile_path = engine.create_voice_profile(temp_output, safe_name, "cloned")
     
     return {"success": True, "profile_name": safe_name, "duration": duration}

@@ -271,7 +271,7 @@ export function VoiceCloneWindow() {
 
             {/* 3. TTS Tab */}
             {activeTab === 'tts' && (
-              <div className="vs-form-panel">
+              <div className="vs-content-card">
                 <div className="vs-input-group">
                   <label>Chọn Giọng Đọc</label>
                   <select 

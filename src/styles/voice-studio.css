@@ -159,10 +159,40 @@
 /* ── Tab Bar (matching dl-format-tabs) ── */
 .vs-tab-bar {
   display: flex;
-  gap: 24px;
+  gap: 8px;
   padding-bottom: 0;
+  margin-bottom: 1.5rem;
 }
 
+.vs-tab {
+  font-family: inherit;
+  background: var(--vs-bg);
+  border: 1px solid var(--vs-border);
+  padding: 10px 20px;
+  color: var(--vs-slate);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s var(--spring-smooth);
+  white-space: nowrap;
+}
+
+.vs-tab:hover:not(.active) {
+  color: var(--vs-text);
+  border-color: var(--vs-steel);
+  transform: translateY(-1px);
+}
+
+.vs-tab.active {
+  background: var(--vs-text);
+  border-color: var(--vs-text);
+  color: var(--vs-bg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
 .vs-tab-btn {
   font-family: inherit;
   background: none;
@@ -185,6 +215,50 @@
   height: 2px;
   background: var(--vs-text);
   border-radius: 2px 2px 0 0;
+}
+
+/* ── Panels wrapper ── */
+.vs-panels {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── Input group (label+input stack) ── */
+.vs-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vs-input-group label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--vs-steel);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Select dropdown ── */
+select.vs-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+select.vs-input option {
+  background: var(--vs-surface);
+  color: var(--vs-text);
+}
+
+/* ── Hint text (char counter) ── */
+.vs-hint {
+  font-size: 0.8rem;
+  color: var(--vs-slate);
+  font-weight: 500;
 }
 
 /* ── Content Card (matching dl-formats-card) ── */
@@ -348,11 +422,11 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* ── CTA Button (matching dl-analyze-btn) ── */
+/* ── CTA Button (gradient, matching dl-analyze-btn) ── */
 .vs-cta {
   width: 100%;
-  background: var(--vs-text);
-  color: var(--vs-surface);
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  color: #fff;
   border: none;
   border-radius: 1.25rem;
   padding: 14px 24px;
@@ -361,14 +435,17 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: transform var(--spring-bouncy), background-color 0.2s;
-  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform var(--spring-bouncy), box-shadow 0.3s;
+  box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.35);
 }
 
 .vs-cta:hover:not(:disabled) {
-  background: var(--vs-accent);
   transform: translateY(-2px);
-  box-shadow: 0 15px 30px -5px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 15px 40px -5px rgba(59, 130, 246, 0.5);
 }
 
 .vs-cta:active:not(:disabled) {
@@ -380,6 +457,7 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  opacity: 0.5;
 }
 
 /* ── Error banner ── */
