@@ -91,7 +91,7 @@
 ### Phase 06.1: OCR Subtitle Extraction (INSERTED)
 
 **Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06
 **Depends on:** Phase 6
 **Plans:** 1/1 plans complete
 
@@ -117,7 +117,7 @@ Plans:
 ### Phase 07.1: Refactor Stitch UI and Implement Tauri WebView Auth (INSERTED)
 
 **Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06
 **Depends on:** Phase 07
 **Plans:** 1/1 plans complete
 
@@ -285,7 +285,7 @@ Plans:
 ### Phase 06.1: OCR Subtitle Extraction (INSERTED)
 
 **Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06
 **Depends on:** Phase 6
 **Plans:** 1/1 plans complete
 
@@ -311,7 +311,7 @@ Plans:
 ### Phase 07.1: Refactor Stitch UI and Implement Tauri WebView Auth (INSERTED)
 
 **Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06
 **Depends on:** Phase 07
 **Plans:** 1/1 plans complete
 
@@ -405,11 +405,21 @@ Plans:
 **Plans:** 1/1 plans executed
 - [x] 08.2-01-PLAN.md — Audio Refactor & Local Import implementation.
 
+### Phase 11: Voice Studio Full Features: Text-to-Speech, Audio History, UI Upgrades
+
+**Goal:** N�ng c?p c�ng c? Voice Clone th�nh Voice Studio to�n di?n v?i TTS da engine v� h? th?ng qu?n l� l?ch s? �m thanh c?c b?.
+**Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06
+**Depends on:** Phase 10
+**Plans:** 3 plans
+
+Plans:
+- [ ] 11-01-PLAN.md � Voice Studio Infrastructure (Backend & Store)`n- [ ] 11-02-PLAN.md � Voice Studio UI Shell & Tab Migration`n- [ ] 11-03-PLAN.md � TTS Features & Audio History Display
+
 ---
 
 ## Phase 10: Voice Clone - OmniVoice Integration
 > **Mục tiêu**: Tích hợp Voice Clone sử dụng model OmniVoice, mở dưới dạng standalone popup từ Home Launcher với thiết kế tương tự Downloader.
-> **Requirements**: TBD
+> **Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06
 > **Output**: Tool Voice Clone riêng biệt + Tích hợp API.
 
 **Depends on:** Phase 09.
