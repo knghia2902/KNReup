@@ -36,20 +36,32 @@ os.environ["OPENBLAS_NUM_THREADS"] = "8"
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import health, system, pipeline, subtitles, proxy, tts_profiles
+from app.routes import health, system, pipeline, subtitles, proxy, tts_profiles, voice_studio
 from app.routes.downloader import router as downloader_router
 
 app = FastAPI(title="KNReup Sidecar")
 
 # CORS middleware — Cấu hình chuẩn cho Tauri
+# Hỗ trợ cả localhost và tauri://localhost (macOS/Linux)
+allowed_origins = [
+    "http://localhost:1420",
+    "http://127.0.0.1:1420",
+    "tauri://localhost",
+    "http://tauri.localhost",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Fallback cho allow_origins=["*"] nếu origin không nằm trong danh sách
+# Nhưng FastAPI CORSMiddleware không hỗ trợ cả * và allow_credentials=True đồng thời.
+# Vì vậy ta liệt kê các origin phổ biến của Tauri.
 
 # Đăng ký routes với prefix /api thống nhất
 app.include_router(health.router, prefix="/api")
@@ -58,6 +70,7 @@ app.include_router(pipeline.router, prefix="/api")
 app.include_router(subtitles.router, prefix="/api")
 app.include_router(proxy.router, prefix="/api")
 app.include_router(tts_profiles.router, prefix="/api")
+app.include_router(voice_studio.router, prefix="/api/voice-studio", tags=["voice-studio"])
 app.include_router(downloader_router, prefix="/api")
 
 def find_free_port():
