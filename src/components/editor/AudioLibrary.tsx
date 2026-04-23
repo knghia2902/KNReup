@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { SliderControl } from '../controls/SliderControl';
 import { getMediaSrc } from '../../utils/url';
 import { useRef, useEffect } from 'react';
+import { AudioMixer } from '../../lib/audioMixer';
 
 /**
  * Built-in royalty-free audio samples.
@@ -47,10 +48,24 @@ export function AudioLibrary() {
   const config = useProjectStore();
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Connect BGM element khi loaded
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = config.audio_volume;
-    }
+    const audio = audioRef.current;
+    if (!audio || !config.audio_file) return;
+
+    const handleCanPlay = () => {
+      AudioMixer.init();
+      AudioMixer.connectBGM(audio);
+      AudioMixer.setBGMVolume(config.audio_volume);
+    };
+
+    audio.addEventListener('canplay', handleCanPlay);
+    return () => audio.removeEventListener('canplay', handleCanPlay);
+  }, [config.audio_file]);
+
+  // Sync BGM volume qua GainNode
+  useEffect(() => {
+    AudioMixer.setBGMVolume(config.audio_volume);
   }, [config.audio_volume]);
 
   const handleImportLocal = async () => {
@@ -139,7 +154,7 @@ export function AudioLibrary() {
       {config.audio_enabled && config.audio_file && (
         <div style={{ padding: '12px', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
           <div style={{ marginBottom: '8px', padding: '4px', background: 'var(--bg-surface)', borderRadius: '6px' }}>
-            <audio ref={audioRef} controls style={{ width: '100%', height: '24px' }} src={getMediaSrc(config.audio_file) || ''} />
+            <audio ref={audioRef} crossOrigin="anonymous" controls style={{ width: '100%', height: '24px' }} src={getMediaSrc(config.audio_file) || ''} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <SliderControl

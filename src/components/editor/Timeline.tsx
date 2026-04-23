@@ -6,6 +6,7 @@ import { AudioTrack } from './AudioTrack';
 import { VideoTrack } from './VideoTrack';
 import { SubtitleTrack } from './SubtitleTrack';
 import { formatTime, formatTimeShort } from '../../utils/time';
+import { AudioMixer } from '../../lib/audioMixer';
 
 // Định nghĩa trực tiếp ở đây để đảm bảo không bị lỗi import/cache
 function formatTimeLocal(secs: number): string {
@@ -263,6 +264,8 @@ export function Timeline({ filePaths }: TimelineProps) {
         }
         const video = document.querySelector('video');
         if (video) video.currentTime = snappedTime;
+        // Cancel TTS khi scrub — im lặng
+        AudioMixer.cancelTTS();
       }
 
       if (resizingClip) {
@@ -306,6 +309,14 @@ export function Timeline({ filePaths }: TimelineProps) {
       setResizingClip(null);
       setDraggingClip(null);
       setActiveSnapTime(null);
+      // Re-schedule TTS nếu video đang play sau khi stop drag
+      const video = document.querySelector('video');
+      if (video && !video.paused) {
+        AudioMixer.scheduleTTS(
+          useSubtitleStore.getState().segments,
+          video.currentTime
+        );
+      }
     };
 
     if (isDraggingPlayhead || resizingClip || draggingClip) {
@@ -481,18 +492,36 @@ export function Timeline({ filePaths }: TimelineProps) {
       
       <div style={{ display: 'flex', flex: 1, overflowY: 'auto' }}>
         
-        {/* LEFT HEADERS: ONLY 3 TRACKS */}
+        {/* LEFT HEADERS: 3 TRACKS WITH MINI VOLUME INDICATORS */}
         <div style={{ width: 70, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-secondary)', zIndex: 20 }}>
             <div style={{ height: 26, borderBottom: '1px solid var(--border)', background: 'var(--bg-primary)' }}></div>
             {[ 
-              { id: 'vid', label: 'VID', color: 'var(--accent)' },
-              { id: 'sub', label: 'SUB', color: 'var(--accent)' },
-              { id: 'audio', label: 'AUDIO', color: 'var(--success)' }
+              { id: 'vid', label: 'VID', color: 'var(--accent)', volumeKey: 'original_volume' as const, muteCheck: () => config.audio_mix_mode === 'replace' },
+              { id: 'sub', label: 'TTS', color: 'var(--warning, #f59e0b)', volumeKey: 'volume' as const, muteCheck: () => !config.dubbing_enabled },
+              { id: 'audio', label: 'BGM', color: 'var(--success)', volumeKey: 'audio_volume' as const, muteCheck: () => !config.audio_enabled }
             ].map((tk) => (
-              <div key={tk.id} style={{ height: TRACK_HEIGHT, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border-subtle)', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div key={tk.id} style={{ height: TRACK_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', borderBottom: '1px solid var(--border-subtle)', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: tk.color }}></div>
                    {tk.label}
+                 </div>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                   {tk.muteCheck() ? (
+                     <svg width="12" height="12" viewBox="0 0 256 256" fill="none" style={{ opacity: 0.4 }}>
+                       <path d="M228.44,89.34l-48,48a4,4,0,0,1-5.66-5.66L222.34,84.12a4,4,0,1,1,5.66,5.66ZM160,84.12,112.44,131.68a4,4,0,0,0,5.66,5.66L160,95.78Z" fill="var(--text-muted)"/>
+                       <path d="M155.52,24.81a4,4,0,0,0-4.23.42L84,76H40A12,12,0,0,0,28,88v80a12,12,0,0,0,12,12H84l67.29,50.77A4,4,0,0,0,156,228V32A4,4,0,0,0,155.52,24.81Z" fill="var(--text-muted)"/>
+                     </svg>
+                   ) : (
+                     <>
+                       <svg width="12" height="12" viewBox="0 0 256 256" fill="none" style={{ opacity: 0.6 }}>
+                         <path d="M155.52,24.81a4,4,0,0,0-4.23.42L84,76H40A12,12,0,0,0,28,88v80a12,12,0,0,0,12,12H84l67.29,50.77A4,4,0,0,0,156,228V32A4,4,0,0,0,155.52,24.81Z" fill={tk.color}/>
+                         <path d="M192,128a31.82,31.82,0,0,1-6.51,19.34,4,4,0,1,1-6.31-4.9A23.88,23.88,0,0,0,184,128a24,24,0,0,0-4.87-14.5,4,4,0,0,1,6.33-4.88A31.88,31.88,0,0,1,192,128Z" fill={tk.color}/>
+                       </svg>
+                       <div style={{ width: 20, height: 3, background: 'var(--border-subtle)', borderRadius: 1, overflow: 'hidden' }}>
+                         <div style={{ width: `${((config[tk.volumeKey] as number) || 0) * 100}%`, height: '100%', background: tk.color, borderRadius: 1, transition: 'width 0.1s' }} />
+                       </div>
+                     </>
+                   )}
                  </div>
               </div>
             ))}

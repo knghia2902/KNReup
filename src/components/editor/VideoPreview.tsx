@@ -4,6 +4,7 @@ import { VideoControls } from './VideoControls';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { AudioMixer } from '../../lib/audioMixer';
 
 // ─── Draggable Blur Box ──────────────────────────────
 function DraggableBlur({ videoDimensions }: { videoDimensions: { w: number; h: number } }) {
@@ -650,17 +651,52 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
     return () => video.removeEventListener('loadedmetadata', onLoadedMetadata);
   }, [videoSrc]);
 
+  // ─── AudioMixer: Connect video element ──────────────
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+    AudioMixer.init();
+    AudioMixer.connectVideo(video);
+    AudioMixer.setOriginalVolume(
+      projectConfig.audio_mix_mode === 'mix' ? projectConfig.original_volume : 0
+    );
+  }, [videoSrc]);
+
+  // ─── AudioMixer: Sync original volume ───────────────
+  useEffect(() => {
+    AudioMixer.setOriginalVolume(
+      projectConfig.audio_mix_mode === 'mix' ? projectConfig.original_volume : 0
+    );
+  }, [projectConfig.original_volume, projectConfig.audio_mix_mode]);
+
+  // ─── AudioMixer: Preload TTS buffers ────────────────
+  useEffect(() => {
+    if (segments.length > 0) {
+      AudioMixer.preloadTTSBuffers(segments);
+    }
+  }, [segments]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const onPlay = () => rafRef.current = requestAnimationFrame(renderSubtitles);
+    const onPlay = () => {
+      rafRef.current = requestAnimationFrame(renderSubtitles);
+      AudioMixer.resume();
+      AudioMixer.scheduleTTS(segments, video.currentTime);
+    };
     const onPause = () => {
       cancelAnimationFrame(rafRef.current);
       renderSubtitles();
+      AudioMixer.cancelTTS();
     };
     const onSeeked = () => {
       renderSubtitles();
       window.dispatchEvent(new CustomEvent('timeupdate', { detail: video.currentTime }));
+      // Re-schedule TTS nếu đang play
+      if (!video.paused) {
+        AudioMixer.cancelTTS();
+        AudioMixer.scheduleTTS(segments, video.currentTime);
+      }
     };
     const onTimeUpdate = () => {
       if (video.duration && !isNaN(video.duration) && video.duration !== useSubtitleStore.getState().videoDuration) {
@@ -681,7 +717,7 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
       video.removeEventListener('seeked', onSeeked);
       video.removeEventListener('timeupdate', onTimeUpdate);
     };
-  }, [renderSubtitles]);
+  }, [renderSubtitles, segments]);
 
   useEffect(() => {
     if (videoRef.current?.paused) renderSubtitles();

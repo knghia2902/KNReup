@@ -2,18 +2,21 @@ import { ToggleControl } from '../controls/ToggleControl';
 import { SliderControl } from '../controls/SliderControl';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { SpeakerHigh, Waveform, SpeakerLow, ArrowSquareOut } from '@phosphor-icons/react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { sidecar } from '../../lib/sidecar';
+import { AudioMixer } from '../../lib/audioMixer';
 
 export function AudioTab() {
   const config = useProjectStore();
-  const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Sync store volumes → AudioMixer GainNodes
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = config.audio_volume;
-    }
-  }, [config.audio_volume]);
+    AudioMixer.setOriginalVolume(
+      config.audio_mix_mode === 'mix' ? config.original_volume : 0
+    );
+    AudioMixer.setTTSVolume(config.volume);
+    AudioMixer.setBGMVolume(config.audio_volume);
+  }, [config.original_volume, config.volume, config.audio_volume, config.audio_mix_mode]);
 
   // Load custom profiles on mount and window focus (for OmniVoice voice dropdown)
   const loadProfiles = () => {
