@@ -515,6 +515,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 21 to break down)
 
+### Phase 22: Full Mix Preview
+
+**Goal:** Real-time audio mix preview — mixing Original Video Audio, TTS Segments, BGM avec live volume controls bằng Web Audio API
+**Requirements**: TBD
+**Depends on:** Phase 21
+**Plans:** 1 plan
+
+Plans:
+- [ ] 22-01-PLAN.md — Web Audio API Full Mix Preview (AudioMixer singleton, routing, TTS scheduling, mini mixer)
+
 ---
 
 ## Phase 10: Voice Clone - OmniVoice Integration
