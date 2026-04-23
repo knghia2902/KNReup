@@ -6,7 +6,7 @@
  *   Right → Profiles table (always visible)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Microphone, Trash, UploadSimple } from '@phosphor-icons/react';
+import { Microphone, Play, Stop, Trash, UploadSimple } from '@phosphor-icons/react';
 import { useSidecar } from '../../hooks/useSidecar';
 import { useTheme } from '../../hooks/useTheme';
 import { sidecar } from '../../lib/sidecar';
@@ -36,6 +36,7 @@ export function VoiceCloneWindow() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+  const [playingProfile, setPlayingProfile] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -71,6 +72,20 @@ export function VoiceCloneWindow() {
     } catch (e: any) {
       console.error('Failed to delete profile:', e);
     }
+  };
+
+  const playProfile = (name: string) => {
+    if (!audioRef.current) return;
+    if (playingProfile === name) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setPlayingProfile(null);
+      return;
+    }
+    const url = `${sidecar.getBaseUrl()}/api/tts/profiles/${name}/audio`;
+    audioRef.current.src = url;
+    audioRef.current.onended = () => setPlayingProfile(null);
+    audioRef.current.play().then(() => setPlayingProfile(name)).catch(() => setPlayingProfile(null));
   };
 
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -268,6 +283,9 @@ export function VoiceCloneWindow() {
                       {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
                     </div>
                     <div className="vs-pt-cell center">
+                      <button className="vs-pt-btn" onClick={() => playProfile(p.name)} title={playingProfile === p.name ? 'Dừng' : 'Nghe thử'}>
+                        {playingProfile === p.name ? <Stop size={16} weight="fill" /> : <Play size={16} weight="fill" />}
+                      </button>
                       <button className="vs-pt-btn" onClick={() => setDeleteDialog(p.name)} title="Xóa profile">
                         <Trash size={16} weight="bold" />
                       </button>

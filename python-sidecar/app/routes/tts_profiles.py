@@ -93,12 +93,24 @@ async def delete_profile(name: str):
 @router.get("/")
 async def list_profiles():
     voices = await engine.list_voices()
-    cloned = [v for v in voices if v.get("type") == "cloned"]
+    # Return ALL profile types (cloned + designed), not just cloned
+    profiles = [v for v in voices if v.get("type") in ("cloned", "designed")]
     detailed = []
-    for v in cloned:
+    for v in profiles:
         details = engine.get_profile_details(v["id"])
         if details:
             detailed.append(details)
         else:
             detailed.append(v)
     return {"profiles": detailed}
+
+
+@router.get("/{name}/audio")
+async def get_profile_audio(name: str):
+    """Serve the profile's reference audio file for preview playback."""
+    from fastapi.responses import FileResponse
+    audio_path = engine.profiles_dir / f"{name}.wav"
+    if not audio_path.exists():
+        raise HTTPException(404, "Audio file not found")
+    return FileResponse(str(audio_path), media_type="audio/wav")
+

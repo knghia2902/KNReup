@@ -125,14 +125,21 @@ class OmniVoiceTTSEngine(TTSEngine):
             raise TTSError(f"OmniVoice synthesis failed: {e}")
 
     async def list_voices(self) -> list[dict]:
-        """List default and cloned voices."""
+        """List default and cloned/designed voices."""
         voices = [{"name": "default", "id": "default", "type": "system", "locale": "multilingual"}]
         if self.profiles_dir.exists():
             for p in self.profiles_dir.glob("*.json"):
+                profile_type = "cloned"
+                try:
+                    with open(p, "r") as f:
+                        data = json.load(f)
+                    profile_type = data.get("type", "cloned")
+                except Exception:
+                    pass
                 voices.append({
                     "name": p.stem,
                     "id": p.stem,
-                    "type": "cloned",
+                    "type": profile_type,
                     "locale": "multilingual"
                 })
         return voices
