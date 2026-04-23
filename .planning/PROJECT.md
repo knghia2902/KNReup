@@ -31,6 +31,7 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 - ✓ 4 engine dịch thuật (DeepSeek, Gemini, DeepL, v.v...)
 - ✓ Chức năng tuỳ chỉnh output file qua Native OS Dialog
 - ✓ Rendering canvas WYSIWYG khớp hoàn hảo với FFmpeg ASS Render
+- ✓ Phase 10: Voice Clone & Design Endpoints (OmniVoice integration)
 
 ### Active
 
@@ -75,6 +76,8 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 
 **Phase 5 Complete (2026-03-26)**: Đã tích hợp thành công cấu hình Output Advanced (Watermark, Text, Blur, Crop 9:16, Audio Mix BGM).
 
+**Phase 10 Complete (2026-04-23)**: Tích hợp thành công Voice Clone & Design Endpoints với OmniVoice engine.
+
 **Next Milestone Goals (v2.0)**: Bắt đầu khai mở hàng loạt các Engine mới (Trí tuệ nhân tạo, Audio FX) và tích hợp Video Downloader.
 
 ## Context
@@ -115,4 +118,4 @@ KNReup là ứng dụng desktop Windows dùng để **tự động lồng tiến
 | First-run setup giống VideoTransAI | UX đã chứng minh, detect GPU → install | — Pending |
 
 ---
-*Last updated: 2026-03-26 after Phase 05 completion*
+*Last updated: 2026-04-23 after Phase 10 completion*
