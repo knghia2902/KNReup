@@ -144,8 +144,8 @@ class SidecarBridge {
     });
   }
 
-  async getProfiles(): Promise<{ profiles: string[] }> {
-    return this.fetch<{ profiles: string[] }>('/api/tts/profiles');
+  async getProfiles(): Promise<{ profiles: any[] }> {
+    return this.fetch<{ profiles: any[] }>('/api/tts/profiles');
   }
 
   async synthesize(params: any): Promise<Blob> {

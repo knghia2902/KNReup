@@ -93,7 +93,7 @@ export interface ProjectConfig {
 interface ProjectStore extends ProjectConfig {
   fileConfigs: Record<string, Partial<ProjectConfig>>;
   activeFile: string | null;
-  custom_voice_profiles: string[];
+  custom_voice_profiles: any[];
 
   setActiveFile: (path: string | null) => void;
   updateConfig: (partial: Partial<ProjectConfig>) => void;

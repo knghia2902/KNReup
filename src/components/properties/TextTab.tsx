@@ -233,9 +233,10 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
                     </optgroup>
                     {(config.custom_voice_profiles || []).length > 0 && (
                       <optgroup label="OmniVoice - Custom">
-                        {config.custom_voice_profiles.map(p => (
-                          <option key={p} value={`omnivoice:${p}`}>{p}</option>
-                        ))}
+                        {config.custom_voice_profiles.map(p => {
+                          const vName = typeof p === 'string' ? p : p.name;
+                          return <option key={vName} value={`omnivoice:${vName}`}>🎤 {vName}</option>;
+                        })}
                       </optgroup>
                     )}
                   </select>

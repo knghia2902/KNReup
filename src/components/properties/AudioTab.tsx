@@ -21,16 +21,20 @@ export function AudioTab() {
     }
   }, [config.audio_volume]);
 
-  // Load custom profiles on mount if OmniVoice is selected
+  // Load custom profiles on mount and window focus
+  const loadProfiles = () => {
+    sidecar.getProfiles().then(res => {
+      if (res.profiles) {
+        useProjectStore.setState({ custom_voice_profiles: res.profiles });
+      }
+    }).catch(e => console.error("Failed to load profiles", e));
+  };
+
   useEffect(() => {
-    if (config.tts_engine === 'omnivoice') {
-      sidecar.getProfiles().then(res => {
-        if (res.profiles) {
-          useProjectStore.setState({ custom_voice_profiles: res.profiles });
-        }
-      }).catch(e => console.error("Failed to load profiles", e));
-    }
-  }, [config.tts_engine]);
+    loadProfiles();
+    window.addEventListener('focus', loadProfiles);
+    return () => window.removeEventListener('focus', loadProfiles);
+  }, []);
 
   const handleUploadReference = async () => {
     if (!refAudioFile) return;
@@ -201,9 +205,10 @@ export function AudioTab() {
                       </optgroup>
                       {(config.custom_voice_profiles || []).length > 0 && (
                         <optgroup label="Custom Cloned Voices">
-                          {config.custom_voice_profiles.map(p => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
+                          {config.custom_voice_profiles.map(p => {
+                            const vName = typeof p === 'string' ? p : p.name;
+                            return <option key={vName} value={vName}>🎤 {vName}</option>;
+                          })}
                         </optgroup>
                       )}
                     </>
