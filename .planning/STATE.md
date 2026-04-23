@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-23T17:47:31.579Z"
+last_updated: "2026-04-23T18:09:31.597Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 24
   completed_phases: 11
-  total_plans: 30
+  total_plans: 31
   completed_plans: 28
-  percent: 93
+  percent: 90
 ---
 
 # STATE.md — KNReup Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 09 — Home Launcher Redesign
+**Current focus:** Phase 22 — full-mix-preview
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 10
-- **Status:** Ready to execute
+- **Status:** Executing Phase 22
 - **Last activity:** 2026-04-23
 
 ## Context

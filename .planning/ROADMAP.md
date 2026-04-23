@@ -520,10 +520,10 @@ Plans:
 **Goal:** Real-time audio mix preview — mixing Original Video Audio, TTS Segments, BGM avec live volume controls bằng Web Audio API
 **Requirements**: TBD
 **Depends on:** Phase 21
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 22-01-PLAN.md — Web Audio API Full Mix Preview (AudioMixer singleton, routing, TTS scheduling, mini mixer)
+- [x] 22-01-PLAN.md — Web Audio API Full Mix Preview (AudioMixer singleton, routing, TTS scheduling, mini mixer)
 
 ---
 
