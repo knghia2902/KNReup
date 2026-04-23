@@ -8,16 +8,16 @@ export interface HistoryItem {
   engine: string;
   config: Record<string, any>;
   created_at: string;
-  type: 'tts' | 'clone' | 'design';
+  type: 'tts';
 }
 
 export interface VoiceStudioState {
   history: HistoryItem[];
   loading: boolean;
-  activeTab: 'tts' | 'clone' | 'design';
+  activeTab: 'tts';
   
   // Actions
-  setActiveTab: (tab: 'tts' | 'clone' | 'design') => void;
+  setActiveTab: (tab: 'tts') => void;
   fetchHistory: (sidecarUrl: string) => Promise<void>;
   generateTTS: (sidecarUrl: string, text: string, engine: string, config: any) => Promise<void>;
   deleteHistory: (sidecarUrl: string, id: string) => Promise<void>;

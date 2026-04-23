@@ -1,9 +1,11 @@
 /**
  * VoiceCloneWindow — Standalone Voice Studio entry point
  * Phase 10: Voice Clone & OmniVoice Integration.
- * Design: Stitch Asymmetric (matching DownloaderPanel).
+ * Design: Stitch 2-panel (matching DownloaderPanel layout).
+ *   Left  → Clone / Design form
+ *   Right → Profiles table (always visible)
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Microphone, Trash, UploadSimple } from '@phosphor-icons/react';
 import { useSidecar } from '../../hooks/useSidecar';
 import { useTheme } from '../../hooks/useTheme';
@@ -14,7 +16,7 @@ import '../../styles/voice-studio.css';
 export function VoiceCloneWindow() {
   useTheme();
   const { connected } = useSidecar();
-  const [activeTab, setActiveTab] = useState<'clone' | 'design' | 'profiles'>('clone');
+  const [activeTab, setActiveTab] = useState<'clone' | 'design'>('clone');
 
   // Clone State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -37,11 +39,7 @@ export function VoiceCloneWindow() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    if (activeTab === 'profiles') loadProfiles();
-  }, [activeTab]);
-
-  const loadProfiles = async () => {
+  const loadProfiles = useCallback(async () => {
     setIsLoadingProfiles(true);
     try {
       const res = await sidecar.fetch<{ profiles: any[] }>('/api/tts/profiles/');
@@ -51,7 +49,18 @@ export function VoiceCloneWindow() {
     } finally {
       setIsLoadingProfiles(false);
     }
-  };
+  }, []);
+
+  // Load profiles on mount + on focus
+  useEffect(() => {
+    if (connected) loadProfiles();
+  }, [connected, loadProfiles]);
+
+  useEffect(() => {
+    const handleFocus = () => loadProfiles();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [loadProfiles]);
 
   const handleDeleteProfile = async () => {
     if (!deleteDialog) return;
@@ -86,7 +95,7 @@ export function VoiceCloneWindow() {
       if (!res.ok) throw new Error(data.detail || 'Upload failed');
       setSelectedFile(null);
       setCloneName('');
-      setActiveTab('profiles');
+      loadProfiles();
     } catch (e: any) {
       setCloneError(e.message);
     } finally {
@@ -105,7 +114,7 @@ export function VoiceCloneWindow() {
       });
       setDesignDesc('');
       setDesignName('');
-      setActiveTab('profiles');
+      loadProfiles();
     } catch (e: any) {
       setDesignError(e.message);
     } finally {
@@ -118,7 +127,7 @@ export function VoiceCloneWindow() {
       <audio ref={audioRef} style={{ display: 'none' }} />
       <div className="vs-container">
 
-        {/* ── Hero Header ── */}
+        {/* ── Hero Header (top section, matching dl-top-section) ── */}
         <section className="vs-top-section">
           <div className="vs-hero-header">
             <h1>Voice Studio</h1>
@@ -130,96 +139,106 @@ export function VoiceCloneWindow() {
           </div>
         </section>
 
-        {/* ── Tab Bar ── */}
-        <div className="vs-tab-bar">
-          {([['clone', '🎙️ Clone Giọng'], ['design', '✨ Thiết Kế Giọng'], ['profiles', '📋 Profiles']] as const).map(([key, label]) => (
-            <button key={key} className={`vs-tab-btn ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key as any)}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* ── 2-Panel Grid (matching dl-main-grid) ── */}
+        <div className="vs-main-grid">
 
-        {/* ── Clone Tab ── */}
-        {activeTab === 'clone' && (
-          <div className="vs-content-card">
-            <label className="vs-dropzone" onDragOver={handleDragOver} onDrop={handleDrop}>
-              <input type="file" style={{ display: 'none' }} accept=".wav,.mp3,.ogg,.flac,.m4a" onChange={handleFileSelect} />
-              <div className="vs-dropzone-icon"><UploadSimple size={40} weight="duotone" /></div>
-              <div className="vs-dropzone-title">Kéo thả file âm thanh mẫu</div>
-              <div className="vs-dropzone-sub">Hỗ trợ .wav, .mp3, .ogg, .flac, .m4a — Tối đa 30 giây</div>
-            </label>
+          {/* ── LEFT PANEL: Clone / Design form ── */}
+          <div className="vs-form-panel">
+            {/* Tab Switcher */}
+            <div className="vs-tab-bar">
+              {([['clone', '🎙️ Clone Giọng'], ['design', '✨ Thiết Kế Giọng']] as const).map(([key, label]) => (
+                <button key={key} className={`vs-tab-btn ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key as any)}>
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            {selectedFile && (
-              <div className="vs-audio-tag">
-                <Microphone size={16} weight="bold" />
-                <span className="name">{selectedFile.name}</span>
-                <span>{(selectedFile.size / 1024).toFixed(1)} KB</span>
+            {/* Clone Form */}
+            {activeTab === 'clone' && (
+              <div className="vs-content-card">
+                <label className="vs-dropzone" onDragOver={handleDragOver} onDrop={handleDrop}>
+                  <input type="file" style={{ display: 'none' }} accept=".wav,.mp3,.ogg,.flac,.m4a" onChange={handleFileSelect} />
+                  <div className="vs-dropzone-icon"><UploadSimple size={40} weight="duotone" /></div>
+                  <div className="vs-dropzone-title">Kéo thả file âm thanh mẫu</div>
+                  <div className="vs-dropzone-sub">Hỗ trợ .wav, .mp3, .ogg, .flac, .m4a — Tối đa 30 giây</div>
+                </label>
+
+                {selectedFile && (
+                  <div className="vs-audio-tag">
+                    <Microphone size={16} weight="bold" />
+                    <span className="name">{selectedFile.name}</span>
+                    <span>{(selectedFile.size / 1024).toFixed(1)} KB</span>
+                  </div>
+                )}
+
+                {cloneError && <div className="vs-error">{cloneError}</div>}
+
+                <div className="vs-field">
+                  <label className="vs-field-label">Tên Profile</label>
+                  <input className="vs-input" placeholder="vd: clone_nam_01" value={cloneName} onChange={(e) => setCloneName(e.target.value)} />
+                </div>
+
+                {isCloning ? (
+                  <div className="vs-progress-row">
+                    <Spinner />
+                    <span className="vs-progress-text">Đang clone giọng nói...</span>
+                  </div>
+                ) : (
+                  <button className="vs-cta" onClick={doClone} disabled={!selectedFile || !cloneName}>Clone Voice</button>
+                )}
               </div>
             )}
 
-            {cloneError && <div className="vs-error">{cloneError}</div>}
+            {/* Design Form */}
+            {activeTab === 'design' && (
+              <div className="vs-content-card">
+                <div className="vs-field">
+                  <label className="vs-field-label">Mô tả giọng</label>
+                  <textarea className="vs-textarea" placeholder="A warm, professional male voice suitable for news reading." value={designDesc} onChange={(e) => setDesignDesc(e.target.value)} />
+                </div>
 
-            <div className="vs-field">
-              <label className="vs-field-label">Tên Profile</label>
-              <input className="vs-input" placeholder="vd: clone_nam_01" value={cloneName} onChange={(e) => setCloneName(e.target.value)} />
-            </div>
+                <div className="vs-field">
+                  <label className="vs-field-label">Vùng miền</label>
+                  <div className="vs-chip-group">
+                    {['Bắc', 'Trung', 'Nam'].map((r) => (
+                      <button key={r} className={`vs-chip ${designRegion === r ? 'active' : ''}`} onClick={() => setDesignRegion(r)}>
+                        Giọng {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {isCloning ? (
-              <div className="vs-progress-row">
-                <Spinner />
-                <span className="vs-progress-text">Đang clone giọng nói...</span>
+                <div className="vs-field">
+                  <label className="vs-field-label">Câu thoại mẫu</label>
+                  <input className="vs-input" value={designText} onChange={(e) => setDesignText(e.target.value)} />
+                </div>
+
+                <div className="vs-field">
+                  <label className="vs-field-label">Tên Profile</label>
+                  <input className="vs-input" placeholder="vd: design_news_01" value={designName} onChange={(e) => setDesignName(e.target.value)} />
+                </div>
+
+                {designError && <div className="vs-error">{designError}</div>}
+
+                {isDesigning ? (
+                  <div className="vs-progress-row">
+                    <Spinner />
+                    <span className="vs-progress-text">Đang thiết kế giọng nói...</span>
+                  </div>
+                ) : (
+                  <button className="vs-cta" onClick={doDesign} disabled={!designDesc || !designName || !designText}>Design Voice & Save</button>
+                )}
               </div>
-            ) : (
-              <button className="vs-cta" onClick={doClone} disabled={!selectedFile || !cloneName}>Clone Voice</button>
             )}
           </div>
-        )}
 
-        {/* ── Design Tab ── */}
-        {activeTab === 'design' && (
-          <div className="vs-content-card">
-            <div className="vs-field">
-              <label className="vs-field-label">Mô tả giọng</label>
-              <textarea className="vs-textarea" placeholder="A warm, professional male voice suitable for news reading." value={designDesc} onChange={(e) => setDesignDesc(e.target.value)} />
+          {/* ── RIGHT PANEL: Profiles table (always visible) ── */}
+          <div className="vs-profiles-panel">
+            <div className="vs-recent-header">
+              <h2>Voice Profiles</h2>
+              <button className="vs-view-all" onClick={loadProfiles}>Refresh</button>
             </div>
 
-            <div className="vs-field">
-              <label className="vs-field-label">Vùng miền</label>
-              <div className="vs-chip-group">
-                {['Bắc', 'Trung', 'Nam'].map((r) => (
-                  <button key={r} className={`vs-chip ${designRegion === r ? 'active' : ''}`} onClick={() => setDesignRegion(r)}>
-                    Giọng {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="vs-field">
-              <label className="vs-field-label">Câu thoại mẫu</label>
-              <input className="vs-input" value={designText} onChange={(e) => setDesignText(e.target.value)} />
-            </div>
-
-            <div className="vs-field">
-              <label className="vs-field-label">Tên Profile</label>
-              <input className="vs-input" placeholder="vd: design_news_01" value={designName} onChange={(e) => setDesignName(e.target.value)} />
-            </div>
-
-            {designError && <div className="vs-error">{designError}</div>}
-
-            {isDesigning ? (
-              <div className="vs-progress-row">
-                <Spinner />
-                <span className="vs-progress-text">Đang thiết kế giọng nói...</span>
-              </div>
-            ) : (
-              <button className="vs-cta" onClick={doDesign} disabled={!designDesc || !designName || !designText}>Design Voice & Save</button>
-            )}
-          </div>
-        )}
-
-        {/* ── Profiles Tab ── */}
-        {activeTab === 'profiles' && (
-          <>
             {isLoadingProfiles ? (
               <div className="vs-empty">
                 <Spinner />
@@ -257,8 +276,9 @@ export function VoiceCloneWindow() {
                 ))}
               </div>
             )}
-          </>
-        )}
+          </div>
+
+        </div>
       </div>
 
       {/* ── Delete Confirmation Modal ── */}

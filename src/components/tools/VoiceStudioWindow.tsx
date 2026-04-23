@@ -1,16 +1,12 @@
-import React, { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useSidecar } from '../../hooks/useSidecar';
 import { useTheme } from '../../hooks/useTheme';
 import { useVoiceStudioStore } from '../../stores/useVoiceStudioStore';
 import { sidecar } from '../../lib/sidecar';
-import { 
-  Microphone, MagicWand, SpeakerHifi, 
-  Waveform, Sparkle, Trash, Play, Pause 
-} from '@phosphor-icons/react';
+import { Waveform } from '@phosphor-icons/react';
 
 // Import sub-components
-import { CloneTab } from './voicestudio/CloneTab';
-import { DesignTab } from './voicestudio/DesignTab';
+
 import { TTSTab } from './voicestudio/TTSTab'; 
 import { HistoryPanel } from './voicestudio/HistoryPanel';
 
@@ -21,8 +17,6 @@ export function VoiceStudioWindow() {
   useTheme(); // Initializes theme for this window
   
   const { 
-    activeTab, 
-    setActiveTab, 
     fetchHistory, 
   } = useVoiceStudioStore();
 
@@ -55,30 +49,7 @@ export function VoiceStudioWindow() {
             <p>Trình duyệt studio âm thanh toàn diện: Clone giọng, Tạo giọng AI, và Tổng hợp Text-to-Speech đa nền tảng.</p>
           </div>
 
-          {/* Horizontal Tab Selector */}
-          <div className="vc-tab-selector">
-            <button 
-              className={`vc-tab-btn ${activeTab === 'tts' ? 'active' : ''}`}
-              onClick={() => setActiveTab('tts')}
-            >
-              <SpeakerHifi size={18} weight="fill" />
-              Text-to-Speech
-            </button>
-            <button 
-              className={`vc-tab-btn ${activeTab === 'clone' ? 'active' : ''}`}
-              onClick={() => setActiveTab('clone')}
-            >
-              <Microphone size={18} weight="fill" />
-              Voice Clone
-            </button>
-            <button 
-              className={`vc-tab-btn ${activeTab === 'design' ? 'active' : ''}`}
-              onClick={() => setActiveTab('design')}
-            >
-              <MagicWand size={18} weight="fill" />
-              Voice Design
-            </button>
-          </div>
+
         </section>
 
         {/* Main Interface Content Grid */}
@@ -86,9 +57,7 @@ export function VoiceStudioWindow() {
           
           {/* Left Column: Creation Forms per Tab */}
           <div className="vc-options-panel">
-            {activeTab === 'tts' && <TTSTab connected={connected} />}
-            {activeTab === 'clone' && <CloneTab connected={connected} />}
-            {activeTab === 'design' && <DesignTab connected={connected} />}
+            <TTSTab connected={connected} />
           </div>
 
           {/* Right Column: Unified History/Library */}

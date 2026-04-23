@@ -140,7 +140,7 @@ class SidecarBridge {
   async saveProfile(name: string, tempPath: string): Promise<{ profile_name: string }> {
     return this.fetch<{ profile_name: string }>('/api/tts/profiles/save', {
       method: 'POST',
-      body: JSON.stringify({ name, temp_path: tempPath }),
+      body: JSON.stringify({ profile_name: name, audio_path: tempPath }),
     });
   }
 

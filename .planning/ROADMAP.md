@@ -407,13 +407,23 @@ Plans:
 
 ### Phase 11: Voice Studio Full Features: Text-to-Speech, Audio History, UI Upgrades
 
-**Goal:** N‚ng c?p cÙng c? Voice Clone th‡nh Voice Studio to‡n di?n v?i TTS da engine v‡ h? th?ng qu?n l˝ l?ch s? ‚m thanh c?c b?.
+**Goal:** NÔøΩng c?p cÔøΩng c? Voice Clone thÔøΩnh Voice Studio toÔøΩn di?n v?i TTS da engine vÔøΩ h? th?ng qu?n lÔøΩ l?ch s? ÔøΩm thanh c?c b?.
 **Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06
 **Depends on:** Phase 10
 **Plans:** 3 plans
 
 Plans:
-- [ ] 11-01-PLAN.md ó Voice Studio Infrastructure (Backend & Store)`n- [ ] 11-02-PLAN.md ó Voice Studio UI Shell & Tab Migration`n- [ ] 11-03-PLAN.md ó TTS Features & Audio History Display
+- [ ] 11-01-PLAN.md ÔøΩ Voice Studio Infrastructure (Backend & Store)`n- [ ] 11-02-PLAN.md ÔøΩ Voice Studio UI Shell & Tab Migration`n- [ ] 11-03-PLAN.md ÔøΩ TTS Features & Audio History Display
+
+### Phase 12: G·ª° b·ªè to√†n di·ªán OmniVoice t·ª´ UI, Backend config, v√† d·ªçn d·∫πp m√£ ngu·ªìn s·ª≠ d·ª•ng grapuco ƒë·ªÉ ki·ªÉm tra code map
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12 to break down)
 
 ---
 

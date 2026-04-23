@@ -22,7 +22,7 @@ function RootApp() {
       case 'tool': {
         const toolId = getToolIdFromUrl();
         if (toolId === 'downloader') {
-          import('./components/downloader/DownloaderWindow').then((m) => setView(() => m.DownloaderWindow));
+          import('./components/downloader/DownloaderPanel').then((m) => setView(() => m.DownloaderPanel));
         } else if (toolId === 'voice-studio' || toolId === 'voice-clone') {
           import('./components/tools/VoiceCloneWindow').then((m) => setView(() => m.VoiceCloneWindow));
         } else {

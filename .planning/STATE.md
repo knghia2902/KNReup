@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-last_updated: "2026-04-23T04:21:50.137Z"
+status: executing
+last_updated: "2026-04-23T07:30:49.695Z"
 last_activity: 2026-04-23
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 9
-  total_plans: 26
+  total_plans: 29
   completed_plans: 24
-  percent: 92
+  percent: 83
 ---
 
 # STATE.md — KNReup Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 10
-- **Status:** Milestone complete
+- **Status:** Ready to execute
 - **Last activity:** 2026-04-23
 
 ## Context
@@ -58,6 +58,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ### Roadmap Evolution
 
+- Phase 11 added: Voice Studio Full Features: Text-to-Speech, Audio History, UI Upgrades
+- Phase 12 added: Gỡ bỏ toàn diện OmniVoice từ UI, Backend config, và dọn dẹp mã nguồn sử dụng grapuco để kiểm tra code map
 - Phase 6.1 inserted after Phase 6: OCR Subtitle Extraction (URGENT)
 - Phase 07.1 inserted after Phase 07: Refactor Stitch UI and Implement Tauri WebView Auth (URGENT)
 - Phase 9 added: lên kế hoạch chi tiết để xây dựng một màn hình Home/Launcher tương tự cho dự án KNReup (thay vì vào thẳng Editor như hiện tại và có phần login giống capcut luôn). Và danh sách các tool sẽ có Download video ở phần Downloader, TTS (Voice Clone)...
@@ -92,3 +94,10 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ---
 *Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*
+
+## Quick Tasks Completed
+
+| Date | Task | Result |
+|------|------|--------|
+| 2026-04-23 | centralize-theme-control | Tập trung quyền đổi theme tại Home, xóa toggles ở Editor/Tools, đồng bộ real-time |
+| 2026-04-23 | fix-darkmode-sync-issue | Thống nhất logic Dark Mode bằng useTheme hook dùng chung |
