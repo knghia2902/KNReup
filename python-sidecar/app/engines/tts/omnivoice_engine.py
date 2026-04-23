@@ -4,6 +4,7 @@ import os
 import shutil
 from pathlib import Path
 import json
+from datetime import datetime
 
 from app.engines.base import TTSEngine, TTSError
 from app.utils.gpu_detect import detect_gpu
@@ -31,6 +32,7 @@ class OmniVoiceTTSEngine(TTSEngine):
             
         try:
             from omnivoice import OmniVoice
+            import torch
             
             # Select device based on GPU availability
             gpu_info = detect_gpu()
@@ -38,16 +40,15 @@ class OmniVoiceTTSEngine(TTSEngine):
             
             logger.info(f"Loading OmniVoice model on {self._device}...")
             
-            # Using hypothetical generic constructor/loader
-            # For standard models, this might just be a basic initialization
-            # Adjust if omnivoice has a specific from_pretrained method
+            # Use specific fine-tuned vietnamese model
+            repo_id = "splendor1811/omnivoice-vietnamese"
+            
             if hasattr(OmniVoice, "from_pretrained"):
-                self._model = OmniVoice.from_pretrained("omnivoice")
+                self._model = OmniVoice.from_pretrained(repo_id, device_map=self._device)
             else:
                 self._model = OmniVoice()
-                
-            if hasattr(self._model, "to"):
-                self._model.to(self._device)
+                if hasattr(self._model, "to"):
+                    self._model.to(self._device)
                 
             logger.info("OmniVoice model loaded successfully.")
         except Exception as e:
@@ -69,32 +70,55 @@ class OmniVoiceTTSEngine(TTSEngine):
             
         try:
             import soundfile as sf
+            import torch
+            import numpy as np
             
             ref_audio = None
             if voice and voice != "default":
                 profile_path = self.profiles_dir / f"{voice}.json"
                 if profile_path.exists():
-                    with open(profile_path, "r") as f:
-                        profile_data = json.load(f)
-                    ref_audio = profile_data.get("audio_path")
+                    try:
+                        with open(profile_path, "r") as f:
+                            profile_data = json.load(f)
+                        ref_audio = profile_data.get("audio_path")
+                    except Exception as e:
+                        logger.error(f"Error reading profile {voice}: {e}")
 
             # Map the rate parameter to speed
             speed = rate if rate > 0 else 1.0
             
-            audio_data = self._model.generate(
-                text=text,
-                ref_audio=ref_audio,
-                speed=speed
-            )
+            kwargs = {
+                "text": text,
+                "language": "vi",
+                "speed": speed,
+                "guidance_scale": 2.5,
+                "num_step": 8
+            }
+            if ref_audio:
+                kwargs["ref_audio"] = ref_audio
+            else:
+                kwargs["instruct"] = "female"
             
-            # Assuming output is a list of numpy arrays
-            if isinstance(audio_data, list) and len(audio_data) > 0:
-                audio_array = audio_data[0]
+            results = self._model.generate(**kwargs)
+            
+            if not results or len(results) == 0:
+                raise RuntimeError("OmniVoice failed to generate any audio.")
+                
+            audio_data = results[0]
+            
+            if hasattr(audio_data, "flatten"):
+                audio_array = audio_data.flatten()
             else:
                 audio_array = audio_data
                 
+            if isinstance(audio_array, torch.Tensor):
+                audio_array = audio_array.detach().cpu().numpy()
+                
             # Default SR for OmniVoice, usually 24k or 16k
             sf.write(output_path, audio_array, 24000) 
+            
+            # Optional memory cleanup
+            torch.cuda.empty_cache()
             
             return output_path
         except Exception as e:
@@ -121,43 +145,8 @@ class OmniVoiceTTSEngine(TTSEngine):
         except ImportError:
             return False
 
-    def preprocess_reference_audio(self, input_path: str, output_path: str) -> str:
-        """Preprocess audio for voice cloning (e.g., resample, normalize)."""
-        try:
-            import librosa
-            import soundfile as sf
-            
-            # Load and resample to 24kHz (common for TTS)
-            y, sr = librosa.load(input_path, sr=24000)
-            
-            # Optionally normalize volume here
-            
-            sf.write(output_path, y, sr)
-            return output_path
-        except Exception as e:
-            raise TTSError(f"Audio preprocessing failed: {e}")
-
-    def create_voice_profile(self, audio_path: str, profile_name: str, profile_type: str = "cloned") -> str:
-        """Save a preprocessed voice profile."""
-        if not self.profiles_dir.exists():
-            self.profiles_dir.mkdir(parents=True, exist_ok=True)
-            
-        dest_audio = self.profiles_dir / f"{profile_name}.wav"
-        shutil.copy(audio_path, dest_audio)
-        
-        profile_path = self.profiles_dir / f"{profile_name}.json"
-        with open(profile_path, "w") as f:
-            json.dump({
-                "name": profile_name,
-                "audio_path": str(dest_audio),
-                "type": profile_type,
-                "created_at": datetime.now().isoformat(),
-            }, f, indent=2)
-            
-        return str(profile_path)
-
-    def voice_design(self, description: str, text: str, output_path: str = "design_output.wav") -> str:
-        """Generate voice from text description using OmniVoice voice design."""
+    def voice_design(self, description: str, text: str, output_path: str = "design_output.wav", region: str = "Bắc", speed: float = 1.0) -> str:
+        """Generate voice from text description and region using OmniVoice."""
         self._load_model()
         if not self._model:
             raise TTSError("OmniVoice model could not be loaded")
@@ -166,6 +155,8 @@ class OmniVoiceTTSEngine(TTSEngine):
         audio_data = self._model.generate(
             text=text,
             voice_description=description,
+            region=region,
+            speed=speed
         )
         if isinstance(audio_data, list) and len(audio_data) > 0:
             audio_array = audio_data[0]
@@ -185,18 +176,35 @@ class OmniVoiceTTSEngine(TTSEngine):
             return None
         with open(profile_path, "r") as f:
             data = json.load(f)
-        # Thêm file metadata
         audio_path = data.get("audio_path", "")
         duration = 0
         if audio_path and os.path.exists(audio_path):
             import librosa
             duration = round(librosa.get_duration(path=audio_path), 1)
         data["duration"] = duration
-        data["created_at"] = data.get("created_at", os.path.getctime(str(profile_path)))
+        data["created_at"] = os.path.getctime(str(profile_path))
         return data
 
+    def create_voice_profile(self, audio_path, profile_name, profile_type="cloned"):
+        dest_audio = self.profiles_dir / f"{profile_name}.wav"
+        if str(audio_path) != str(dest_audio):
+            shutil.copy2(audio_path, dest_audio)
+            
+        profile_path = self.profiles_dir / f"{profile_name}.json"
+        with open(profile_path, "w") as f:
+            json.dump({
+                "name": profile_name,
+                "audio_path": str(dest_audio),
+                "type": profile_type,
+                "created_at": datetime.now().isoformat(),
+            }, f, indent=2)
+        return str(profile_path)
+        
+    def preprocess_reference_audio(self, input_path: str, output_path: str):
+        if str(input_path) != str(output_path):
+            shutil.copy2(input_path, output_path)
+
     def delete_profile(self, profile_name: str) -> bool:
-        """Delete profile and audio file."""
         profile_path = self.profiles_dir / f"{profile_name}.json"
         audio_path = self.profiles_dir / f"{profile_name}.wav"
         if profile_path.exists():
@@ -206,6 +214,42 @@ class OmniVoiceTTSEngine(TTSEngine):
         return True
 
     def get_audio_duration(self, audio_path: str) -> float:
-        """Get audio duration."""
         import librosa
         return round(librosa.get_duration(path=audio_path), 1)
+
+    def save_to_history(self, text: str, profile_name: str, audio_path: str) -> dict:
+        import librosa
+        import uuid
+        history_dir = self.profiles_dir.parent / "history"
+        history_dir.mkdir(parents=True, exist_ok=True)
+        record = {
+            "id": str(uuid.uuid4()),
+            "text": text,
+            "profile_name": profile_name,
+            "audio_path": Path(audio_path).name,
+            "duration": round(librosa.get_duration(path=audio_path), 1),
+            "created_at": datetime.now().isoformat()
+        }
+        
+        audio_dest = history_dir / Path(audio_path).name
+        if Path(audio_path) != audio_dest:
+            shutil.copy2(audio_path, audio_dest)
+            
+        history_file = history_dir / "tts_history.json"
+        history = []
+        if history_file.exists():
+            with open(history_file, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        history.insert(0, record)
+        with open(history_file, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
+        return record
+
+    def get_history(self) -> list:
+        history_file = self.profiles_dir.parent / "history" / "tts_history.json"
+        if history_file.exists():
+            with open(history_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return []
+
+
