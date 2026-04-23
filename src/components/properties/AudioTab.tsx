@@ -1,19 +1,13 @@
 import { ToggleControl } from '../controls/ToggleControl';
 import { SliderControl } from '../controls/SliderControl';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { SpeakerHigh, Waveform, SpeakerLow, UploadSimple, Microphone } from '@phosphor-icons/react';
-import { useEffect, useRef, useState } from 'react';
+import { SpeakerHigh, Waveform, SpeakerLow, ArrowSquareOut } from '@phosphor-icons/react';
+import { useEffect, useRef } from 'react';
 import { sidecar } from '../../lib/sidecar';
 
 export function AudioTab() {
   const config = useProjectStore();
   const audioRef = useRef<HTMLAudioElement>(null);
-
-  // OmniVoice Cloning State
-  const [refAudioFile, setRefAudioFile] = useState<File | null>(null);
-  const [tempAudioPath, setTempAudioPath] = useState<string | null>(null);
-  const [profileName, setProfileName] = useState<string>('');
-  const [cloningStatus, setCloningStatus] = useState<string>('');
 
   useEffect(() => {
     if (audioRef.current) {
@@ -21,23 +15,20 @@ export function AudioTab() {
     }
   }, [config.audio_volume]);
 
-  // Load custom profiles on mount and window focus
+  // Load custom profiles on mount and window focus (for OmniVoice voice dropdown)
   const loadProfiles = () => {
-    // Guard: sidecar may not be initialized yet when Editor loads
     try {
       sidecar.getProfiles().then(res => {
         if (res.profiles) {
           useProjectStore.setState({ custom_voice_profiles: res.profiles });
         }
       }).catch(e => console.warn("Profiles not available yet:", e.message));
-    } catch (e: any) {
-      // sidecar not ready — will retry on focus
+    } catch {
       console.warn("Sidecar not ready, will retry on focus");
     }
   };
 
   useEffect(() => {
-    // Delay initial load to give sidecar time to boot
     const timer = setTimeout(loadProfiles, 2000);
     window.addEventListener('focus', loadProfiles);
     return () => {
@@ -46,37 +37,17 @@ export function AudioTab() {
     };
   }, []);
 
-  const handleUploadReference = async () => {
-    if (!refAudioFile) return;
+  const openVoiceStudio = async () => {
     try {
-      setCloningStatus('Uploading...');
-      const res = await sidecar.uploadReferenceAudio(refAudioFile);
-      setTempAudioPath(res.temp_path);
-      setCloningStatus('Uploaded successfully. Ready to save.');
-    } catch (e: any) {
-      setCloningStatus(`Error: ${e.message}`);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    if (!tempAudioPath || !profileName) return;
-    try {
-      setCloningStatus('Saving profile...');
-      await sidecar.saveProfile(profileName, tempAudioPath);
-      setCloningStatus('Profile saved successfully!');
-      
-      // Refresh profiles
-      const res = await sidecar.getProfiles();
-      if (res.profiles) {
-        useProjectStore.setState({ custom_voice_profiles: res.profiles });
-        config.updateConfig({ voice: profileName });
-      }
-      
-      setRefAudioFile(null);
-      setTempAudioPath(null);
-      setProfileName('');
-    } catch (e: any) {
-      setCloningStatus(`Error: ${e.message}`);
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+      new WebviewWindow('voice-studio', {
+        url: '/index.html?type=tool&tool=voice-studio',
+        title: 'Voice Studio',
+        width: 1100, height: 700,
+        center: true,
+      });
+    } catch {
+      window.open('/index.html?type=tool&tool=voice-studio', '_blank');
     }
   };
 
@@ -121,52 +92,31 @@ export function AudioTab() {
         
         {config.dubbing_enabled && (
           <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr 1fr', 
-              gap: '6px'
-            }}>
-              <div 
-                style={{
-                  padding: '8px', border: '1px solid var(--border)', borderRadius: '6px',
-                  background: config.tts_engine === 'edge_tts' ? 'var(--accent-subtle)' : 'var(--bg-surface)',
-                  borderColor: config.tts_engine === 'edge_tts' ? 'var(--accent)' : 'var(--border)',
-                  cursor: 'pointer', transition: 'all 0.2s',
-                  display: 'flex', flexDirection: 'column', gap: '4px'
-                }}
-                onClick={() => config.updateConfig({ tts_engine: 'edge_tts' })}
-              >
-                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>Edge TTS</div>
-                <div style={{ fontSize: '9px', color: 'var(--accent)', fontWeight: 500 }}>Online · Free</div>
-              </div>
-              <div 
-                style={{
-                  padding: '8px', border: '1px solid var(--border)', borderRadius: '6px',
-                  background: config.tts_engine === 'omnivoice' ? 'var(--accent-subtle)' : 'var(--bg-surface)',
-                  borderColor: config.tts_engine === 'omnivoice' ? 'var(--accent)' : 'var(--border)',
-                  cursor: 'pointer', transition: 'all 0.2s',
-                  display: 'flex', flexDirection: 'column', gap: '4px'
-                }}
-                onClick={() => config.updateConfig({ tts_engine: 'omnivoice' })}
-              >
-                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>OmniVoice</div>
-                <div style={{ fontSize: '9px', color: 'var(--accent)', fontWeight: 500 }}>Local · Clone</div>
-              </div>
-              <div 
-                style={{
-                  padding: '8px', border: '1px solid var(--border)', borderRadius: '6px',
-                  background: config.tts_engine === 'elevenlabs' ? 'var(--accent-subtle)' : 'var(--bg-surface)',
-                  borderColor: config.tts_engine === 'elevenlabs' ? 'var(--accent)' : 'var(--border)',
-                  cursor: 'pointer', transition: 'all 0.2s',
-                  display: 'flex', flexDirection: 'column', gap: '4px'
-                }}
-                onClick={() => config.updateConfig({ tts_engine: 'elevenlabs' })}
-              >
-                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>ElevenLabs</div>
-                <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Online · Premium</div>
-              </div>
+            {/* Engine Selector */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+              {([
+                { id: 'edge_tts', name: 'Edge TTS', desc: 'Online · Free' },
+                { id: 'omnivoice', name: 'OmniVoice', desc: 'Local · Clone' },
+                { id: 'elevenlabs', name: 'ElevenLabs', desc: 'Online · Premium' },
+              ] as const).map(eng => (
+                <div 
+                  key={eng.id}
+                  style={{
+                    padding: '8px', border: '1px solid var(--border)', borderRadius: '6px',
+                    background: config.tts_engine === eng.id ? 'var(--accent-subtle)' : 'var(--bg-surface)',
+                    borderColor: config.tts_engine === eng.id ? 'var(--accent)' : 'var(--border)',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    display: 'flex', flexDirection: 'column', gap: '4px'
+                  }}
+                  onClick={() => config.updateConfig({ tts_engine: eng.id })}
+                >
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>{eng.name}</div>
+                  <div style={{ fontSize: '9px', color: config.tts_engine === eng.id ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 500 }}>{eng.desc}</div>
+                </div>
+              ))}
             </div>
 
+            {/* ElevenLabs API Key */}
             {config.tts_engine === 'elevenlabs' && (
               <div className="pr" style={{ marginTop: '4px' }}>
                 <div className="plbl">API Key</div>
@@ -182,16 +132,14 @@ export function AudioTab() {
               </div>
             )}
 
+            {/* Voice Selector */}
             <div className="pr" style={{ marginTop: '4px' }}>
               <div className="plbl">Voice</div>
               <div className="pc">
                 <select 
                   className="psel" 
                   value={config.voice}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    config.updateConfig({ voice: val });
-                  }}
+                  onChange={(e) => config.updateConfig({ voice: e.target.value })}
                 >
                   {config.tts_engine === 'edge_tts' && (
                     <optgroup label="Edge TTS - Vietnamese">
@@ -227,75 +175,25 @@ export function AudioTab() {
               </div>
             </div>
 
+            {/* Voice Studio link for OmniVoice */}
             {config.tts_engine === 'omnivoice' && (
-              <div style={{ marginTop: '8px', padding: '12px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--bg-surface)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <Microphone size={14} color="var(--accent)" />
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>Voice Cloning</span>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="file" 
-                      accept="audio/*"
-                      id="ref-audio-upload"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setRefAudioFile(e.target.files[0]);
-                          setTempAudioPath(null);
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor="ref-audio-upload"
-                      className="btn"
-                      style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', fontSize: '11px', height: '28px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
-                    >
-                      <UploadSimple size={14} />
-                      {refAudioFile ? refAudioFile.name : 'Select Reference Audio'}
-                    </label>
-                    <button 
-                      className="btn"
-                      style={{ background: 'var(--accent)', color: 'white', border: 'none', height: '28px', fontSize: '11px', padding: '0 12px' }}
-                      onClick={handleUploadReference}
-                      disabled={!refAudioFile || !!tempAudioPath}
-                    >
-                      Preprocess
-                    </button>
-                  </div>
-                  
-                  {tempAudioPath && (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                      <input 
-                        type="text" 
-                        className="inp" 
-                        placeholder="New Profile Name"
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        style={{ flex: 1 }}
-                      />
-                      <button 
-                        className="btn"
-                        style={{ background: 'var(--accent)', color: 'white', border: 'none', height: '28px', fontSize: '11px', padding: '0 12px' }}
-                        onClick={handleSaveProfile}
-                        disabled={!profileName}
-                      >
-                        Save Profile
-                      </button>
-                    </div>
-                  )}
-
-                  {cloningStatus && (
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      {cloningStatus}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <button
+                className="btn"
+                onClick={openVoiceStudio}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  height: '28px', fontSize: '11px', fontWeight: 600,
+                  background: 'transparent', border: '1px dashed var(--accent)',
+                  color: 'var(--accent)', borderRadius: '6px', cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ArrowSquareOut size={14} />
+                Mở Voice Studio để tạo / quản lý giọng
+              </button>
             )}
 
+            {/* Modulation Controls */}
             <div style={{ marginTop: '8px', padding: '8px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--bg-surface)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '0 4px' }}>
                 <Waveform size={14} color="var(--accent)" />
