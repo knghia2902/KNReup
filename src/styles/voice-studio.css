@@ -78,7 +78,7 @@
 
 .vs-recent-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--vs-text);
@@ -160,7 +160,6 @@
 .vs-tab-bar {
   display: flex;
   gap: 24px;
-  border-bottom: 1px solid var(--vs-border);
   padding-bottom: 0;
 }
 
@@ -170,8 +169,8 @@
   border: none;
   padding: 0 0 10px;
   color: var(--vs-slate);
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   cursor: pointer;
   position: relative;
   transition: color 0.2s;
