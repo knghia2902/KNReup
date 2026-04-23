@@ -425,6 +425,26 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 12 to break down)
 
+### Phase 13: Thiết kế và tích hợp tab Tạo Âm Thanh (TTS) vào Voice Studio
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
+
+### Phase 14: Thiết kế và tích hợp tab Tạo Âm Thanh (TTS) vào Voice Studio
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
 ---
 
 ## Phase 10: Voice Clone - OmniVoice Integration

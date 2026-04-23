@@ -6,7 +6,7 @@
  *   Right → Profiles table (always visible)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Microphone, Play, Stop, Trash, UploadSimple } from '@phosphor-icons/react';
+import { Microphone, Play, Stop, Trash, UploadSimple, SpeakerHigh, Sparkle, DownloadSimple } from '@phosphor-icons/react';
 import { useSidecar } from '../../hooks/useSidecar';
 import { useTheme } from '../../hooks/useTheme';
 import { sidecar } from '../../lib/sidecar';
@@ -16,7 +16,7 @@ import '../../styles/voice-studio.css';
 export function VoiceCloneWindow() {
   useTheme();
   const { connected } = useSidecar();
-  const [activeTab, setActiveTab] = useState<'clone' | 'design'>('clone');
+  const [activeTab, setActiveTab] = useState<'clone' | 'design' | 'tts'>('clone');
 
   // Clone State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -37,6 +37,12 @@ export function VoiceCloneWindow() {
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
   const [playingProfile, setPlayingProfile] = useState<string | null>(null);
+
+  // ── TTS State ──
+  const [ttsVoice, setTtsVoice] = useState('');
+  const [ttsText, setTtsText] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [ttsResultAction, setTtsResultAction] = useState<any>(null); // To store history record
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -136,6 +142,24 @@ export function VoiceCloneWindow() {
       setIsDesigning(false);
     }
   };
+  const doTTS = async () => {
+    if (!ttsVoice || !ttsText) return;
+    setIsGenerating(true);
+    try {
+      const res: any = await sidecar.fetch('/api/tts/profiles/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_name: ttsVoice, text: ttsText })
+      });
+      if (res.history_record) {
+        setTtsResultAction(res.history_record);
+      }
+    } catch (e: any) {
+      console.error('Failed to generate TTS:', e);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="vs-layout-wrapper">
@@ -154,21 +178,20 @@ export function VoiceCloneWindow() {
           </div>
         </section>
 
-        {/* ── 2-Panel Grid (matching dl-main-grid) ── */}
         <div className="vs-main-grid">
-
-          {/* ── LEFT PANEL: Clone / Design form ── */}
-          <div className="vs-form-panel">
-            {/* Tab Switcher */}
+          <div className="vs-panels">
             <div className="vs-tab-bar">
-              {([['clone', '🎙️ Clone Giọng'], ['design', '✨ Thiết Kế Giọng']] as const).map(([key, label]) => (
-                <button key={key} className={`vs-tab-btn ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key as any)}>
-                  {label}
-                </button>
-              ))}
+              <button className={`vs-tab ${activeTab === 'clone' ? 'active' : ''}`} onClick={() => setActiveTab('clone')}>
+                <Microphone size={18} /> Clone Giọng
+              </button>
+              <button className={`vs-tab ${activeTab === 'design' ? 'active' : ''}`} onClick={() => setActiveTab('design')}>
+                <Sparkle size={18} /> Thiết Kế Giọng
+              </button>
+              <button className={`vs-tab ${activeTab === 'tts' ? 'active' : ''}`} onClick={() => setActiveTab('tts')}>
+                <SpeakerHigh size={18} /> Tạo Âm Thanh
+              </button>
             </div>
 
-            {/* Clone Form */}
             {activeTab === 'clone' && (
               <div className="vs-content-card">
                 <label className="vs-dropzone" onDragOver={handleDragOver} onDrop={handleDrop}>
@@ -242,6 +265,71 @@ export function VoiceCloneWindow() {
                   </div>
                 ) : (
                   <button className="vs-cta" onClick={doDesign} disabled={!designDesc || !designName || !designText}>Design Voice & Save</button>
+                )}
+              </div>
+            )}
+
+            {/* 3. TTS Tab */}
+            {activeTab === 'tts' && (
+              <div className="vs-form-panel">
+                <div className="vs-input-group">
+                  <label>Chọn Giọng Đọc</label>
+                  <select 
+                    className="vs-input" 
+                    value={ttsVoice} 
+                    onChange={e => setTtsVoice(e.target.value)}
+                  >
+                    <option value="" disabled>-- Chọn một giọng --</option>
+                    {profiles.map(p => (
+                      <option key={p.name} value={p.name}>{p.name} ({p.type || 'cloned'})</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="vs-input-group">
+                  <label>Nhập Văn Bản</label>
+                  <textarea
+                    className="vs-input"
+                    rows={8}
+                    placeholder="Nhập nội dung cần đọc..."
+                    value={ttsText}
+                    onChange={e => setTtsText(e.target.value)}
+                    maxLength={5000}
+                  />
+                  <div className="vs-hint" style={{ textAlign: 'right' }}>{ttsText.length}/5000 ký tự</div>
+                </div>
+
+                {isGenerating ? (
+                  <div className="vs-progress-row">
+                    <Spinner />
+                    <span className="vs-progress-text">Đang kết nối API... Vui lòng đợi</span>
+                  </div>
+                ) : (
+                  <button className="vs-cta" onClick={doTTS} disabled={!ttsVoice || !ttsText.trim()}>
+                    <SpeakerHigh size={18} /> BẮT ĐẦU TẠO AUDIO
+                  </button>
+                )}
+
+                {ttsResultAction && (
+                  <div className="vs-tts-result-card" style={{ marginTop: '1rem', padding: '1rem', background: 'var(--vs-bg-soft)', borderRadius: 'var(--vs-radius)' }}>
+                    <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--vs-text-muted)' }}>
+                      Kết quả: <b>{ttsResultAction.duration}s</b>
+                    </div>
+                    <audio 
+                      controls 
+                      src={`${sidecar.getBaseUrl()}/api/tts/profiles/history/${ttsResultAction.audio_path}`} 
+                      style={{ width: '100%', marginBottom: '1rem' }} 
+                    />
+                    <a 
+                      href={`${sidecar.getBaseUrl()}/api/tts/profiles/history/${ttsResultAction.audio_path}`} 
+                      download 
+                      target="_blank"
+                      className="vs-view-all" 
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}
+                    >
+                      <DownloadSimple size={16} /> Tải file MP3
+                    </a>
+                  </div>
                 )}
               </div>
             )}

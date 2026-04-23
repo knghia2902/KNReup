@@ -73,6 +73,16 @@ async def preview_voice(req: PreviewRequest):
 async def list_history():
     return {"history": engine.get_history()}
 
+@router.get("/history/{filename}")
+async def get_history_audio(filename: str):
+    """Serve a generated TTS audio file from history."""
+    from fastapi.responses import FileResponse
+    history_dir = engine.profiles_dir.parent / "history"
+    audio_path = history_dir / filename
+    if not audio_path.exists():
+        raise HTTPException(404, "Audio file not found")
+    return FileResponse(str(audio_path), media_type="audio/wav")
+
 @router.get("/health")
 async def health():
     available = await engine.health_check()
