@@ -137,7 +137,7 @@ class OmniVoiceTTSEngine(TTSEngine):
         except Exception as e:
             raise TTSError(f"Audio preprocessing failed: {e}")
 
-    def create_voice_profile(self, audio_path: str, profile_name: str) -> str:
+    def create_voice_profile(self, audio_path: str, profile_name: str, profile_type: str = "cloned") -> str:
         """Save a preprocessed voice profile."""
         if not self.profiles_dir.exists():
             self.profiles_dir.mkdir(parents=True, exist_ok=True)
@@ -149,7 +149,63 @@ class OmniVoiceTTSEngine(TTSEngine):
         with open(profile_path, "w") as f:
             json.dump({
                 "name": profile_name,
-                "audio_path": str(dest_audio)
+                "audio_path": str(dest_audio),
+                "type": profile_type,
+                "created_at": datetime.now().isoformat(),
             }, f, indent=2)
             
         return str(profile_path)
+
+    def voice_design(self, description: str, text: str, output_path: str = "design_output.wav") -> str:
+        """Generate voice from text description using OmniVoice voice design."""
+        self._load_model()
+        if not self._model:
+            raise TTSError("OmniVoice model could not be loaded")
+        
+        import soundfile as sf
+        audio_data = self._model.generate(
+            text=text,
+            voice_description=description,
+        )
+        if isinstance(audio_data, list) and len(audio_data) > 0:
+            audio_array = audio_data[0]
+        else:
+            audio_array = audio_data
+        sf.write(output_path, audio_array, 24000)
+        return output_path
+
+    async def preview_voice(self, profile_name: str, text: str, output_path: str = "preview.wav") -> str:
+        """Preview a cloned voice with custom text."""
+        return await self.synthesize(text=text, voice=profile_name, output_path=output_path)
+
+    def get_profile_details(self, profile_name: str) -> dict:
+        """Get full profile metadata including creation date and audio duration."""
+        profile_path = self.profiles_dir / f"{profile_name}.json"
+        if not profile_path.exists():
+            return None
+        with open(profile_path, "r") as f:
+            data = json.load(f)
+        # Thêm file metadata
+        audio_path = data.get("audio_path", "")
+        duration = 0
+        if audio_path and os.path.exists(audio_path):
+            import librosa
+            duration = round(librosa.get_duration(path=audio_path), 1)
+        data["duration"] = duration
+        data["created_at"] = data.get("created_at", os.path.getctime(str(profile_path)))
+        return data
+
+    def delete_profile(self, profile_name: str) -> bool:
+        """Delete profile and audio file."""
+        profile_path = self.profiles_dir / f"{profile_name}.json"
+        audio_path = self.profiles_dir / f"{profile_name}.wav"
+        if profile_path.exists():
+            profile_path.unlink()
+        if audio_path.exists():
+            audio_path.unlink()
+        return True
+
+    def get_audio_duration(self, audio_path: str) -> float:
+        """Get audio duration."""
+        import librosa
+        return round(librosa.get_duration(path=audio_path), 1)
