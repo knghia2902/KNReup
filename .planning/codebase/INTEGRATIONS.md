@@ -1,89 +1,43 @@
-# INTEGRATIONS.md — Tích hợp bên ngoài
+# Integrations - KNReup
 
-## API Server chính: ali33.site
+Dự án tích hợp nhiều dịch vụ bên ngoài và công cụ nội bộ thông qua mô hình Sidecar.
 
-Tất cả authentication, subscription, và update đều thông qua server `https://ali33.site`.
+## 1. Local Sidecar Bridge (Giao tiếp nội bộ)
+- **Phương thức:** HTTP REST API & Server-Sent Events (SSE).
+- **Frontend ↔ Backend:** 
+  - React frontend gọi API tới FastAPI sidecar (mặc định port 8008 trong dev, dynamic port trong prod).
+  - Sử dụng `SSE` để cập nhật tiến độ thực hiện (progress) theo thời gian thực cho các tác vụ dài (ASR, Translation, Rendering).
 
-### Auth endpoints
-| Endpoint | Method | Mô tả |
-|---|---|---|
-| `/videotrans/api/login.php` | POST | Đăng nhập, trả JWT token |
-| `/videotrans/api/register.php` | POST | Đăng ký tài khoản mới |
-| `/videotrans/api/verify.php` | GET | Xác thực token (kiểm tra mỗi session) |
-| `/videotrans/api/me.php` | GET | Lấy thông tin user (username, subscription status) |
+## 2. Dịch vụ TTS bên ngoài (Cloud TTS)
+- **Microsoft Edge TTS:**
+  - Sử dụng thư viện `edge-tts`.
+  - Không yêu cầu API Key, tốc độ nhanh, chất lượng ổn định.
+- **ElevenLabs:**
+  - Tích hợp qua API chính thức.
+  - Yêu cầu API Key từ người dùng.
+  - Hỗ trợ Voice Cloning và giọng nói chất lượng cao.
 
-### Payment (Pay2S)
-| Endpoint | Method | Mô tả |
-|---|---|---|
-| `/videotrans/api/create_payment.php` | POST | Tạo link thanh toán Pay2S |
-| `/videotrans/api/payment_status.php` | GET | Kiểm tra trạng thái thanh toán |
+## 3. Dịch vụ AI Offline (On-device AI)
+- **ASR (Whisper):**
+  - Sử dụng `faster-whisper` chạy local.
+  - Tận dụng GPU (CUDA) để tăng tốc độ nhận diện.
+- **Translation (Argos Translate):**
+  - Chạy offline hoàn toàn.
+  - Yêu cầu tải các model ngôn ngữ (`install_langs.py`).
+- **OCR (RapidOCR):**
+  - Sử dụng ONNX Runtime để nhận diện phụ đề/chữ trong video.
 
-### Update
-| Endpoint | Method | Mô tả |
-|---|---|---|
-| `/videotrans/update/version.json` | GET | Kiểm tra phiên bản mới nhất |
-| `/videotrans/update/runtime_manifest.json` | GET | Manifest runtime cho auto-update |
+## 4. Công cụ tải video (Video Downloaders)
+- **yt-dlp:** 
+  - Tích hợp để tải video từ nhiều nguồn.
+  - Xử lý qua command line wrapper trong sidecar.
+- **f2:**
+  - Tối ưu cho việc tải video từ Douyin mà không có watermark.
 
-## Auth Flow
+## 5. Hệ thống File & OS
+- **Tauri Plugin FS:** Cho phép frontend truy cập trực tiếp vào hệ thống file (với quyền hạn được cấp).
+- **Tauri Shell:** Dùng để spawn và quản lý vòng đời của Python sidecar.
+- **Asset Protocol:** Tauri cho phép load các file local (video, audio) thông qua custom protocol (`asset://`).
 
-```
-Login Form → POST /login.php (username, password, device_token)
-         → Nhận JWT token
-         → Lưu localStorage: videotrans_token, videotrans_device_token
-         → Mỗi request gửi Header: Authorization: Bearer {token}
-         → Mỗi request gửi Header: X-Device-Id: {device_token}
-         → 401 → redirect login
-         → 403 + code=subscription_expired → lock UI
-```
-
-## Subscription Model
-
-- 3 gói: 1 tháng (300K₫), 6 tháng (1.5M₫), 12 tháng (3M₫)
-- Tối đa 2 thiết bị/tài khoản (device_token tracking)
-- Khi hết hạn: UI bị lock, hiện thông báo nâng cấp
-- Thanh toán qua Pay2S payment gateway
-- IPN callback tự động kích hoạt gói
-
-## AI APIs & Services
-
-### DeepSeek (dịch thuật)
-- Sử dụng DeepSeek API cho bước dịch text (source → Vietnamese)
-- `tiktoken` dùng để đếm token trước khi gọi API
-- Văn phong dịch: Cơ bản, Phim ảnh, Vlog, Thể thao, Động/Thực vật, Khoa học, Review sản phẩm, hoặc Custom prompt
-
-### OpenAI Whisper (STT)
-- Chạy local (trong PyTorch)
-- Nhận diện giọng nói → text + timestamps
-- Hỗ trợ GPU (CUDA) hoặc CPU fallback
-
-### TTS Engines (Text-to-Speech)
-| Engine | Loại | Chi tiết |
-|---|---|---|
-| **Edge TTS** | Cloud | Microsoft Edge voices, nhiều giọng vi-VN |
-| **gTTS** | Cloud | Google TTS, giọng cơ bản |
-| **Piper TTS** | Local | ONNX model, `vi_VN-vais1000-medium` (~60MB) |
-| **Giọng ai33-** | Cloud | Custom voices qua ali33.site |
-| **Giọng genmax-** | Cloud | Custom premium voices |
-
-### Facebook Demucs (Vocal Separation)
-- Chạy local (PyTorch)
-- Tính năng "SmartVoice": tách giọng gốc khỏi nhạc nền
-- Hỗ trợ GPU hoặc CPU
-
-### FFmpeg (Video Processing)
-- Bundled local trong `_internal\ffmpeg\`
-- Encode video: GPU (NVENC) hoặc CPU (libx264)
-- Ghép audio, chèn phụ đề hardsub, blur regions, logo/watermark
-
-## Auto-Update System
-
-```
-Launcher mở → Kiểm tra version.json trên ali33.site
-           → So sánh runtime version
-           → Nếu mới hơn: download & chạy apply_update.ps1
-           → Script tự đóng app, thay file, mở lại
-           → Xác thực bản cập nhật bằng update_signing_public.pem
-```
-
-- Updater script PowerShell: `C:\Users\...\AppData\Local\Temp\videotrans-updater\apply_update.ps1`
-- UI có nút "Kiểm tra cập nhật" và dialog hiển thị changelog
+## 6. Authentication (Dự kiến/Cơ bản)
+- Hiện tại hỗ trợ các module auth cơ bản (`src/components/auth`) cho việc quản lý người dùng cục bộ hoặc tích hợp API trong tương lai.

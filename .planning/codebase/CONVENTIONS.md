@@ -1,123 +1,40 @@
-# CONVENTIONS.md — Coding Conventions & Patterns
+# Coding Conventions - KNReup
 
-## Ngôn ngữ UI
+Tài liệu này quy định các tiêu chuẩn code và phong cách lập trình được áp dụng trong dự án.
 
-- Toàn bộ giao diện bằng **tiếng Việt** (labels, messages, errors)
-- HTML entity encoding cho các ký tự tiếng Việt đặc biệt trong HTML inline (VD: `\u0026#7879;` cho "ệ")
-- Console logs và debug messages có thể bằng ASCII không dấu
+## 1. Frontend (TypeScript/React)
+- **Kiểu dữ liệu:** Ưu tiên sử dụng `interface` cho định nghĩa object, `type` cho union/intersection. Bật chế độ `strict` trong TS.
+- **Components:** 
+  - Sử dụng Function Components và Hooks.
+  - Mỗi file một component chính.
+  - Tách logic phức tạp ra Custom Hooks.
+- **State Management:**
+  - State cục bộ: `useState`.
+  - State toàn cục hoặc chia sẻ: `Zustand`. Tránh sử dụng Context API cho các dữ liệu thay đổi thường xuyên.
+- **Đặt tên:**
+  - Component: `PascalCase` (v dụ: `SubtitleEditor.tsx`).
+  - Hooks: `use` prefix (ví dụ: `usePipeline.ts`).
+  - Variables/Functions: `camelCase`.
 
-## Frontend Patterns
+## 2. Backend (Python/FastAPI)
+- **Style Guide:** Tuân thủ [PEP 8](https://www.python.org/dev/peps/pep-0008/).
+- **Type Hinting:** Sử dụng Type Hints cho tất cả các tham số hàm và giá trị trả về để tăng tính minh bạch và hỗ trợ IDE.
+- **Async:** Sử dụng `async/await` cho các tác vụ I/O (API calls, file reading).
+- **Error Handling:** 
+  - Sử dụng `HTTPException` của FastAPI để trả về lỗi cho frontend.
+  - Luôn log lỗi chi tiết tại server qua `logger_setup.py`.
 
-### JavaScript Style
-- **Vanilla JS** — không dùng framework (React, Vue, etc.)
-- DOM manipulation trực tiếp với `document.getElementById()`
-- Event listeners: `element.addEventListener('click', handler)`
-- Async/await cho API calls
-- `fetch()` API override toàn cục để tự động đính JWT token
+## 3. CSS & Styling
+- **Thiết kế:** Tuân thủ `design-system.css`. Sử dụng CSS Variables cho màu sắc, khoảng cách.
+- **Bố cục:** Ưu tiên Flexbox và CSS Grid.
+- **Đơn vị:** Sử dụng `rem` hoặc `px` tùy theo mục đích (ưu tiên `rem` cho font-size).
 
-### State Management
-- Global variables ở đầu file (`let queueItems = []`, `let voices = []`)
-- State per-modal session (VD: `modalBlurRegions`, `modalLogoImageState`)
-- Config objects sử dụng pattern `defaultConfig()` → `normalizeConfig(userConfig)`
-- Deep clone qua `JSON.parse(JSON.stringify(obj))`
+## 4. Giao tiếp API (Frontend ↔ Sidecar)
+- **Endpoint:** Luôn có prefix `/api/`.
+- **Response Format:** JSON object. Ví dụ: `{ "status": "success", "data": ... }` hoặc lỗi `{ "detail": "Error message" }`.
+- **Progress Streaming:** Sử dụng SSE (Server-Sent Events) cho các tác vụ tốn thời gian.
 
-### Config Normalization Pattern
-```javascript
-function defaultConfig() {
-  return {
-    language: 'auto',
-    dubbing_enabled: true,
-    voice: voices[0]?.id || 'vi-VN-HoaiMyNeural',
-    // ...các giá trị mặc định
-  };
-}
-
-function normalizeConfig(config = {}) {
-  const defaults = defaultConfig();
-  return { ...defaults, ...config, /* override specific fields */ };
-}
-```
-
-### Voice Preset System
-```javascript
-const VOICE_PRESETS = {
-  'gtts-vi-VN-NuTramAm': { rate: 180, voiceVolume: 200, pitch: 70 },
-  'piper-vi-VN-CoGaiNhanhNhen': { rate: 130, voiceVolume: 100, pitch: 60 },
-};
-
-function getVoicePreset(voiceId) {
-  if (VOICE_PRESETS[voiceId]) return VOICE_PRESETS[voiceId];
-  if (voiceId.startsWith('ai33-')) return { rate: 120, voiceVolume: 100, pitch: 50 };
-  // ...prefix-based fallback
-}
-```
-
-### Subscription Guard Pattern
-```javascript
-function ensureSubscriptionActive(actionLabel) {
-  if (!subscriptionExpired) return true;
-  showStatus(`Gói đã hết hạn. Vui lòng nâng cấp để ${actionLabel}.`, 'error');
-  return false;
-}
-
-// Sử dụng:
-if (!ensureSubscriptionActive('lưu cấu hình video')) return;
-```
-
-### Error Handling
-- `try/catch` blocks quanh fetch calls
-- `showStatus(msg, type)` hiển thị lỗi inline (type: 'error', 'success', 'info')
-- Fallback values khi API fail (VD: default voice list)
-- `.catch(() => {})` cho non-critical errors
-
-### HTML Escaping
-```javascript
-function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-```
-
-## CSS Patterns
-
-### Design System
-- **Theme**: Dark mode mặc định
-- **CSS Variables**: `--bg`, `--text-color`, `--primary`, `--border`, `--bg-card`
-- **Glassmorphism**: `backdrop-filter: blur()`, semi-transparent backgrounds
-- **Font**: Inter (Google Fonts), weights 300-700
-- **Colors**: 
-  - Primary: `#10b981` (emerald green)
-  - Danger: `#ef4444` (red)
-  - Success: `#22c55e` (green)
-  - Warning: `#d97706` (amber)
-
-### Card-based Layout
-- `.card` class cho các section chính
-- `.modal-overlay` + `.modal-box` cho dialog
-- `.status-badge` với color variants (`status-running`, `status-done`, `status-error`)
-
-### Background Effects
-- `.bg-blob` animated gradient blobs (3 blobs)
-- Dark background with floating colored shapes
-
-## Architectural Patterns
-
-### Queue System
-- Videos thêm vào queue → cấu hình từng video → xử lý tuần tự
-- Job states: `uploaded → queued → running → done/error/paused`
-- Single-job processing và batch queue processing
-
-### SSE (Server-Sent Events) Streaming
-- `/api/progress/{job_id}` stream events
-- Event types: `log`, `step`, `progress`, `done`, `error`
-- Client auto-reconnect on error
-
-### Modal Config Pattern
-- Modal mở → load config từ queue item
-- Chỉnh sửa → collectModalConfig() → saveJobConfig() via API
-- "Áp dụng cho tất cả" option cho batch config
-
-### Auto-Update Flow
-- IIFE pattern `(function() { ... })()`
-- Singleton check promise ngăn multiple concurrent checks
-- UI states: checking → found update → applying → success/fail
+## 5. Chú thích (Commenting)
+- Chú thích bằng tiếng Việt hoặc tiếng Anh (ưu tiên tiếng Việt cho các logic nghiệp vụ phức tạp).
+- Sử dụng JSDoc cho các function quan trọng trong TS.
+- Sử dụng Docstrings cho các class/function trong Python.

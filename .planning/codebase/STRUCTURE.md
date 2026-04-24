@@ -1,107 +1,42 @@
-# STRUCTURE.md — Cấu trúc thư mục
+# Code Structure - KNReup
 
-## Tổng quan
+Dưới đây là sơ đồ tổ chức thư mục và vai trò của từng thành phần trong mã nguồn.
 
-```
-d:\Tools\VideoTransAI\
-├── VideoTransAI.exe           # Launcher (tier 1) — ~4.5MB
-├── bootstrap_launcher.log     # Log launcher
-├── _internal/                 # Dependencies cho launcher
-│   ├── assets/
-│   │   └── videotrans_icon.ico
-│   ├── webview/               # pywebview library
-│   ├── pythonnet/             # .NET CLR interop
-│   └── ... (DLLs, .pyd modules)
-│
-└── runtime/
-    └── VideoTransAI/          # Runtime (tier 2)
-        ├── VideoTransAI.exe   # Runtime exe — ~37MB
-        ├── bootstrap_runtime.json   # Version: 1.1.38
-        ├── flask_out_debug.log      # Flask server log
-        ├── uploads/           # Video được user upload
-        ├── outputs/           # Video đã xử lý xong
-        ├── tract/             # [Chưa rõ mục đích]
-        │
-        └── _internal/         # Runtime dependencies
-            ├── services/      # ★ Backend services (Cython compiled)
-            │   ├── audio_service.cp310-win_amd64.pyd
-            │   ├── translate_service.cp310-win_amd64.pyd
-            │   ├── tts_service.cp310-win_amd64.pyd
-            │   └── whisper_service.cp310-win_amd64.pyd
-            │
-            ├── static/        # ★ Frontend source code
-            │   ├── index.html         # Trang chính (527 lines)
-            │   ├── login.html         # Đăng nhập
-            │   ├── register.html      # Đăng ký
-            │   ├── plans.html         # Gói dịch vụ/thanh toán
-            │   ├── process.html       # Xem tiến trình xử lý
-            │   ├── css/
-            │   │   └── style.css      # CSS chính (40KB)
-            │   └── js/
-            │       ├── main.js        # Logic chính (2056 lines, 78KB)
-            │       ├── process.js     # Logic trang process (263 lines)
-            │       └── updater.js     # Auto-update UI (208 lines)
-            │
-            ├── assets/
-            │   └── videotrans_icon.ico
-            │
-            ├── TTSDemo/       # Piper TTS engine
-            │   ├── piper.exe
-            │   ├── vi_VN-vais1000-medium.onnx  # Model tiếng Việt (~60MB)
-            │   ├── vi_VN-vais1000-medium.json   # Config model
-            │   ├── espeak-ng.dll
-            │   ├── espeak-ng-data/
-            │   ├── tts-model/
-            │   └── onnxruntime*.dll
-            │
-            ├── voice_simple/  # Sample voice files
-            │   ├── adam.mp3
-            │   ├── cdteam.mp3
-            │   ├── cobehoatngon.mp3
-            │   └── ngochuyen.mp3
-            │
-            ├── ffmpeg/        # FFmpeg binaries
-            ├── whisper/       # Whisper model files
-            ├── demucs/        # Demucs model/code
-            ├── torch/         # PyTorch runtime
-            ├── torchaudio/    # Audio processing
-            └── ... (nhiều packages khác)
-```
+## 1. Cấu trúc thư mục gốc
+- `src/`: Mã nguồn Frontend (React + TypeScript).
+- `src-tauri/`: Mã nguồn Backend Desktop (Rust + Cấu hình Tauri).
+- `python-sidecar/`: Mã nguồn Backend Xử lý AI (FastAPI + AI Engines).
+- `.planning/`: Tài liệu quản lý dự án, roadmap và trạng thái hiện tại.
+- `public/`: Tài sản tĩnh (fonts, icons) phục vụ frontend.
 
-## File quan trọng
+## 2. Chi tiết Frontend (`src/`)
+- `components/`: Các thành phần UI được chia theo module:
+  - `editor/`: Timeline, Subtitle editor, Preview.
+  - `downloader/`: Giao diện tải video.
+  - `tools/`: Các công cụ bổ trợ (TTS Studio, Voice Clone).
+  - `layout/`: Sidebar, Header, Panel management.
+- `stores/`: Quản lý state bằng Zustand (Subtitle, Project, Voice).
+- `hooks/`: Custom hooks xử lý logic (usePipeline, useSidecar, useDownloader).
+- `lib/`: Các thư viện helper và bridge (sidecar communication, audio mixer).
+- `styles/`: Hệ thống CSS (design-system.css, module-specific styles).
+- `utils/`: Các hàm tiện ích (time formatting, URL parsing).
 
-### Frontend (có thể chỉnh sửa trực tiếp)
-| File | Dòng | Mô tả |
-|---|---|---|
-| `static/index.html` | 527 | Trang chính: upload, queue, video config modal, result viewer |
-| `static/js/main.js` | 2056 | Logic: auth, queue management, modal, preview, SSE, blur, logo |
-| `static/js/process.js` | 263 | Trang xem tiến trình: SSE listener, progress UI, result display |
-| `static/js/updater.js` | 208 | Auto-update: check version, download & apply update |
-| `static/css/style.css` | — | Dark theme CSS, glassmorphism, responsive layout |
-| `static/login.html` | 160 | Form đăng nhập |
-| `static/register.html` | — | Form đăng ký |
-| `static/plans.html` | 365 | Trang gói dịch vụ, thanh toán Pay2S |
+## 3. Chi tiết Sidecar (`python-sidecar/`)
+- `app/`:
+  - `engines/`: Lõi xử lý AI (asr.py, tts/, translation/, ocr_extractor.py, output.py).
+  - `routes/`: Định nghĩa các endpoint API (pipeline.py, downloader.py, voice_studio.py).
+  - `utils/`: Helpers cho logging, file handling.
+  - `main.py`: Điểm khởi đầu của FastAPI server.
+- `assets/`: Resource cần thiết cho sidecar (fonts).
+- `install_langs.py`: Script cài đặt các model ngôn ngữ cho dịch thuật.
+- `requirements.txt`: Danh sách các thư viện Python cần thiết.
 
-### Backend (compiled, không chỉnh sửa trực tiếp)
-| File | Mô tả |
-|---|---|
-| `services/whisper_service.cp310-win_amd64.pyd` | Service nhận diện giọng nói |
-| `services/translate_service.cp310-win_amd64.pyd` | Service dịch thuật (DeepSeek) |
-| `services/tts_service.cp310-win_amd64.pyd` | Service tạo giọng đọc AI |
-| `services/audio_service.cp310-win_amd64.pyd` | Service xử lý audio/video (FFmpeg) |
+## 4. Chi tiết Tauri (`src-tauri/`)
+- `src/`: Mã nguồn Rust (thường là minimal vì logic nằm ở Sidecar).
+- `capabilities/`: Cấp quyền cho ứng dụng (fs, shell, dialog).
+- `tauri.conf.json`: Cấu hình quan trọng của ứng dụng, định nghĩa sidecar binary.
 
-### Config & Data
-| File | Mô tả |
-|---|---|
-| `bootstrap_runtime.json` | Version, install date, manifest URL |
-| `flask_out_debug.log` | Log Flask server |
-| `uploads/` | Thư mục chứa video upload |
-| `outputs/` | Thư mục chứa video đã xử lý |
-
-## Naming Conventions
-
-- **HTML pages**: lowercase, dấu gạch ngang (`login.html`, `plans.html`)
-- **JS files**: lowercase, chức năng (`main.js`, `process.js`, `updater.js`)
-- **Cython modules**: `{name}.cp310-win_amd64.pyd` (Python 3.10, Windows AMD64)
-- **API routes**: `/api/{resource}` hoặc `/api/{resource}/{action}`
-- **TTS models**: `{locale}-{model_name}-{quality}.{ext}`
+## 5. Quy ước đặt tên
+- **Frontend:** PascalCase cho Components, camelCase cho functions/variables.
+- **Python:** snake_case cho functions/variables/files.
+- **CSS:** kebab-case cho class names.

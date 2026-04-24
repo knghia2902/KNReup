@@ -1,53 +1,36 @@
-# TESTING.md — Testing & Quality Assurance
+# Testing Strategy - KNReup
 
-## Hiện trạng testing
+Hiện tại, dự án đang trong giai đoạn phát triển tích cực, chiến lược kiểm thử tập trung vào kiểm thử thủ công và đang dần xây dựng hệ thống tự động.
 
-### Automated Tests
-- **Không tìm thấy test files** trong codebase
-- Không có test framework (pytest, jest, etc.) được cài đặt
-- Không có CI/CD pipeline
+## 1. Các cấp độ kiểm thử
 
-### Manual Testing
-- Ứng dụng chạy local → kiểm tra UI trực tiếp
-- Log output qua `flask_out_debug.log`
-- Console logs frontend qua DevTools (pywebview)
+### A. Manual Testing (Kiểm thử thủ công) - Ưu tiên hiện tại
+- **Quy trình:** Sau mỗi tính năng mới, thực hiện chạy ứng dụng qua `npm run dev` và `python run_dev.py`.
+- **Các kịch bản chính:**
+  - Kéo thả video vào timeline.
+  - Chạy ASR và kiểm tra độ chính xác phụ đề.
+  - Thay đổi giọng nói TTS và nghe thử.
+  - Tải video từ YouTube/Douyin.
 
-## Debug Tools hiện có
+### B. Unit Testing (Kiểm thử đơn vị)
+- **Backend (Python):** 
+  - Công cụ: `pytest`.
+  - Mục tiêu: Kiểm tra các logic trong `engines` (ASR parsing, Translation logic).
+  - Trạng thái: Đang trong quá trình xây dựng (dấu vết `.pytest_cache` đã hiện diện).
+- **Frontend (React):**
+  - Công cụ (Đề xuất): `Vitest` hoặc `Jest`.
+  - Mục tiêu: Kiểm tra các hàm utils, store logic.
 
-| Tool | Mô tả |
-|---|---|
-| `flask_out_debug.log` | Flask server log (HTTP requests, errors, external API calls) |
-| `bootstrap_launcher.log` | Launcher startup log |
-| `update_relaunch.log` | Auto-update process log |
-| Browser DevTools | Có thể truy cập qua pywebview debug mode |
+### C. Integration Testing (Kiểm thử tích hợp)
+- Kiểm tra luồng giao tiếp giữa Frontend và Sidecar qua HTTP.
+- Kiểm tra tính đúng đắn khi spawn sidecar từ Tauri core.
 
-## Cách kiểm tra thủ công
+## 2. Công cụ hỗ trợ
+- **FastAPI Docs:** Truy cập `/docs` của sidecar để test các API endpoint một cách độc lập.
+- **Logs:** Kiểm tra `python-sidecar/logs/` để debug các lỗi engine ngầm.
+- **Browser DevTools:** Kiểm tra network và console log của Tauri app (chuột phải -> Inspect).
 
-### Backend Status
-- Trang chính hiển thị card "Trạng thái backend":
-  - GPU / CPU mode
-  - Whisper backend
-  - Demucs backend
-  - Video encoder (NVENC vs libx264)
-
-### Auth Flow
-- Đăng nhập → kiểm tra token verify → hiển thị user info
-- Token hết hạn → 401 → redirect login
-- Subscription hết hạn → 403 → lock UI
-
-### Video Processing
-- Upload video → xem upload status
-- Mở modal config → kiểm tra các tùy chọn
-- Bắt đầu xử lý → xem progress bar, SSE log
-- Kết quả → xem video output, subtitle list, download
-
-## Lỗ hổng testing
-
-> [!WARNING]
-> Không có automated tests cho bất kỳ phần nào của ứng dụng.
-
-- Backend services (`.pyd`) không thể test trực tiếp vì compiled
-- Frontend logic phức tạp (2056 dòng main.js) không có unit tests
-- API endpoints không có integration tests
-- Auth flow không có security tests
-- Payment flow không có end-to-end tests
+## 3. Kế hoạch tương lai
+- Thiết lập CI/CD (GitHub Actions) để chạy linting và test tự động.
+- Bổ sung bộ test suite cho `python-sidecar/app/engines/` để đảm bảo không lỗi khi cập nhật các thư viện AI.
+- Thêm E2E testing (ví dụ: Playwright) để kiểm tra luồng người dùng hoàn chỉnh.
