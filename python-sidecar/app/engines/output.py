@@ -522,11 +522,7 @@ class FFmpegOutputBuilder:
                     pass
 
         proc.wait()
-        
-        # DEBUG: Ghi toàn bộ stderr ra file để debug font
-        with open("ffmpeg_live.log", "w", encoding="utf-8") as dump_log:
-            dump_log.write("".join(stderr_lines))
-            
+
         if proc.returncode != 0:
             error_log = "".join(stderr_lines[-10:])  # Lấy 10 dòng log lỗi cuối
             raise RuntimeError(f"FFmpeg failed with exit code {proc.returncode}. Log: {error_log}")
