@@ -546,3 +546,20 @@ Plans:
 
 **Plans:** 3/3 plans complete
 - [x] TBD (run /gsd-plan-phase 10 to break down) (completed 2026-04-23)
+
+---
+
+## Phase 24: Downloader to Editor Integration
+> **M?c tiêu**: Tích h?p module Downloader v?i Editor d? cho phép ngu?i dùng b?t d?u d?ng video ngay sau khi t?i v?.
+> **Requirements**: INT-01, INT-02
+> **Output**: Tính nang 'Send to Editor' ho?t d?ng mu?t mà.
+
+- C?p nh?t interface DownloadItem d? bao g?m file_path.
+- Logic t?o project t? d?ng trong LauncherStore khi g?i t? Downloader.
+- UI button 'Send to Editor' trong danh sách l?ch s? t?i v?.
+- Ch? d? t? d?ng m? c?a s? Editor m?i.
+
+**UAT**: T?i video -> Click 'Send to Editor' -> C?a s? Editor m? ra v?i video dã du?c load s?n.
+
+**Plans:** 1 plan
+- [ ] 24-01-PLAN.md — Downloader to Editor Integration (Model update, Logic & UI).
