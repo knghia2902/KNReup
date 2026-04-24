@@ -10,9 +10,10 @@ interface AudioTrackProps {
   clipDuration?: number;
   scrollLeft: number;
   viewportWidth: number;
+  onDurationLoaded?: (duration: number) => void;
 }
 
-export function AudioTrack({ url, pixelsPerSecond, color, clipStart = 0, clipDuration, scrollLeft, viewportWidth }: AudioTrackProps) {
+export function AudioTrack({ url, pixelsPerSecond, color, clipStart = 0, clipDuration, scrollLeft, viewportWidth, onDurationLoaded }: AudioTrackProps) {
   const [totalDuration, setTotalDuration] = useState(0);
 
   useEffect(() => {
@@ -22,7 +23,10 @@ export function AudioTrack({ url, pixelsPerSecond, color, clipStart = 0, clipDur
 
     const audio = new Audio();
     audio.src = finalUrl;
-    const handleLoadedMetadata = () => setTotalDuration(audio.duration);
+    const handleLoadedMetadata = () => {
+       setTotalDuration(audio.duration);
+       if (onDurationLoaded) onDurationLoaded(audio.duration);
+    };
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
 
     return () => {

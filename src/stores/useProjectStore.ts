@@ -134,7 +134,7 @@ const DEFAULT_CONFIG: ProjectConfig = {
   ocr_w: 300,
   ocr_h: 150,
   dubbing_enabled: true,
-  tts_engine: 'edge_tts',
+  tts_engine: 'omnivoice',
   voice: 'vi-VN-HoaiMyNeural',
   speed: 1.0,
   tts_speed: 1.0,

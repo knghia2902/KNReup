@@ -3,8 +3,10 @@ import logging
 import os
 import shutil
 from pathlib import Path
+import gc
 import json
 from datetime import datetime
+import asyncio
 
 from app.engines.base import TTSEngine, TTSError
 from app.utils.gpu_detect import detect_gpu
@@ -23,8 +25,25 @@ class OmniVoiceTTSEngine(TTSEngine):
         self.profiles_dir = MODELS_DIR
         self.profiles_dir.mkdir(parents=True, exist_ok=True)
         self._model = None
+        self._cancel_flag = False
         # We don't load the model immediately to save memory until requested,
         # but we initialize the structure.
+
+    def force_unload(self):
+        """Force unload model from GPU to free VRAM immediately."""
+        self._cancel_flag = True
+        if self._model is not None:
+            logger.info("Force unloading OmniVoice model from GPU...")
+            try:
+                import torch
+                del self._model
+                self._model = None
+                gc.collect()
+                torch.cuda.empty_cache()
+                logger.info("OmniVoice model unloaded, GPU memory freed.")
+            except Exception as e:
+                logger.error(f"Error unloading OmniVoice model: {e}")
+                self._model = None
 
     def _load_model(self):
         if self._model is not None:
@@ -99,7 +118,9 @@ class OmniVoiceTTSEngine(TTSEngine):
             else:
                 kwargs["instruct"] = "female"
             
-            results = self._model.generate(**kwargs)
+            def _run_generate():
+                return self._model.generate(**kwargs)
+            results = await asyncio.to_thread(_run_generate)
             
             if not results or len(results) == 0:
                 raise RuntimeError("OmniVoice failed to generate any audio.")
@@ -258,5 +279,3 @@ class OmniVoiceTTSEngine(TTSEngine):
             with open(history_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         return []
-
-

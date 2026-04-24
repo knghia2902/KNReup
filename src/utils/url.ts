@@ -12,7 +12,7 @@ export function getMediaSrc(url: string | null | undefined): string | null {
   
   const cleanUrl = url.trim();
   const decodedUrl = cleanUrl.includes('%') ? decodeURIComponent(cleanUrl) : cleanUrl;
-  const isRemote = decodedUrl.startsWith('http') || decodedUrl.startsWith('https');
+  // const isRemote = decodedUrl.startsWith('http') || decodedUrl.startsWith('https');
 
   // Luôn đi qua proxy của sidecar để đảm bảo ổn định cho WaveSurfer (Fetch) và CORS.
   // Nếu là remote URL hoặc local path đều dùng proxy.

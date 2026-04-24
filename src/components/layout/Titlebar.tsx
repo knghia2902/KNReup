@@ -4,7 +4,7 @@ import { useTheme } from '../../hooks/useTheme';
 
 export function Titlebar() {
   const translation_engine = useProjectStore((state) => state.translation_engine) || 'argos';
-  const tts_engine = useProjectStore((state) => state.tts_engine) || 'edge_tts';
+  const tts_engine = useProjectStore((state) => state.tts_engine) || 'omnivoice';
   const { isDark, toggle } = useTheme();
 
   return (

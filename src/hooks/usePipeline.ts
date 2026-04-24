@@ -151,10 +151,17 @@ export function usePipeline() {
     [runStream]
   );
 
-  const cancelPipeline = useCallback(() => {
+  const cancelPipeline = useCallback(async () => {
+    // Abort frontend IMMEDIATELY to close the JobMonitor popup
     abortController?.abort();
     setAbortController(null);
     setProcessing(false);
+
+    // Call backend API afterward, so any hanging/blocking doesn't freeze the UI
+    const port = localStorage.getItem('sidecar_port') || '8008';
+    try {
+      await fetch(`http://127.0.0.1:${port}/api/pipeline/cancel`, { method: 'POST' });
+    } catch (e) {}
   }, [abortController]);
 
   const resetPipeline = useCallback(() => {

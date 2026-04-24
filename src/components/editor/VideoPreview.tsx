@@ -4,6 +4,7 @@ import { VideoControls } from './VideoControls';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { getMediaSrc } from '../../utils/url';
 import { AudioMixer } from '../../lib/audioMixer';
 
 // ─── Draggable Blur Box ──────────────────────────────
@@ -68,11 +69,20 @@ function DraggableBlur({ videoDimensions }: { videoDimensions: { w: number; h: n
         height: `${toPercent(config.blur_w * (config.blur_h / config.blur_w) || 0, videoDimensions.w)}%`, // Simplified for now
         cursor: dragging === 'move' ? 'grabbing' : 'grab',
         pointerEvents: 'auto',
-        boxSizing: 'border-box',
       }}
-      // Actually the width/height % should be based on videoDimensions
+      onPointerDown={(e) => handlePointerDown(e, 'move')}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-        {/* Reverting to standard percent to match other components */}
+      <div
+        style={{
+          position: 'absolute', right: -4, bottom: -4, width: 10, height: 10,
+          background: '#ef4444', borderRadius: 2, cursor: 'nwse-resize', pointerEvents: 'auto',
+        }}
+        onPointerDown={(e) => handlePointerDown(e, 'resize')}
+      />
+      <div style={{ position: 'absolute', top: -18, left: 0, fontSize: 10, color: '#ef4444', fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>BLUR</div>
     </div>
   );
 }
@@ -484,6 +494,7 @@ interface VideoPreviewProps {
 
 export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub = false }: VideoPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const bgmRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const projectConfig = useProjectStore();
@@ -664,10 +675,77 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
 
   // ─── AudioMixer: Sync original volume ───────────────
   useEffect(() => {
-    AudioMixer.setOriginalVolume(
-      projectConfig.audio_mix_mode === 'mix' ? projectConfig.original_volume : 0
-    );
+    const targetVol = projectConfig.audio_mix_mode === 'mix' ? projectConfig.original_volume : 0;
+    AudioMixer.setOriginalVolume(targetVol);
+    // GUARANTEED NATIVE FALLBACK
+    if (videoRef.current) {
+      videoRef.current.volume = Math.max(0, Math.min(1, targetVol));
+    }
   }, [projectConfig.original_volume, projectConfig.audio_mix_mode]);
+
+  // ─── AudioMixer: Connect BGM element ──────────────
+  useEffect(() => {
+    if (bgmRef.current) {
+      AudioMixer.connectBGM(bgmRef.current);
+    }
+  }, [projectConfig.audio_file]);
+
+  // ─── AudioMixer: Sync BGM volume ───────────────
+  useEffect(() => {
+    const targetVol = projectConfig.audio_enabled ? projectConfig.audio_volume : 0;
+    AudioMixer.setBGMVolume(targetVol);
+    // GUARANTEED NATIVE FALLBACK
+    if (bgmRef.current) {
+      bgmRef.current.volume = Math.max(0, Math.min(1, targetVol));
+    }
+  }, [projectConfig.audio_volume, projectConfig.audio_enabled]);
+
+  // ─── BGM Playback Sync ──────────────────────────────
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const syncBgm = () => {
+      const bgm = bgmRef.current;
+      if (!bgm) return;
+      
+      if (!projectConfig.audio_enabled || !projectConfig.audio_file) {
+        if (!bgm.paused) bgm.pause();
+        return;
+      }
+      
+      const bgmOffset = video.currentTime - (projectConfig.audio_timeline_start || 0);
+      const isWithinBgm = bgmOffset >= 0 && (!bgm.duration || bgmOffset < bgm.duration) && video.currentTime <= ((projectConfig.audio_timeline_start || 0) + (projectConfig.audio_clip_duration || bgm.duration || 9999));
+      
+      if (isWithinBgm) {
+        if (Math.abs(bgm.currentTime - bgmOffset) > 0.25) {
+          bgm.currentTime = bgmOffset;
+        }
+        if (!video.paused && bgm.paused) {
+          bgm.play().catch(e => console.warn('[VideoPreview] BGM play failed:', e));
+        } else if (video.paused && !bgm.paused) {
+          bgm.pause();
+        }
+      } else {
+        if (!bgm.paused) bgm.pause();
+      }
+    };
+
+    video.addEventListener('timeupdate', syncBgm);
+    video.addEventListener('play', syncBgm);
+    video.addEventListener('pause', syncBgm);
+    video.addEventListener('seeked', syncBgm);
+
+    return () => {
+      video.removeEventListener('timeupdate', syncBgm);
+      video.removeEventListener('play', syncBgm);
+      video.removeEventListener('pause', syncBgm);
+      video.removeEventListener('seeked', syncBgm);
+      
+      const bgmTarget = bgmRef.current;
+      if (bgmTarget && !bgmTarget.paused) bgmTarget.pause();
+    };
+  }, [projectConfig.audio_enabled, projectConfig.audio_file, projectConfig.audio_timeline_start, projectConfig.audio_clip_duration]);
 
   // ─── AudioMixer: Preload TTS buffers ────────────────
   useEffect(() => {
@@ -683,6 +761,7 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
       rafRef.current = requestAnimationFrame(renderSubtitles);
       AudioMixer.resume();
       AudioMixer.scheduleTTS(segments, video.currentTime);
+      window.dispatchEvent(new CustomEvent('editor-play'));
     };
     const onPause = () => {
       cancelAnimationFrame(rafRef.current);
@@ -771,6 +850,18 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
     return segments.find((s) => currentTime >= s.start && currentTime <= s.end);
   }, [currentTime, segments]);
 
+  // Clean up on unmount to prevent audio leak
+  useEffect(() => {
+    return () => {
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause();
+      }
+      if (bgmRef.current && !bgmRef.current.paused) {
+        bgmRef.current.pause();
+      }
+    };
+  }, []);
+
   if (!videoSrc) {
     return (
       <>
@@ -789,9 +880,12 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
       <div className="pvbody">
         <div className="vframe" style={getVframeStyle()}>
           <div className="vinner" style={{ display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}>
-            <video ref={videoRef} src={videoSrc} onLoadedMetadata={handleLoadedMetadata} playsInline
+            <video ref={videoRef} src={videoSrc} onLoadedMetadata={handleLoadedMetadata} playsInline crossOrigin="anonymous"
               style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'contain' }}
             />
+             {projectConfig.audio_enabled && projectConfig.audio_file && (
+                <audio ref={bgmRef} src={getMediaSrc(projectConfig.audio_file) || ''} preload="auto" crossOrigin="anonymous" loop={false} style={{ display: 'none' }} />
+             )}
             <canvas ref={canvasRef} width={effectiveDimensions.w || 1920} height={effectiveDimensions.h || 1080}
               style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'auto', zIndex: 10 }}
               onPointerDown={handlePointerDown}

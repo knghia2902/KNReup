@@ -525,6 +525,16 @@ Plans:
 Plans:
 - [x] 22-01-PLAN.md — Web Audio API Full Mix Preview (AudioMixer singleton, routing, TTS scheduling, mini mixer)
 
+### Phase 23: Fix bugs and refine UI
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 22
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 23 to break down)
+
 ---
 
 ## Phase 10: Voice Clone - OmniVoice Integration

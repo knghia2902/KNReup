@@ -36,6 +36,10 @@ let connectedBGM: any = null; // WeakRef<HTMLAudioElement>
 const bufferCache = new Map<string, AudioBuffer>();
 const activeTTSSources = new Set<AudioBufferSourceNode>();
 
+let originalVolumeBeforeMute = 1;
+let bgmVolumeBeforeMute = 1;
+let isMutedAll = false;
+
 // ─── Visibility change handler ──────────────────────────
 function handleVisibilityChange() {
   if (!ctx) return;
@@ -102,9 +106,19 @@ function connectBGM(audioEl: HTMLAudioElement) {
   }
 }
 
-// ─── Volume Controls ───────────────────────────────────
 function setOriginalVolume(v: number) {
-  if (originalGain) originalGain.gain.value = Math.max(0, Math.min(2, v));
+  const newVol = Math.max(0, Math.min(2, v));
+  if (isMutedAll) {
+    originalVolumeBeforeMute = newVol;
+  } else if (originalGain) {
+    originalGain.gain.value = newVol;
+  }
+  
+  // NATIVE FALLBACK: Đảm bảo set song song native volume nếu audio context bị lỗi / không capture được.
+  const videoEl = connectedVideo?.deref();
+  if (videoEl) {
+    videoEl.volume = Math.min(newVol, 1);
+  }
 }
 
 function setTTSVolume(v: number) {
@@ -112,7 +126,51 @@ function setTTSVolume(v: number) {
 }
 
 function setBGMVolume(v: number) {
-  if (bgmGain) bgmGain.gain.value = Math.max(0, Math.min(2, v));
+  const newVol = Math.max(0, Math.min(2, v));
+  if (isMutedAll) {
+    bgmVolumeBeforeMute = newVol;
+  } else if (bgmGain) {
+    bgmGain.gain.value = newVol;
+  }
+  
+  // NATIVE FALLBACK
+  const bgmEl = connectedBGM?.deref();
+  if (bgmEl) {
+    bgmEl.volume = Math.min(newVol, 1);
+  }
+}
+
+function muteAll(shouldMute: boolean) {
+  if (shouldMute && !isMutedAll) {
+    isMutedAll = true;
+    if (originalGain) {
+      originalVolumeBeforeMute = originalGain.gain.value;
+      originalGain.gain.value = 0;
+    }
+    if (bgmGain) {
+      bgmVolumeBeforeMute = bgmGain.gain.value;
+      bgmGain.gain.value = 0;
+    }
+    
+    const vEl = connectedVideo?.deref();
+    if (vEl) vEl.muted = true;
+    const bEl = connectedBGM?.deref();
+    if (bEl) bEl.muted = true;
+    
+  } else if (!shouldMute && isMutedAll) {
+    isMutedAll = false;
+    if (originalGain) {
+      originalGain.gain.value = originalVolumeBeforeMute;
+    }
+    if (bgmGain) {
+      bgmGain.gain.value = bgmVolumeBeforeMute;
+    }
+    
+    const vEl = connectedVideo?.deref();
+    if (vEl) vEl.muted = false;
+    const bEl = connectedBGM?.deref();
+    if (bEl) bEl.muted = false;
+  }
 }
 
 // ─── Load TTS Buffer ───────────────────────────────────
@@ -228,6 +286,7 @@ export const AudioMixer = {
   setOriginalVolume,
   setTTSVolume,
   setBGMVolume,
+  muteAll,
   loadTTSBuffer,
   preloadTTSBuffers,
   scheduleTTS,

@@ -17,6 +17,16 @@ logger = logging.getLogger(__name__)
 
 STAGES = ["upload", "transcribe", "translate", "tts", "merge", "done"]
 
+# Global reference to active runner for cancel support
+_active_runner: Optional["PipelineRunner"] = None
+
+def cancel_active_pipeline():
+    """Cancel the currently running pipeline if any."""
+    global _active_runner
+    if _active_runner:
+        _active_runner.cancel()
+        _active_runner = None
+
 
 class PipelineConfig:
     """Config cho full pipeline run."""
@@ -33,7 +43,7 @@ class PipelineConfig:
         fallback_engine: Optional[str] = None,
         fallback_api_key: str = "",
         # TTS
-        tts_engine: str = "edge_tts",
+        tts_engine: str = "omnivoice",
         voice: str = "vi-VN-HoaiMyNeural",
         rate: float = 1.0,
         volume: float = 1.0,
@@ -155,6 +165,38 @@ class PipelineConfig:
 
 class PipelineRunner:
     """Run full pipeline: transcribe → translate → TTS → merge."""
+
+    def __init__(self):
+        self._active_builder: Optional[FFmpegOutputBuilder] = None
+        self._tts_tasks: list = []
+        self._tts_engine = None  # Store for force unload on cancel
+        self._cancelled = False
+
+    def cancel(self):
+        """Cancel the running pipeline — kill TTS tasks + FFmpeg subprocess + free GPU."""
+        self._cancelled = True
+        
+        # Cancel running TTS asyncio tasks
+        for t in self._tts_tasks:
+            if hasattr(t, 'done') and not t.done():
+                t.cancel()
+        
+        # Force unload TTS model from GPU
+        if self._tts_engine and hasattr(self._tts_engine, 'force_unload'):
+            self._tts_engine.force_unload()
+        
+        # Kill FFmpeg
+        if self._active_builder:
+            self._active_builder.cancel()
+        
+        # Free GPU memory
+        try:
+            import torch
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
+        
+        logger.info("PipelineRunner: cancel signal sent — TTS unloaded, GPU freed.")
 
     async def run_analyze(
         self,
@@ -375,29 +417,54 @@ class PipelineRunner:
 
                 from app.routes.pipeline import get_tts_engine
                 tts = get_tts_engine(config.tts_engine)
+                self._tts_engine = tts  # Store for force_unload on cancel
 
-                # Synthesize each segment
+                # Synthesize each segment in parallel
                 audio_files = []
-                for i, seg in enumerate(segments):
-                    audio_path = os.path.join(temp_dir, f"tts_{i:04d}.mp3")
-                    text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
-                    if text.strip():
-                        await tts.synthesize(
-                            text=text,
-                            voice=config.voice,
-                            output_path=audio_path,
-                            rate=config.speed,
-                            volume=config.volume,
-                            pitch=config.pitch,
-                        )
-                        audio_files.append({
-                            "path": audio_path,
-                            "start": seg["start"],
-                            "end": seg["end"],
-                        })
+                sem = asyncio.Semaphore(5)  # Limit concurrent TTS to avoid rate limits
+                
+                async def _synth_seg(i, seg):
+                    async with sem:
+                        audio_path = os.path.join(temp_dir, f"tts_{i:04d}.mp3")
+                        text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
+                        if text.strip():
+                            await tts.synthesize(
+                                text=text,
+                                voice=config.voice,
+                                output_path=audio_path,
+                                rate=config.speed,
+                                volume=config.volume,
+                                pitch=config.pitch,
+                            )
+                            return {"path": audio_path, "start": seg["start"], "end": seg["end"]}
+                    return None
 
+                tasks = [asyncio.ensure_future(_synth_seg(i, seg)) for i, seg in enumerate(segments)]
+                self._tts_tasks = tasks  # Store for cancel
+                for i, task in enumerate(asyncio.as_completed(tasks)):
+                    if self._cancelled:
+                        # Cancel remaining TTS tasks
+                        for t in tasks:
+                            if not t.done():
+                                t.cancel()
+                        # Free GPU memory
+                        del tts
+                        gc.collect()
+                        try:
+                            import torch
+                            torch.cuda.empty_cache()
+                        except Exception:
+                            pass
+                        yield {"stage": "error", "progress": -1, "message": "Pipeline cancelled by user"}
+                        return
+                    res = await task
+                    if res:
+                        audio_files.append(res)
                     progress = 50 + int((i + 1) / len(segments) * 25)
                     yield {"stage": "tts", "progress": progress, "message": f"TTS segment {i+1}/{len(segments)}"}
+                
+                # Sort audio files by start time since as_completed returns them out of order
+                audio_files.sort(key=lambda x: x["start"])
 
                 # Merge all TTS audio into one file with correct timing
                 if audio_files:
@@ -416,6 +483,7 @@ class PipelineRunner:
             yield {"stage": "merge", "progress": 75, "message": "Building final video..."}
 
             builder = FFmpegOutputBuilder(video_path, output_path)
+            self._active_builder = builder  # Store for cancel
 
             if dubbed_audio_path:
                 builder.add_dubbed_audio(dubbed_audio_path, config.original_volume)
@@ -431,6 +499,10 @@ class PipelineRunner:
             await asyncio.sleep(0.1)
             
             await asyncio.to_thread(builder.build, codec=config.codec, crf=config.crf)
+            
+            if builder._cancelled:
+                yield {"stage": "error", "progress": -1, "message": "Pipeline cancelled by user"}
+                return
 
             yield {
                 "stage": "done", "progress": 100,
@@ -446,6 +518,7 @@ class PipelineRunner:
             }
         
         finally:
+            self.cancel()
             if 'temp_dir_obj' in locals():
                 temp_dir_obj.cleanup()
             gc.collect()

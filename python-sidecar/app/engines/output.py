@@ -31,6 +31,17 @@ class FFmpegOutputBuilder:
         self._original_volume: float = 0.1
         self._ass_file: Optional[str] = None
         self._subtitle_config: dict = {}
+        self._proc: Optional[subprocess.Popen] = None  # Track FFmpeg process for cancel
+        self._cancelled = False
+
+    def cancel(self):
+        """Kill running FFmpeg process immediately."""
+        self._cancelled = True
+        if self._proc and self._proc.poll() is None:
+            logger.info("Cancelling FFmpeg process...")
+            self._proc.kill()
+            self._proc.wait(timeout=5)
+            logger.info("FFmpeg process killed.")
 
     def add_dubbed_audio(
         self,
@@ -350,9 +361,9 @@ class FFmpegOutputBuilder:
                         if rw > 0.01 and rh > 0.01:
                             # Use expression-based coordinates relative to current frame
                             filter_complex_parts.append(
-                                f"[{v_current}]split=2[bm{i}][bb{i}];"
-                                f"[bb{i}]crop='iw*{rw}':'ih*{rh}':'iw*{rx}':'ih*{ry}',gblur=sigma=20[bp{i}];"
-                                f"[bm{i}][bp{i}]overlay='W*{rx}':'H*{ry}'[vblur{i}]"
+                            f"[{v_current}]split=2[bm{i}][bb{i}];\n"
+                            f"[bb{i}]crop='iw*{rw}':'ih*{rh}':'iw*{rx}':'ih*{ry}',boxblur=luma_radius=15:luma_power=1[bp{i}];\n"
+                            f"[bm{i}][bp{i}]overlay='W*{rx}':'H*{ry}'[vblur{i}]"
                             )
                             v_current = f"vblur{i}"
                     except (ValueError, TypeError):
@@ -419,12 +430,14 @@ class FFmpegOutputBuilder:
             input_index += 1
             cmd.extend(["-i", self._dubbed_audio])
             a_dub = f"{input_index}:a"
+            tts_vol = getattr(config, "volume", 1.0) if config else 1.0
             if has_audio:
                 # Split dubbed audio: one for final mix, one for audio sidechain ducking trigger
-                filter_complex_parts.append(f"[{a_dub}]aresample=48000,volume=1.0,asplit=2[adub_mix][adub_sc]")
+                # dynaudnorm is single-pass (fast) unlike loudnorm (2-pass, very slow)
+                filter_complex_parts.append(f"[{a_dub}]aresample=48000,dynaudnorm=p=0.9:m=10:s=5,volume={tts_vol},asplit=2[adub_mix][adub_sc]")
                 audio_streams_to_mix.append("[adub_mix]")
             else:
-                filter_complex_parts.append(f"[{a_dub}]aresample=48000,volume=1.0[adub]")
+                filter_complex_parts.append(f"[{a_dub}]aresample=48000,dynaudnorm=p=0.9:m=10:s=5,volume={tts_vol}[adub]")
                 audio_streams_to_mix.append("[adub]")
 
         # Background Audio (Music)
@@ -494,6 +507,7 @@ class FFmpegOutputBuilder:
             encoding="utf-8",
             errors="replace"
         )
+        self._proc = proc  # Store for external cancel
 
         stderr_lines = []
         for line in proc.stderr:

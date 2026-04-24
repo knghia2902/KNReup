@@ -8,18 +8,10 @@ import os
 import uvicorn
 import logging
 import warnings
+from app.logger_setup import setup_logging
 
-# Tắt các cảnh báo không cần thiết từ thư viện bên thứ 3
-# 1. urllib3/requests dependency warning
-from urllib3.exceptions import DependencyWarning
-warnings.filterwarnings("ignore", category=DependencyWarning)
-
-# 2. Stanza/Argos mwt warning
-# Silence loggers broadlly
-for logger_name in ["stanza", "argostranslate", "argos-translate"]:
-    l = logging.getLogger(logger_name)
-    l.setLevel(logging.ERROR)
-    l.propagate = False
+# Khởi tạo cấu hình logging để xuất ra file
+setup_logging()
 
 # Silence warnings from stanza/argostranslate
 warnings.filterwarnings("ignore", message=".*expects mwt.*")
@@ -87,4 +79,4 @@ if __name__ == "__main__":
         port = int(sys.argv[1])
     
     print(f"Sidecar starting on port {port}")
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info", access_log=False)

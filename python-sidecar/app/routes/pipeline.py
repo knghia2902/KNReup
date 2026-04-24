@@ -135,11 +135,7 @@ async def translate(req: TranslateRequest):
 # ─── TTS engine factory ──────────────────────────────────
 def get_tts_engine(engine_name: str, api_key: str = ""):
     """Factory: tạo TTS engine instance."""
-    if engine_name == "edge_tts":
-        from app.engines.tts.edge_tts_engine import EdgeTTSEngine
-
-        return EdgeTTSEngine()
-    elif engine_name == "omnivoice":
+    if engine_name == "omnivoice":
         from app.engines.tts.omnivoice_engine import OmniVoiceTTSEngine
 
         return OmniVoiceTTSEngine()
@@ -153,7 +149,7 @@ def get_tts_engine(engine_name: str, api_key: str = ""):
 
 # ─── TTS Voices ───────────────────────────────────────────
 @router.get("/voices")
-async def list_voices(engine: str = "edge_tts", api_key: str = ""):
+async def list_voices(engine: str = "omnivoice", api_key: str = ""):
     """Liệt kê available voices cho engine."""
     try:
         tts = get_tts_engine(engine, api_key)
@@ -169,7 +165,7 @@ async def list_voices(engine: str = "edge_tts", api_key: str = ""):
 # ─── TTS Synthesis ────────────────────────────────────────
 class TTSRequest(BaseModel):
     text: str
-    engine: str = "edge_tts"
+    engine: str = "omnivoice"
     voice: str = "vi-VN-HoaiMyNeural"
     rate: float = 1.0
     volume: float = 1.0
@@ -308,7 +304,8 @@ async def analyze_pipeline(req: ProcessRequest):
 async def render_pipeline(req: RenderRequest):
     """Render pipeline (TTS + Merge) with SSE progress streaming."""
     import json
-    from app.pipeline_runner import PipelineRunner, PipelineConfig
+    from app.pipeline_runner import PipelineRunner, PipelineConfig, _active_runner, cancel_active_pipeline
+    import app.pipeline_runner as pr
 
     if not os.path.exists(req.video_path):
         raise HTTPException(400, f"File not found: {req.video_path}")
@@ -322,8 +319,12 @@ async def render_pipeline(req: RenderRequest):
 
     async def event_stream():
         runner = PipelineRunner()
-        async for event in runner.run_render(req.video_path, pipeline_config, req.segments, req.duration, target_path=req.output_path):
-            yield f"data: {json.dumps(event)}\n\n"
+        pr._active_runner = runner  # Store for cancel
+        try:
+            async for event in runner.run_render(req.video_path, pipeline_config, req.segments, req.duration, target_path=req.output_path):
+                yield f"data: {json.dumps(event)}\n\n"
+        finally:
+            pr._active_runner = None
 
     return StreamingResponse(
         event_stream(),
@@ -333,6 +334,13 @@ async def render_pipeline(req: RenderRequest):
             "Connection": "keep-alive",
         },
     )
+
+@router.post("/cancel")
+async def cancel_pipeline():
+    """Cancel the currently running pipeline and kill FFmpeg."""
+    from app.pipeline_runner import cancel_active_pipeline
+    cancel_active_pipeline()
+    return {"cancelled": True}
 
 
 # ─── Simple (non-streaming) ──────────────────────────────

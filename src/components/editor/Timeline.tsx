@@ -98,6 +98,7 @@ export function Timeline({ filePaths }: TimelineProps) {
   const [resizingClip, setResizingClip] = useState<{ type: 'vid' | 'audio' | 'sub', side: 'left' | 'right' } | null>(null);
   const [draggingClip, setDraggingClip] = useState<'vid' | 'audio' | null>(null);
   const [activeSnapTime, setActiveSnapTime] = useState<number | null>(null);
+  const [audioMediaDuration, setAudioMediaDuration] = useState(0);
 
   const pixelsPerSecond = Math.max(0.0001, 50 * timelineZoom);
   const currentVideoPath = activeFile || (filePaths.length > 0 ? filePaths[0] : null);
@@ -277,16 +278,25 @@ export function Timeline({ filePaths }: TimelineProps) {
            const { vid_clip_start, vid_clip_duration } = useProjectStore.getState();
            const dur = vid_clip_duration || videoDuration;
            if (resizingClip.side === 'left') {
-             updateConfig({ vid_clip_start: t, vid_clip_duration: Math.max(0.1, dur - (t - vid_clip_start)) });
+             const limit_t = vid_clip_start - (videoDuration - dur);
+             const safe_t = Math.max(t, limit_t);
+             const newDur = dur - (safe_t - vid_clip_start);
+             updateConfig({ vid_clip_start: safe_t, vid_clip_duration: Math.max(0.1, newDur) });
            } else {
-             updateConfig({ vid_clip_duration: Math.max(0.1, t - vid_clip_start) });
+             updateConfig({ vid_clip_duration: Math.max(0.1, Math.min(videoDuration, t - vid_clip_start)) });
            }
         } else if (resizingClip.type === 'audio') {
-           const { audio_timeline_start, audio_clip_duration } = useProjectStore.getState();
+           const { audio_timeline_start, audio_clip_duration, audio_clip_start } = useProjectStore.getState();
+           const maxAudioDur = audioMediaDuration > 0 ? audioMediaDuration - (audio_clip_start || 0) : Infinity;
+           const dur = audio_clip_duration || Math.min(maxAudioDur, 200);
+           
            if (resizingClip.side === 'left') {
-             updateConfig({ audio_timeline_start: t, audio_clip_duration: Math.max(0.1, audio_clip_duration - (t - audio_timeline_start)) });
+             const limit_t = audio_timeline_start - (maxAudioDur - dur);
+             const safe_t = Math.max(t, limit_t);
+             const newDur = dur - (safe_t - audio_timeline_start);
+             updateConfig({ audio_timeline_start: safe_t, audio_clip_duration: Math.max(0.1, newDur) });
            } else {
-             updateConfig({ audio_clip_duration: Math.max(0.1, t - audio_timeline_start) });
+             updateConfig({ audio_clip_duration: Math.max(0.1, Math.min(maxAudioDur, t - audio_timeline_start)) });
            }
         }
       }
@@ -305,6 +315,9 @@ export function Timeline({ filePaths }: TimelineProps) {
     };
 
     const handlePointerUp = () => {
+      if (isDraggingPlayhead) {
+        AudioMixer.muteAll(false);
+      }
       setIsDraggingPlayhead(false);
       setResizingClip(null);
       setDraggingClip(null);
@@ -507,20 +520,29 @@ export function Timeline({ filePaths }: TimelineProps) {
                  </div>
                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                    {tk.muteCheck() ? (
-                     <svg width="12" height="12" viewBox="0 0 256 256" fill="none" style={{ opacity: 0.4 }}>
-                       <path d="M228.44,89.34l-48,48a4,4,0,0,1-5.66-5.66L222.34,84.12a4,4,0,1,1,5.66,5.66ZM160,84.12,112.44,131.68a4,4,0,0,0,5.66,5.66L160,95.78Z" fill="var(--text-muted)"/>
-                       <path d="M155.52,24.81a4,4,0,0,0-4.23.42L84,76H40A12,12,0,0,0,28,88v80a12,12,0,0,0,12,12H84l67.29,50.77A4,4,0,0,0,156,228V32A4,4,0,0,0,155.52,24.81Z" fill="var(--text-muted)"/>
-                     </svg>
+                     <div style={{ cursor: 'pointer', padding: '2px', display: 'flex' }} onClick={(e) => {
+                       e.stopPropagation();
+                       if (tk.id === 'vid') updateConfig({ audio_mix_mode: 'mix' });
+                       else if (tk.id === 'sub') updateConfig({ dubbing_enabled: true });
+                       else if (tk.id === 'audio') updateConfig({ audio_enabled: true });
+                     }}>
+                       <svg width="12" height="12" viewBox="0 0 256 256" fill="none" style={{ opacity: 0.4 }}>
+                         <path d="M228.44,89.34l-48,48a4,4,0,0,1-5.66-5.66L222.34,84.12a4,4,0,1,1,5.66,5.66ZM160,84.12,112.44,131.68a4,4,0,0,0,5.66,5.66L160,95.78Z" fill="var(--text-muted)"/>
+                         <path d="M155.52,24.81a4,4,0,0,0-4.23.42L84,76H40A12,12,0,0,0,28,88v80a12,12,0,0,0,12,12H84l67.29,50.77A4,4,0,0,0,156,228V32A4,4,0,0,0,155.52,24.81Z" fill="var(--text-muted)"/>
+                       </svg>
+                     </div>
                    ) : (
-                     <>
+                     <div style={{ cursor: 'pointer', padding: '2px', display: 'flex' }} onClick={(e) => {
+                       e.stopPropagation();
+                       if (tk.id === 'vid') updateConfig({ audio_mix_mode: 'replace' });
+                       else if (tk.id === 'sub') updateConfig({ dubbing_enabled: false });
+                       else if (tk.id === 'audio') updateConfig({ audio_enabled: false });
+                     }}>
                        <svg width="12" height="12" viewBox="0 0 256 256" fill="none" style={{ opacity: 0.6 }}>
                          <path d="M155.52,24.81a4,4,0,0,0-4.23.42L84,76H40A12,12,0,0,0,28,88v80a12,12,0,0,0,12,12H84l67.29,50.77A4,4,0,0,0,156,228V32A4,4,0,0,0,155.52,24.81Z" fill={tk.color}/>
                          <path d="M192,128a31.82,31.82,0,0,1-6.51,19.34,4,4,0,1,1-6.31-4.9A23.88,23.88,0,0,0,184,128a24,24,0,0,0-4.87-14.5,4,4,0,0,1,6.33-4.88A31.88,31.88,0,0,1,192,128Z" fill={tk.color}/>
                        </svg>
-                       <div style={{ width: 20, height: 3, background: 'var(--border-subtle)', borderRadius: 1, overflow: 'hidden' }}>
-                         <div style={{ width: `${((config[tk.volumeKey] as number) || 0) * 100}%`, height: '100%', background: tk.color, borderRadius: 1, transition: 'width 0.1s' }} />
-                       </div>
-                     </>
+                     </div>
                    )}
                  </div>
               </div>
@@ -590,11 +612,13 @@ export function Timeline({ filePaths }: TimelineProps) {
                    {audio_enabled && audio_file && (
                       <div 
                         onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setDraggingClip('audio'); }}
-                        style={{ position: 'absolute', top: 4, bottom: 4, left: config.audio_timeline_start * pixelsPerSecond, width: (config.audio_clip_duration || 200 / pixelsPerSecond) * pixelsPerSecond, background: 'var(--bg-surface)', borderRadius: 8, border: config.selectedClipId === 'audio-main' ? '2px solid #fff' : '1px solid var(--accent)', display: 'flex', alignItems: 'center', cursor: draggingClip === 'audio' ? 'grabbing' : 'grab' }}
+                        style={{ position: 'absolute', top: 4, bottom: 4, left: config.audio_timeline_start * pixelsPerSecond, width: (config.audio_clip_duration || (audioMediaDuration ? audioMediaDuration - config.audio_clip_start : 200)) * pixelsPerSecond, background: 'var(--bg-surface)', borderRadius: 8, border: config.selectedClipId === 'audio-main' ? '2px solid #fff' : '1px solid var(--accent)', display: 'flex', alignItems: 'center', cursor: draggingClip === 'audio' ? 'grabbing' : 'grab', overflow: 'hidden' }}
                       >
-                           <AudioTrack url={audio_file} pixelsPerSecond={pixelsPerSecond} color="var(--accent)" scrollLeft={scrollLeft - (config.audio_timeline_start * pixelsPerSecond)} viewportWidth={viewportWidth} />
-                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setResizingClip({ type: 'audio', side: 'left' }); }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize' }} />
-                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setResizingClip({ type: 'audio', side: 'right' }); }} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize' }} />
+                           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                             <AudioTrack url={audio_file} pixelsPerSecond={pixelsPerSecond} color="var(--accent)" scrollLeft={scrollLeft - (config.audio_timeline_start * pixelsPerSecond)} viewportWidth={viewportWidth} onDurationLoaded={setAudioMediaDuration} />
+                           </div>
+                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setResizingClip({ type: 'audio', side: 'left' }); }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize', zIndex: 10 }} />
+                           <div onPointerDown={(e) => { e.stopPropagation(); updateConfig({ selectedClipId: 'audio-main' }); setResizingClip({ type: 'audio', side: 'right' }); }} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: 'var(--accent)', cursor: 'ew-resize', zIndex: 10 }} />
                       </div>
                    )}
                  </div>
@@ -605,7 +629,12 @@ export function Timeline({ filePaths }: TimelineProps) {
             <div 
               className="playhead-fixed" 
               ref={playheadRef}
-              onPointerDown={(e) => { e.stopPropagation(); setIsDraggingPlayhead(true); }}
+              onPointerDown={(e) => { 
+                e.stopPropagation(); 
+                setIsDraggingPlayhead(true);
+                AudioMixer.muteAll(true);
+                AudioMixer.cancelTTS();
+              }}
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 14, marginLeft: -7, zIndex: 100, pointerEvents: 'auto', cursor: 'ew-resize', display: 'flex', justifyContent: 'center', transform: `translateX(${TIMELINE_OFFSET_X - scrollLeft}px)`, transition: isDraggingPlayhead ? 'none' : 'transform 0.05s linear' }}
             >
               <div style={{ width: 1, height: '100%', background: '#e11d48', position: 'relative' }}>

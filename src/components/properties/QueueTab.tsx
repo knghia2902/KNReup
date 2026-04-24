@@ -51,7 +51,18 @@ export function QueueTab() {
                   {job.status === 'processing' ? `${Math.round(job.progress)}%` : job.status}
                 </span>
                 
-                {job.status !== 'processing' && (
+                {job.status === 'processing' ? (
+                  <button 
+                    className="btn" 
+                    onClick={() => {
+                      // Kill backend pipeline (FFmpeg + TTS model)
+                      const port = localStorage.getItem('sidecar_port') || '8008';
+                      fetch(`http://127.0.0.1:${port}/api/pipeline/cancel`, { method: 'POST' }).catch(() => {});
+                      removeJob(job.id);
+                    }} 
+                    style={{ padding: '2px 6px', fontSize: '9px', height: '18px', color: '#ef4444', borderColor: '#ef4444' }}
+                  >Cancel</button>
+                ) : (
                   <button 
                     className="btn" 
                     onClick={() => removeJob(job.id)} 

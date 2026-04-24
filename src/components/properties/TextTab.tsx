@@ -196,7 +196,7 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
               const currentSpeed = segVoiceMap.speed || config.tts_speed;
 
               return (
-              <div key={seg.id} data-seg-row="true" style={{
+              <div key={`seg-${seg.id}-${idx}`} data-seg-row="true" style={{
                 background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '6px',
                 padding: '6px 8px', display: 'flex', gap: '8px', transition: 'all 0.2s', flexDirection: 'column'
               }}>
@@ -261,16 +261,16 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
                     </optgroup>
                     {clonedVoices.length > 0 && (
                       <optgroup label="OmniVoice - Cloned (Local)">
-                        {clonedVoices.map(v => (
-                          <option key={v.id} value={`omnivoice:${v.id}`}>🎤 {v.name}</option>
+                        {clonedVoices.map((v, i) => (
+                          <option key={`cloned-${v.id}-${i}`} value={`omnivoice:${v.id}`}>🎤 {v.name}</option>
                         ))}
                       </optgroup>
                     )}
                     {(config.custom_voice_profiles || []).length > 0 && (
                       <optgroup label="OmniVoice - Custom (Legacy)">
-                        {config.custom_voice_profiles.map(p => {
+                        {config.custom_voice_profiles.map((p, i) => {
                           const vName = typeof p === 'string' ? p : p.name;
-                          return <option key={vName} value={`omnivoice:${vName}`}>🎤 {vName}</option>;
+                          return <option key={`custom-${vName}-${i}`} value={`omnivoice:${vName}`}>🎤 {vName}</option>;
                         })}
                       </optgroup>
                     )}

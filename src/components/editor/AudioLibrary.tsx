@@ -1,10 +1,8 @@
-import { Plus, Waveform, UploadSimple, MusicNotes, X } from '@phosphor-icons/react';
+import { Waveform, UploadSimple, MusicNotes, X } from '@phosphor-icons/react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { open } from '@tauri-apps/plugin-dialog';
-import { SliderControl } from '../controls/SliderControl';
 import { getMediaSrc } from '../../utils/url';
 import { useRef, useEffect } from 'react';
-import { AudioMixer } from '../../lib/audioMixer';
 
 /**
  * Built-in royalty-free audio samples.
@@ -48,25 +46,23 @@ export function AudioLibrary() {
   const config = useProjectStore();
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Connect BGM element khi loaded
+  // Clean up AudioMixer connection since VideoPreview handles BGM mixing
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !config.audio_file) return;
-
-    const handleCanPlay = () => {
-      AudioMixer.init();
-      AudioMixer.connectBGM(audio);
-      AudioMixer.setBGMVolume(config.audio_volume);
-    };
-
-    audio.addEventListener('canplay', handleCanPlay);
-    return () => audio.removeEventListener('canplay', handleCanPlay);
-  }, [config.audio_file]);
-
-  // Sync BGM volume qua GainNode
-  useEffect(() => {
-    AudioMixer.setBGMVolume(config.audio_volume);
+    if (!audio) return;
+    audio.volume = config.audio_volume;
   }, [config.audio_volume]);
+  
+  // Pause preview when project starts playing
+  useEffect(() => {
+    const handleEditorPlay = () => {
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
+    };
+    window.addEventListener('editor-play', handleEditorPlay);
+    return () => window.removeEventListener('editor-play', handleEditorPlay);
+  }, []);
 
   const handleImportLocal = async () => {
     try {
@@ -150,25 +146,11 @@ export function AudioLibrary() {
         })}
       </div>
 
-      {/* ACTIVE AUDIO CONTROLS (Moved from right panel) */}
+      {/* ACTIVE AUDIO PREVIEW */}
       {config.audio_enabled && config.audio_file && (
         <div style={{ padding: '12px', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
-          <div style={{ marginBottom: '8px', padding: '4px', background: 'var(--bg-surface)', borderRadius: '6px' }}>
+          <div style={{ padding: '4px', background: 'var(--bg-surface)', borderRadius: '6px' }}>
             <audio ref={audioRef} crossOrigin="anonymous" controls style={{ width: '100%', height: '24px' }} src={getMediaSrc(config.audio_file) || ''} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <SliderControl
-              label="Volume"
-              value={Math.round(config.audio_volume * 100)}
-              min={0} max={100} unit="%"
-              onChange={(v) => config.updateConfig({ audio_volume: v / 100 })}
-            />
-            <SliderControl
-              label="Ducking"
-              value={Math.round(config.ducking_strength * 100)}
-              min={0} max={100} unit="%"
-              onChange={(v) => config.updateConfig({ ducking_strength: v / 100 })}
-            />
           </div>
         </div>
       )}

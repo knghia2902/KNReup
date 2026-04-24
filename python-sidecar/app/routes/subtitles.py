@@ -35,7 +35,7 @@ class ExportRequest(BaseModel):
 
 class ReTTSRequest(BaseModel):
     segment: SubtitleSegment
-    engine: str = "edge_tts"
+    engine: str = "omnivoice"
     voice: str = "vi-VN-HoaiMyNeural"
     rate: float = 1.0
     volume: float = 1.0

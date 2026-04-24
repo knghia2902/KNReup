@@ -1,7 +1,7 @@
 import { ToggleControl } from '../controls/ToggleControl';
 import { SliderControl } from '../controls/SliderControl';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { SpeakerHigh, Waveform, SpeakerLow, ArrowSquareOut } from '@phosphor-icons/react';
+import { SpeakerHigh, Waveform, SpeakerLow, ArrowSquareOut, MusicNotes } from '@phosphor-icons/react';
 import { useEffect } from 'react';
 import { sidecar } from '../../lib/sidecar';
 import { AudioMixer } from '../../lib/audioMixer';
@@ -98,7 +98,6 @@ export function AudioTab() {
             {/* Engine Selector */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
               {([
-                { id: 'edge_tts', name: 'Edge TTS', desc: 'Online · Free' },
                 { id: 'omnivoice', name: 'OmniVoice', desc: 'Local · Clone' },
                 { id: 'elevenlabs', name: 'ElevenLabs', desc: 'Online · Premium' },
               ] as const).map(eng => (
@@ -119,21 +118,7 @@ export function AudioTab() {
               ))}
             </div>
 
-            {/* ElevenLabs API Key */}
-            {config.tts_engine === 'elevenlabs' && (
-              <div className="pr" style={{ marginTop: '4px' }}>
-                <div className="plbl">API Key</div>
-                <div className="pc">
-                  <input 
-                    type="password"
-                    className="inp"
-                    placeholder="sk-..."
-                    value={config.elevenlabs_api_key}
-                    onChange={(e) => config.updateConfig({ elevenlabs_api_key: e.target.value })}
-                  />
-                </div>
-              </div>
-            )}
+
 
             {/* Voice Selector */}
             <div className="pr" style={{ marginTop: '4px' }}>
@@ -144,12 +129,6 @@ export function AudioTab() {
                   value={config.voice}
                   onChange={(e) => config.updateConfig({ voice: e.target.value })}
                 >
-                  {config.tts_engine === 'edge_tts' && (
-                    <optgroup label="Edge TTS - Vietnamese">
-                      <option value="vi-VN-HoaiMyNeural">Hoài My (Female)</option>
-                      <option value="vi-VN-NamMinhNeural">Nam Minh (Male)</option>
-                    </optgroup>
-                  )}
                   {config.tts_engine === 'elevenlabs' && (
                     <optgroup label="ElevenLabs Voices">
                       <option value="Rachel">Rachel</option>
@@ -247,6 +226,38 @@ export function AudioTab() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* SECTION: BACKGROUND MUSIC */}
+      <div className="ps" style={{ background: 'var(--bg-secondary)', paddingBottom: '16px' }}>
+        <div className="pshd">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <MusicNotes size={16} weight="bold" />
+            <span>Background Music</span>
+          </div>
+          <ToggleControl 
+            label="" 
+            checked={config.audio_enabled} 
+            onChange={(v) => config.updateConfig({ audio_enabled: v })}
+          />
+        </div>
+        
+        {config.audio_enabled && config.audio_file && (
+          <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <SliderControl
+              label="BGM Volume"
+              value={Math.round(config.audio_volume * 100)}
+              min={0} max={100} unit="%"
+              onChange={(v) => config.updateConfig({ audio_volume: v / 100 })}
+            />
+            <SliderControl
+              label="Ducking"
+              value={Math.round(config.ducking_strength * 100)}
+              min={0} max={100} unit="%"
+              onChange={(v) => config.updateConfig({ ducking_strength: v / 100 })}
+            />
           </div>
         )}
       </div>

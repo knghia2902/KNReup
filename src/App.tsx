@@ -178,6 +178,7 @@ function App() {
           videoDimensions: useSubtitleStore.getState().videoDimensions || undefined,
           config: {
             ...projectConfig,
+            original_volume: projectConfig.audio_mix_mode === 'replace' ? 0 : projectConfig.original_volume,
             subtitle_config: {
               font: projectConfig.subtitle_font,
               font_size: projectConfig.subtitle_font_size,

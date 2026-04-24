@@ -11,7 +11,7 @@ export function TTSTab({ connected }: TTSTabProps) {
   const { generateTTS, loading } = useVoiceStudioStore();
 
   const [text, setText] = useState('');
-  const [engine, setEngine] = useState('edge_tts');
+  const [engine, setEngine] = useState('omnivoice');
   const [voice, setVoice] = useState('vi-VN-HoaiMyNeural');
   
   // Customization
@@ -47,11 +47,6 @@ export function TTSTab({ connected }: TTSTabProps) {
 
   const getVoiceOptions = () => {
     switch (engine) {
-      case 'edge_tts':
-        return [
-          { label: 'Hoài My (Nữ)', value: 'vi-VN-HoaiMyNeural' },
-          { label: 'Nam Minh (Nam)', value: 'vi-VN-NamMinhNeural' }
-        ];
       case 'elevenlabs':
         return [
           { label: 'Callum (Nam)', value: 'N2lVS1w4EtoT3dr4eOWO' },
@@ -59,7 +54,7 @@ export function TTSTab({ connected }: TTSTabProps) {
         ];
       case 'omnivoice':
         return [
-          { label: 'Omni Default', value: 'default' }
+          { label: 'Omni Default', value: 'default_male' }
         ];
       default:
         return [];
@@ -85,14 +80,16 @@ export function TTSTab({ connected }: TTSTabProps) {
           <div style={{ flex: 1 }}>
             <label className="vc-label">Engine</label>
             <div className="vc-select-wrapper">
-              <select className="vc-select" value={engine} onChange={e => {
-                setEngine(e.target.value);
-                // Reset select depending on engine
-                if (e.target.value === 'edge_tts') setVoice('vi-VN-HoaiMyNeural');
-                if (e.target.value === 'elevenlabs') setVoice('N2lVS1w4EtoT3dr4eOWO');
-                if (e.target.value === 'omnivoice') setVoice('default');
-              }}>
-                <option value="edge_tts">Edge TTS (Miễn phí)</option>
+              <select 
+                className="vc-select" 
+                value={engine} 
+                onChange={e => {
+                  setEngine(e.target.value);
+                  // Reset select depending on engine
+                  if (e.target.value === 'elevenlabs') setVoice('N2lVS1w4EtoT3dr4eOWO');
+                  if (e.target.value === 'omnivoice') setVoice('default_male');
+                }}
+              >
                 <option value="elevenlabs">ElevenLabs (Premium)</option>
                 <option value="omnivoice">OmniVoice (Local AI)</option>
               </select>

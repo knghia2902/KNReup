@@ -4,7 +4,7 @@ import { DependencyChecker } from '../setup/DependencyChecker';
 
 export function SettingsTab() {
   const { 
-    gemini_api_key, deepl_api_key, deepseek_api_key, openai_api_key, openai_base_url, openai_model, ollama_url, ollama_model,
+    gemini_api_key, deepl_api_key, deepseek_api_key, openai_api_key, elevenlabs_api_key, openai_base_url, openai_model, ollama_url, ollama_model,
     updateConfig 
   } = useProjectStore();
 
@@ -86,6 +86,18 @@ export function SettingsTab() {
            value={deepl_api_key} 
            onChange={e => updateConfig({ deepl_api_key: e.target.value })} 
            placeholder="DeepL Pro / Free Key..." 
+         />
+       </div>
+
+       <div className="pgrp" style={{ marginBottom: 20 }}>
+         <label style={{ marginBottom: 8, display: 'block', fontWeight: 500 }}>ElevenLabs API Key</label>
+         <input 
+           type="password" 
+           className="inp" 
+           style={{ width: '100%', padding: '10px 12px' }}
+           value={elevenlabs_api_key} 
+           onChange={e => updateConfig({ elevenlabs_api_key: e.target.value })} 
+           placeholder="sk_..." 
          />
        </div>
 
