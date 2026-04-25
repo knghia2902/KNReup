@@ -37,7 +37,9 @@ export interface DownloadItem {
   thumbnail_url: string;
   resolution: string;
   file_size: number;
+  file_path?: string;
   video_id: string;
+  project_id?: string;
   status: 'pending' | 'analyzing' | 'downloading' | 'completed' | 'error' | 'cancelled';
   progress: number;
   speed: string;
@@ -91,17 +93,35 @@ export function useDownloader() {
     }
   }, []);
 
+  // ─── Fetch History ────────────────────────────────────
+  const fetchHistory = useCallback(async (limit = 50, offset = 0, platform?: string, projectId?: string) => {
+    try {
+      const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+      if (platform && platform !== 'all') params.set('platform', platform);
+      if (projectId) params.set('project_id', projectId);
+      
+      const result = await sidecar.fetch<{ downloads: DownloadItem[] }>(
+        `/api/download/history?${params}`
+      );
+      setHistory(result.downloads || []);
+    } catch (err: any) {
+      console.error('Fetch history failed:', err);
+    }
+  }, []);
+
   // ─── Start Download ───────────────────────────────────
   const startDownload = useCallback(async (
     url: string, 
     format_id: string = '', 
     overwrites: boolean = false,
-    meta?: Partial<DownloadItem>
+    meta?: Partial<DownloadItem>,
+    projectId?: string,
+    projectName?: string,
   ) => {
     try {
       const result = await sidecar.fetch<{ download_id: number }>('/api/download/start', {
         method: 'POST',
-        body: JSON.stringify({ url, format_id, overwrites }),
+        body: JSON.stringify({ url, format_id, overwrites, project_id: projectId || '', project_name: projectName || '' }),
       });
 
       const downloadId = result.download_id;
@@ -116,6 +136,7 @@ export function useDownloader() {
         resolution: format_id,
         file_size: meta?.file_size || 0,
         video_id: meta?.video_id || videoInfo?.video_id || '',
+        project_id: projectId,
         status: 'downloading',
         progress: 0,
         speed: '',
@@ -150,7 +171,7 @@ export function useDownloader() {
             // Move to history
             if (data.status === 'completed') {
               setQueue(prev => prev.filter(item => item.id !== downloadId));
-              fetchHistory();
+              fetchHistory(50, 0, 'all', projectId);
             }
           }
         } catch {
@@ -167,7 +188,7 @@ export function useDownloader() {
     } catch (err: any) {
       throw new Error(err.message || 'Failed to start download');
     }
-  }, [videoInfo]);
+  }, [videoInfo, fetchHistory]);
 
   // ─── Cancel Download ──────────────────────────────────
   const cancelDownload = useCallback(async (downloadId: number) => {
@@ -211,20 +232,7 @@ export function useDownloader() {
     }
   }, []);
 
-  // ─── Fetch History ────────────────────────────────────
-  const fetchHistory = useCallback(async (limit = 50, offset = 0, platform?: string) => {
-    try {
-      const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-      if (platform && platform !== 'all') params.set('platform', platform);
-      
-      const result = await sidecar.fetch<{ downloads: DownloadItem[] }>(
-        `/api/download/history?${params}`
-      );
-      setHistory(result.downloads || []);
-    } catch (err: any) {
-      console.error('Fetch history failed:', err);
-    }
-  }, []);
+
 
   // ─── Cookie Management ────────────────────────────────
   const syncCookie = useCallback(async (browser: string = 'auto') => {

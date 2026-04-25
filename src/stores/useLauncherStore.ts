@@ -14,7 +14,9 @@ export interface ProjectMetadata {
 
 interface LauncherState {
   recentProjects: ProjectMetadata[];
+  activeProjectId: string | null;
 
+  setActiveProjectId: (id: string | null) => void;
   addProject: (project: ProjectMetadata) => void;
   updateProject: (id: string, updates: Partial<ProjectMetadata>) => void;
   removeProject: (id: string) => void;
@@ -25,6 +27,9 @@ export const useLauncherStore = create<LauncherState>()(
   persist(
     (set, get) => ({
       recentProjects: [],
+      activeProjectId: null,
+
+      setActiveProjectId: (id) => set({ activeProjectId: id }),
 
       addProject: (project) =>
         set((state) => {

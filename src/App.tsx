@@ -274,6 +274,37 @@ function App() {
     };
   }, [handleFileSelected]);
 
+  // Auto-load project downloads into media bin
+  useEffect(() => {
+    if (!projectId || !connected) return;
+    const loadProjectMedia = async () => {
+      try {
+        const resp = await fetch(`http://127.0.0.1:42069/api/download/history?limit=100&project_id=${encodeURIComponent(projectId)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const downloads = data.downloads || [];
+        const completedPaths = downloads
+          .filter((d: any) => d.status === 'completed' && d.file_path)
+          .map((d: any) => d.file_path as string);
+        if (completedPaths.length > 0) {
+          setFilePaths(prev => {
+            const merged = [...prev];
+            for (const p of completedPaths) {
+              if (!merged.includes(p)) merged.push(p);
+            }
+            if (merged.length !== prev.length) {
+              if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: merged });
+            }
+            return merged;
+          });
+        }
+      } catch (e) {
+        console.warn('[AutoLoad] Failed to load project downloads:', e);
+      }
+    };
+    loadProjectMedia();
+  }, [projectId, connected]);
+
   const handleVideoDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
   }, []);

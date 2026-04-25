@@ -5,13 +5,14 @@ import type { DownloadItem } from '../../hooks/useDownloader';
 interface DownloadHistoryProps {
   history: DownloadItem[];
   queue: DownloadItem[];
-  onFetch: (limit?: number, offset?: number, platform?: string) => void;
+  onFetch: (limit?: number, offset?: number, platform?: string, projectId?: string) => void;
   onDelete: (id: number) => void;
   onCancel: (id: number) => void;
   onShow: (id: number) => void;
-  onDownload?: (url: string, format_id?: string, overwrites?: boolean, meta?: Partial<DownloadItem>) => void;
+  onDownload?: (url: string, format_id?: string, overwrites?: boolean, meta?: Partial<DownloadItem>, projectId?: string, projectName?: string) => void;
   checkFileExistence?: (title: string, platform: string, video_id: string) => Promise<boolean>;
   connected?: boolean;
+  projectId?: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -41,7 +42,7 @@ function StatusBadge({ status, error }: { status: string; error?: string }) {
 }
 
 export function DownloadHistory({ 
-  history, queue, onFetch, onDelete, onCancel, onShow, onDownload, checkFileExistence, connected = true 
+  history, queue, onFetch, onDelete, onCancel, onShow, onDownload, checkFileExistence, connected = true, projectId 
 }: DownloadHistoryProps) {
   const [missingFiles, setMissingFiles] = useState<Record<number, boolean>>({});
 
@@ -49,7 +50,7 @@ export function DownloadHistory({
   useEffect(() => {
     if (!connected) return;
 
-    const refresh = () => onFetch(50, 0, 'all');
+    const refresh = () => onFetch(50, 0, 'all', projectId);
 
     // 1. Poll every 5s
     const interval = setInterval(refresh, 5000);
@@ -66,7 +67,7 @@ export function DownloadHistory({
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', refresh);
     };
-  }, [connected, onFetch]);
+  }, [connected, onFetch, projectId]);
 
   // Check existence for completed items - Optimized to reduce log spam
   useEffect(() => {
@@ -185,7 +186,7 @@ export function DownloadHistory({
                        {item.status === 'completed' && missingFiles[item.id] && onDownload && (
                         <button 
                           className="dl-rt-btn restore" 
-                          onClick={() => onDownload(item.url, item.resolution, true, item)}
+                          onClick={() => onDownload(item.url, item.resolution, true, item, item.project_id)}
                           title="Video missing. Click to Restore."
                         >
                           <CloudArrowDown size={18} weight="bold" />
@@ -205,7 +206,7 @@ export function DownloadHistory({
                       {(item.status === 'cancelled' || item.status === 'error') && onDownload && (
                         <button 
                           className="dl-rt-btn retry" 
-                          onClick={() => onDownload(item.url, item.resolution, true, item)}
+                          onClick={() => onDownload(item.url, item.resolution, true, item, item.project_id)}
                           title="Click to download again."
                         >
                           <ArrowCounterClockwise size={18} weight="bold" />

@@ -53,6 +53,11 @@ async def init_db():
             DROP INDEX IF EXISTS idx_downloads_url;
             CREATE INDEX IF NOT EXISTS idx_downloads_url ON downloads(url);
         ''')
+        # Migration: add project_id column if not present
+        existing_cols = [row[1] for row in conn.execute('PRAGMA table_info(downloads)').fetchall()]
+        if 'project_id' not in existing_cols:
+            conn.execute('ALTER TABLE downloads ADD COLUMN project_id TEXT')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_downloads_project ON downloads(project_id)')
         conn.commit()
     finally:
         conn.close()
@@ -69,16 +74,17 @@ async def add_download(
     format_id: str = "",
     resolution: str = "",
     metadata: Optional[dict] = None,
+    project_id: Optional[str] = None,
 ) -> int:
     """Add a new download record. Returns download ID."""
     db = await get_db()
     try:
         cursor = await db.execute(
             """INSERT INTO downloads 
-               (url, platform, title, uploader, duration, thumbnail_url, video_id, format_id, resolution, metadata)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (url, platform, title, uploader, duration, thumbnail_url, video_id, format_id, resolution, metadata, project_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (url, platform, title, uploader, duration, thumbnail_url,
-             video_id, format_id, resolution, json.dumps(metadata) if metadata else None)
+             video_id, format_id, resolution, json.dumps(metadata) if metadata else None, project_id)
         )
         await db.commit()
         return cursor.lastrowid
@@ -130,6 +136,7 @@ async def list_downloads(
     offset: int = 0,
     platform: Optional[str] = None,
     status: Optional[str] = None,
+    project_id: Optional[str] = None,
 ) -> list[dict]:
     """List downloads with optional filters."""
     db = await get_db()
@@ -144,6 +151,9 @@ async def list_downloads(
         if status:
             conditions.append("status = ?")
             params.append(status)
+        if project_id:
+            conditions.append("project_id = ?")
+            params.append(project_id)
         
         if conditions:
             query += " WHERE " + " AND ".join(conditions)

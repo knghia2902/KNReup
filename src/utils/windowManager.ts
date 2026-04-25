@@ -122,6 +122,14 @@ export async function openDownloader(): Promise<WebviewWindow | null> {
   return openTool('downloader');
 }
 
+/** Open Downloader with a specific project pre-selected */
+export async function openDownloaderForProject(projectId: string): Promise<WebviewWindow | null> {
+  // Import dynamically to avoid circular deps
+  const { useLauncherStore } = await import('../stores/useLauncherStore');
+  useLauncherStore.getState().setActiveProjectId(projectId);
+  return openTool('downloader');
+}
+
 /** Focus the launcher window (return to home) */
 export async function focusLauncher(): Promise<void> {
   if (!isTauri()) return;

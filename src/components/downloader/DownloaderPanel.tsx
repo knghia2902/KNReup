@@ -1,8 +1,9 @@
 /**
  * DownloaderPanel — Main container cho Downloader module.
  * 3-panel layout: URL Input → Download Options/Queue → History
+ * Project-centric: downloads are associated with the active project.
  */
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDownloader } from '../../hooks/useDownloader';
 import { useTheme } from '../../hooks/useTheme';
 import { URLInput } from './URLInput';
@@ -10,11 +11,18 @@ import { DownloadOptions } from './DownloadOptions';
 import { DownloadHistory } from './DownloadHistory';
 import { DouyinAuthWidget } from './DouyinAuthWidget';
 import { useSidecar } from '../../hooks/useSidecar';
+import { useLauncherStore } from '../../stores/useLauncherStore';
 import '../../styles/downloader.css';
 
 export function DownloaderPanel() {
   useTheme();
   const { connected } = useSidecar();
+  const { recentProjects, activeProjectId, setActiveProjectId } = useLauncherStore();
+
+  const activeProject = useMemo(
+    () => recentProjects.find(p => p.id === activeProjectId),
+    [recentProjects, activeProjectId]
+  );
 
   const {
     videoInfo,
@@ -36,21 +44,26 @@ export function DownloaderPanel() {
     checkFileExistence,
   } = useDownloader();
 
-  // Fetch history when sidecar connected
+  // Fetch history when sidecar connected or active project changes
   useEffect(() => {
     if (connected) {
-      fetchHistory();
+      fetchHistory(50, 0, 'all', activeProjectId || undefined);
       checkCookie();
     }
-  }, [connected]);
+  }, [connected, activeProjectId]);
 
   const handleDownload = async (_videoId: string, formatId: string, overwrites: boolean = false) => {
     if (!videoInfo) return;
     try {
-      // Use the webpage_url retrieved during analysis
       const url = videoInfo.webpage_url;
-      await startDownload(url, formatId, overwrites);
-
+      await startDownload(
+        url,
+        formatId,
+        overwrites,
+        undefined,
+        activeProjectId || undefined,
+        activeProject?.name,
+      );
     } catch (err: any) {
       console.error('Download failed:', err);
     }
@@ -65,12 +78,25 @@ export function DownloaderPanel() {
           <div className="dl-hero-header">
             <div className="dl-top-row">
               <h1>Multi Download Media</h1>
-              <DouyinAuthWidget
-                cookieStatus={cookieStatus}
-                onSet={setCookie}
-                onSync={syncCookie}
-                isSyncing={isSyncingCookie}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Project Selector */}
+                <select
+                  className="dl-project-select"
+                  value={activeProjectId || ''}
+                  onChange={e => setActiveProjectId(e.target.value || null)}
+                >
+                  <option value="">📁 Tất cả (Global)</option>
+                  {recentProjects.map(p => (
+                    <option key={p.id} value={p.id}>📂 {p.name}</option>
+                  ))}
+                </select>
+                <DouyinAuthWidget
+                  cookieStatus={cookieStatus}
+                  onSet={setCookie}
+                  onSync={syncCookie}
+                  isSyncing={isSyncingCookie}
+                />
+              </div>
             </div>
             <p>High-performance extraction from Douyin, TikTok, YouTube & more.</p>
           </div>
@@ -118,6 +144,7 @@ export function DownloaderPanel() {
               onShow={showInFolder}
               checkFileExistence={checkFileExistence}
               connected={connected}
+              projectId={activeProjectId || undefined}
             />
           </div>
 

@@ -3,8 +3,8 @@
  * Phase 09, Plan 02
  */
 import { useLauncherStore, type ProjectMetadata } from '../../stores/useLauncherStore';
-import { openEditor } from '../../utils/windowManager';
-import { Folder, Clock, Trash } from '@phosphor-icons/react';
+import { openEditor, openDownloaderForProject } from '../../utils/windowManager';
+import { Folder, Clock, Trash, DownloadSimple } from '@phosphor-icons/react';
 
 function formatDate(timestamp: number): string {
   const d = new Date(timestamp);
@@ -31,6 +31,11 @@ function ProjectCard({ project }: { project: ProjectMetadata }) {
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     removeProject(project.id);
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await openDownloaderForProject(project.id);
   };
 
   return (
@@ -60,22 +65,40 @@ function ProjectCard({ project }: { project: ProjectMetadata }) {
             <Clock size={10} weight="bold" style={{ marginRight: 4, verticalAlign: 'middle' }} />
             {formatDate(project.lastModified)}
           </span>
-          <button
-            onClick={handleRemove}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-muted, #666)',
-              padding: 2,
-              borderRadius: 4,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-            title="Xóa khỏi danh sách"
-          >
-            <Trash size={12} weight="bold" />
-          </button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={handleDownload}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--accent, #3b82f6)',
+                padding: 2,
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              title="Tải media cho dự án"
+            >
+              <DownloadSimple size={12} weight="bold" />
+            </button>
+            <button
+              onClick={handleRemove}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted, #666)',
+                padding: 2,
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              title="Xóa khỏi danh sách"
+            >
+              <Trash size={12} weight="bold" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

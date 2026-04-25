@@ -1115,3 +1115,34 @@
   border-radius: 12px;
   color: var(--dl-steel);
 }
+
+/* Project Selector */
+.dl-project-select {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 32px 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--dl-border);
+  background: var(--dl-surface);
+  color: var(--dl-text);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M3 5l3 3 3-3z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: all 0.2s ease;
+  max-width: 220px;
+  text-overflow: ellipsis;
+}
+
+.dl-project-select:hover {
+  border-color: var(--dl-accent);
+}
+
+.dl-project-select:focus {
+  border-color: var(--dl-accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}

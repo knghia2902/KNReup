@@ -13,6 +13,7 @@ from .base import DownloadError
 from .ytdlp_engine import YtdlpDownloader
 from .douyin_engine import DouyinDownloader
 import platform
+import re
 import subprocess
 import ctypes
 from .database import (
@@ -68,9 +69,11 @@ class DownloadManager:
         format_id: str = "",
         output_dir: str = "",
         overwrites: bool = False,
+        project_id: Optional[str] = None,
+        project_name: Optional[str] = None,
     ) -> int:
         """Start a download — returns download_id."""
-        logger.info(f"START_DOWNLOAD: url={url}, format_id={format_id}, overwrites={overwrites}")
+        logger.info(f"START_DOWNLOAD: url={url}, format_id={format_id}, overwrites={overwrites}, project_id={project_id}")
         
         # Analyze first if not already analyzed
         platform = self._detect_platform(url)
@@ -92,19 +95,21 @@ class DownloadManager:
                 download_id = existing['id']
                 logger.info(f"Found existing download record: id={download_id}, moving to top.")
                 # Update and bring to top by refreshing created_at
-                await update_download(
-                    download_id,
+                update_fields = dict(
                     status='pending',
                     progress=0,
                     speed='',
-                    file_size=0, # Reset size to show it's being updated
+                    file_size=0,
                     format_id=format_id,
-                    resolution=format_id, # Or use specific resolution if available
-                    metadata=None, # Reset errors
+                    resolution=format_id,
+                    metadata=None,
                     created_at=datetime.utcnow().isoformat().replace('T', ' '), 
                     title=info.get('title', existing.get('title', 'Unknown')),
                     thumbnail_url=info.get('thumbnail', existing.get('thumbnail_url', '')),
                 )
+                if project_id:
+                    update_fields['project_id'] = project_id
+                await update_download(download_id, **update_fields)
             else:
                 download_id = await add_download(
                     url=url,
@@ -116,6 +121,7 @@ class DownloadManager:
                     video_id=video_id,
                     format_id=format_id,
                     resolution=format_id,
+                    project_id=project_id,
                 )
                 logger.info(f"Created new download record: id={download_id}")
         except Exception as e:
@@ -135,11 +141,18 @@ class DownloadManager:
         
         # Spawn worker
         task = asyncio.create_task(
-            self._download_worker(download_id, url, platform, format_id, output_dir, overwrites)
+            self._download_worker(download_id, url, platform, format_id, output_dir, overwrites, project_name)
         )
         self._tasks[download_id] = task
         
         return download_id
+
+    @staticmethod
+    def _slugify(name: str) -> str:
+        """Sanitize project name into a safe folder name."""
+        slug = re.sub(r'[^\w\s-]', '', name).strip()
+        slug = re.sub(r'[\s_-]+', '_', slug)
+        return slug[:80] or 'unnamed'
 
     async def _download_worker(
         self,
@@ -149,6 +162,7 @@ class DownloadManager:
         format_id: str,
         output_dir: str,
         overwrites: bool,
+        project_name: Optional[str] = None,
     ):
 
         """Background download worker with semaphore concurrency control."""
@@ -159,7 +173,10 @@ class DownloadManager:
                 engine = self._get_engine(platform)
                 
                 if not output_dir:
-                    output_dir = os.path.join(DEFAULT_OUTPUT_DIR, platform)
+                    if project_name:
+                        output_dir = os.path.join(DEFAULT_OUTPUT_DIR, self._slugify(project_name), platform)
+                    else:
+                        output_dir = os.path.join(DEFAULT_OUTPUT_DIR, platform)
                 os.makedirs(output_dir, exist_ok=True)
 
                 async def progress_cb(data):
@@ -249,9 +266,10 @@ class DownloadManager:
         limit: int = 50,
         offset: int = 0,
         platform: Optional[str] = None,
+        project_id: Optional[str] = None,
     ) -> list[dict]:
-        """Get download history with optional platform filter."""
-        return await list_downloads(limit=limit, offset=offset, platform=platform)
+        """Get download history with optional platform and project filter."""
+        return await list_downloads(limit=limit, offset=offset, platform=platform, project_id=project_id)
 
     async def delete_download_record(self, download_id: int, delete_file: bool = False) -> bool:
         """Delete download record and optionally the file. Cancels any running task first."""

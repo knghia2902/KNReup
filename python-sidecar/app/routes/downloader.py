@@ -30,6 +30,8 @@ class StartDownloadRequest(BaseModel):
     format_id: str = ""
     output_dir: str = ""
     overwrites: bool = False
+    project_id: str = ""
+    project_name: str = ""
 
 
 class CookieSyncRequest(BaseModel):
@@ -64,6 +66,8 @@ async def start_download(req: StartDownloadRequest):
             format_id=req.format_id,
             output_dir=req.output_dir,
             overwrites=req.overwrites,
+            project_id=req.project_id or None,
+            project_name=req.project_name or None,
         )
 
         return {"download_id": download_id, "status": "started"}
@@ -142,13 +146,15 @@ async def get_history(
     limit: int = 50,
     offset: int = 0,
     platform: Optional[str] = "all",
+    project_id: Optional[str] = None,
 ):
-    """Get download history with optional platform filter."""
+    """Get download history with optional platform and project filter."""
     manager = get_download_manager()
     history = await manager.get_history(
         limit=limit,
         offset=offset,
         platform=platform if platform != 'all' else None,
+        project_id=project_id or None,
     )
     return {"downloads": history, "total": len(history)}
 
