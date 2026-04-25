@@ -31,15 +31,24 @@ class FacebookEngine(BaseDownloader):
     # ── URL helpers ──────────────────────────────────────────────
 
     async def _expand_short_url(self, url: str) -> str:
-        """Expand fb.watch short links."""
+        """Expand Facebook short/share links to canonical video URL.
+        
+        Handles: fb.watch, share/v/, share/r/ and other redirect patterns.
+        Uses GET (not HEAD) since Facebook requires a full request for some redirects.
+        """
         import httpx
-        if "fb.watch" in url.lower():
+        needs_expand = any(p in url.lower() for p in (
+            "fb.watch", "/share/v/", "/share/r/", "l.facebook.com",
+        ))
+        if needs_expand:
             try:
                 async with httpx.AsyncClient(
                     follow_redirects=True, timeout=15, headers=FB_HEADERS
                 ) as client:
-                    resp = await client.head(url)
-                    return str(resp.url)
+                    resp = await client.get(url)
+                    final_url = str(resp.url)
+                    logger.info(f"Facebook: Expanded {url} -> {final_url}")
+                    return final_url
             except Exception as e:
                 logger.warning(f"Facebook short URL expansion failed: {e}")
         return url

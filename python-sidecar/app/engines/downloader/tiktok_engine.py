@@ -66,11 +66,11 @@ class TikTokEngine(BaseDownloader):
 
     # ── API fetcher ──────────────────────────────────────────────
 
-    async def _fetch_video_detail(self, video_id: str) -> dict:
-        """Fetch video metadata from TikTok API."""
+    async def _fetch_video_detail(self, video_id: str, original_url: str = "") -> dict:
+        """Fetch video metadata from TikTok API, with web scraping fallback."""
         import httpx
 
-        # Try multiple API endpoints in case one is blocked
+        # Strategy 1: Try multiple Mobile API endpoints
         api_urls = [
             f"https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id={video_id}",
             f"https://api22-normal-c-useast2a.tiktokv.com/aweme/v1/feed/?aweme_id={video_id}",
@@ -99,7 +99,7 @@ class TikTokEngine(BaseDownloader):
                         if str(aweme.get("aweme_id")) == str(video_id):
                             return aweme
 
-                    # Fallback: use first item (API sometimes returns the target first)
+                    # Fallback: use first item
                     return aweme_list[0]
 
             except Exception as e:
@@ -107,10 +107,125 @@ class TikTokEngine(BaseDownloader):
                 logger.debug(f"TikTok API {api_url} failed: {e}")
                 continue
 
+        # Strategy 2: Web page scraping fallback
+        logger.info(f"TikTok Mobile API failed, trying web scrape for video {video_id}")
+        web_url = original_url or f"https://www.tiktok.com/@/video/{video_id}"
+        try:
+            result = await self._scrape_web_page(web_url, video_id)
+            if result:
+                return result
+        except Exception as e:
+            logger.debug(f"TikTok web scraping also failed: {e}")
+            last_error = f"API: {last_error} | Web: {e}"
+
         raise DownloadError(
             f"Không thể lấy thông tin video TikTok (ID: {video_id}). "
             f"Lỗi cuối: {last_error}"
         )
+
+    async def _scrape_web_page(self, url: str, video_id: str) -> Optional[dict]:
+        """Scrape TikTok web page for video data embedded in page source.
+        
+        Looks for __UNIVERSAL_DATA_FOR_REHYDRATION__, SIGI_STATE, or 
+        webapp.video-detail patterns in page HTML.
+        """
+        import httpx
+        import json as json_mod
+
+        async with httpx.AsyncClient(
+            timeout=25, follow_redirects=True, headers=TIKTOK_HEADERS
+        ) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                logger.debug(f"TikTok web page returned HTTP {resp.status_code}")
+                return None
+            html = resp.text
+
+        # Pattern 1: __UNIVERSAL_DATA_FOR_REHYDRATION__
+        m = re.search(
+            r'<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)</script>',
+            html, re.DOTALL
+        )
+        if m:
+            try:
+                data = json_mod.loads(m.group(1))
+                default_scope = data.get("__DEFAULT_SCOPE__", {})
+                detail = default_scope.get("webapp.video-detail", {})
+                item_info = detail.get("itemInfo", {}).get("itemStruct", {})
+                if item_info and item_info.get("video"):
+                    return self._web_item_to_aweme(item_info, video_id)
+            except (json_mod.JSONDecodeError, KeyError) as e:
+                logger.debug(f"Failed to parse __UNIVERSAL_DATA__: {e}")
+
+        # Pattern 2: SIGI_STATE
+        m = re.search(
+            r'<script id="SIGI_STATE"[^>]*>(.*?)</script>',
+            html, re.DOTALL
+        )
+        if m:
+            try:
+                data = json_mod.loads(m.group(1))
+                item_module = data.get("ItemModule", {})
+                item = item_module.get(video_id, {})
+                if item and item.get("video"):
+                    return self._web_item_to_aweme(item, video_id)
+            except (json_mod.JSONDecodeError, KeyError) as e:
+                logger.debug(f"Failed to parse SIGI_STATE: {e}")
+
+        # Pattern 3: downloadAddr in raw HTML
+        dl_match = re.search(r'"downloadAddr"\s*:\s*"([^"]+)"', html)
+        play_match = re.search(r'"playAddr"\s*:\s*"([^"]+)"', html)
+        if dl_match or play_match:
+            raw_url = (dl_match or play_match).group(1)
+            raw_url = raw_url.replace("\\u002F", "/").replace("\\u0026", "&")
+            return {
+                "aweme_id": video_id,
+                "desc": "TikTok Video",
+                "author": {"nickname": "Unknown", "unique_id": ""},
+                "video": {
+                    "play_addr": {"url_list": [raw_url]},
+                    "cover": {"url_list": []},
+                    "duration": 0,
+                    "width": 0,
+                    "height": 0,
+                },
+            }
+
+        return None
+
+    def _web_item_to_aweme(self, item: dict, video_id: str) -> dict:
+        """Convert TikTok web page item structure to aweme-compatible dict."""
+        video = item.get("video", {})
+        author = item.get("author", {})
+
+        # Extract video URL from various fields
+        play_url = (
+            video.get("downloadAddr")
+            or video.get("playAddr")
+            or video.get("bitrateInfo", [{}])[0].get("PlayAddr", {}).get("UrlList", [""])[0]
+            or ""
+        )
+        # Unescape
+        if play_url:
+            play_url = play_url.replace("\\u002F", "/").replace("\\u0026", "&")
+
+        cover_url = video.get("cover", "") or video.get("originCover", "")
+
+        return {
+            "aweme_id": video_id,
+            "desc": item.get("desc", "TikTok Video"),
+            "author": {
+                "nickname": author.get("nickname", "Unknown") if isinstance(author, dict) else "Unknown",
+                "unique_id": author.get("uniqueId", "") if isinstance(author, dict) else "",
+            },
+            "video": {
+                "play_addr": {"url_list": [play_url] if play_url else []},
+                "cover": {"url_list": [cover_url] if cover_url else []},
+                "duration": video.get("duration", 0),
+                "width": video.get("width", 0),
+                "height": video.get("height", 0),
+            },
+        }
 
     def _parse_video_urls(self, aweme: dict) -> dict:
         """Extract download URLs and metadata from aweme detail."""
@@ -172,7 +287,7 @@ class TikTokEngine(BaseDownloader):
 
             logger.info(f"TikTok: Extracted video ID: {video_id}")
 
-            aweme = await self._fetch_video_detail(video_id)
+            aweme = await self._fetch_video_detail(video_id, original_url=url)
             parsed = self._parse_video_urls(aweme)
 
             if not parsed["download_url"]:

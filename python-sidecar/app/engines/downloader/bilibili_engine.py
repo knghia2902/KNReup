@@ -69,6 +69,20 @@ class BilibiliEngine(BaseDownloader):
         m = re.search(r"av(\d+)", url, re.IGNORECASE)
         return m.group(1) if m else None
 
+    def _extract_bangumi_ids(self, url: str) -> dict:
+        """Extract season/episode IDs from bangumi URLs.
+        
+        Patterns: /bangumi/play/ss{id}, /bangumi/play/ep{id}
+        """
+        result = {}
+        ss_match = re.search(r"/bangumi/play/ss(\d+)", url)
+        ep_match = re.search(r"/bangumi/play/ep(\d+)", url)
+        if ss_match:
+            result["season_id"] = int(ss_match.group(1))
+        if ep_match:
+            result["ep_id"] = int(ep_match.group(1))
+        return result
+
     # ── API calls ────────────────────────────────────────────────
 
     async def _fetch_video_info(self, bvid: str) -> dict:
@@ -100,12 +114,137 @@ class BilibiliEngine(BaseDownloader):
                 )
             return data["data"]
 
+    async def _fetch_bangumi_info(self, bangumi_ids: dict) -> dict:
+        """Fetch bangumi season/episode info from pgc API."""
+        import httpx
+
+        if "ep_id" in bangumi_ids:
+            api_url = f"https://api.bilibili.com/pgc/view/web/season?ep_id={bangumi_ids['ep_id']}"
+        elif "season_id" in bangumi_ids:
+            api_url = f"https://api.bilibili.com/pgc/view/web/season?season_id={bangumi_ids['season_id']}"
+        else:
+            raise DownloadError("Không có season_id hoặc ep_id trong URL bangumi.")
+
+        async with httpx.AsyncClient(timeout=20, headers=BILIBILI_HEADERS) as client:
+            resp = await client.get(api_url)
+            data = resp.json()
+            code = data.get("code", -1)
+            if code != 0:
+                raise DownloadError(
+                    f"Bilibili bangumi API error (code {code}): "
+                    f"{data.get('message', 'Unknown error')}"
+                )
+            return data.get("result", {})
+
+    async def _analyze_bangumi(self, url: str, bangumi_ids: dict) -> dict:
+        """Analyze a Bilibili bangumi (anime/drama) URL."""
+        import httpx
+
+        logger.info(f"Bilibili: Detected bangumi URL, ids={bangumi_ids}")
+
+        season = await self._fetch_bangumi_info(bangumi_ids)
+        episodes = season.get("episodes", [])
+
+        if not episodes:
+            raise DownloadError(
+                "Không tìm thấy tập phim nào trong bangumi này. "
+                "Nội dung có thể bị giới hạn vùng hoặc yêu cầu VIP."
+            )
+
+        # Pick target episode: if ep_id specified, find it; otherwise use first
+        target_ep = episodes[0]
+        if "ep_id" in bangumi_ids:
+            for ep in episodes:
+                if ep.get("id") == bangumi_ids["ep_id"]:
+                    target_ep = ep
+                    break
+
+        ep_id = target_ep.get("id", 0)
+        cid = target_ep.get("cid", 0)
+        aid = target_ep.get("aid", 0)
+
+        if not cid:
+            raise DownloadError(f"Không tìm thấy cid cho tập phim ep_id={ep_id}")
+
+        # Get play URLs using bangumi playurl API
+        play_url_api = (
+            f"https://api.bilibili.com/pgc/player/web/playurl"
+            f"?ep_id={ep_id}&cid={cid}&fnval=4048&fourk=1"
+        )
+
+        async with httpx.AsyncClient(timeout=20, headers=BILIBILI_HEADERS) as client:
+            resp = await client.get(play_url_api)
+            data = resp.json()
+
+        play_result = data.get("result", data.get("data", {}))
+
+        # Build formats from DASH
+        formats = []
+        dash = play_result.get("dash", {})
+        if dash:
+            for v in dash.get("video", []):
+                qn = v.get("id", 0)
+                label = QUALITY_MAP.get(qn, f"{qn}")
+                formats.append({
+                    "format_id": f"dash-video-{qn}",
+                    "ext": "mp4",
+                    "resolution": label,
+                    "filesize": None,
+                    "vcodec": v.get("codecs", "unknown"),
+                    "acodec": "none",
+                    "format_note": f"DASH video {label}",
+                    "_base_url": v.get("base_url") or v.get("baseUrl"),
+                    "_backup_urls": v.get("backup_url", []) or v.get("backupUrl", []),
+                })
+            audio_streams = dash.get("audio", [])
+            if audio_streams:
+                best_audio = max(audio_streams, key=lambda a: a.get("bandwidth", 0))
+                formats.append({
+                    "format_id": "dash-audio-best",
+                    "ext": "m4a",
+                    "resolution": "audio",
+                    "filesize": None,
+                    "vcodec": "none",
+                    "acodec": best_audio.get("codecs", "aac"),
+                    "format_note": "DASH audio (best)",
+                    "_base_url": best_audio.get("base_url") or best_audio.get("baseUrl"),
+                    "_backup_urls": best_audio.get("backup_url", []) or best_audio.get("backupUrl", []),
+                })
+
+        ep_title = target_ep.get("share_copy") or target_ep.get("long_title") or target_ep.get("title", "")
+        season_title = season.get("title", "Bilibili Bangumi")
+        full_title = f"{season_title} - {ep_title}" if ep_title else season_title
+
+        return {
+            "title": full_title,
+            "uploader": season.get("up_info", {}).get("uname", "Bilibili"),
+            "duration": target_ep.get("duration", 0) // 1000 if target_ep.get("duration", 0) > 1000 else target_ep.get("duration", 0),
+            "thumbnail": target_ep.get("cover", season.get("cover", "")),
+            "platform": "bilibili",
+            "video_id": f"ep{ep_id}",
+            "webpage_url": url,
+            "_cid": cid,
+            "_dash": dash,
+            "_play_data": play_result,
+            "_is_bangumi": True,
+            "_total_episodes": len(episodes),
+            "formats": formats,
+        }
+
     # ── BaseDownloader interface ─────────────────────────────────
 
     async def analyze(self, url: str) -> dict:
-        """Analyze Bilibili URL — extract video metadata and DASH format list."""
+        """Analyze Bilibili URL — extract video metadata and DASH format list.
+        
+        Supports standard video URLs (BV/av) and bangumi URLs (ss/ep).
+        """
         try:
             url = await self._expand_short_url(url)
+
+            # Check if this is a bangumi URL
+            bangumi = self._extract_bangumi_ids(url)
+            if bangumi:
+                return await self._analyze_bangumi(url, bangumi)
 
             bvid = self._extract_bvid(url)
             if not bvid:
