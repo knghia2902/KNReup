@@ -43,7 +43,7 @@ export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps)
     }
 
     vf.sort((a, b) => {
-      const getHeight = (r: string) => parseInt(r.replace(/[^0-9]/g, '')) || 0;
+      const getHeight = (r: string | null | undefined) => parseInt((r || '0').replace(/[^0-9]/g, '')) || 0;
       return getHeight(b.resolution) - getHeight(a.resolution);
     });
 
@@ -163,7 +163,7 @@ export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps)
                   <div className="dl-fr-main">
                     <div className="dl-fr-top">
                       <span className="dl-fr-title">
-                        {f.ext.toUpperCase()} {f.resolution === 'audio only' ? '' : f.resolution}
+                        {(f.ext || 'mp4').toUpperCase()} {f.resolution === 'audio only' ? '' : (f.resolution || '')}
                       </span>
                       {badge.label && (
                         <span className={`dl-fr-badge ${badge.class}`}>{badge.label}</span>
@@ -217,13 +217,14 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function getResolutionBadge(resolution: string): { label: string; class: string } {
-  if (resolution.includes('2160') || resolution.includes('4K')) return { label: '4K', class: 'badge-4k' };
-  if (resolution.includes('1440')) return { label: '2K', class: 'badge-2k' };
-  if (resolution.includes('1080')) return { label: 'FHD', class: 'badge-fhd' };
-  if (resolution.includes('720')) return { label: 'HD', class: 'badge-hd' };
-  if (resolution.includes('480')) return { label: 'SD', class: 'badge-sd' };
-  return { label: resolution, class: '' };
+function getResolutionBadge(resolution: string | null | undefined): { label: string; class: string } {
+  const r = resolution || '';
+  if (r.includes('2160') || r.includes('4K')) return { label: '4K', class: 'badge-4k' };
+  if (r.includes('1440')) return { label: '2K', class: 'badge-2k' };
+  if (r.includes('1080')) return { label: 'FHD', class: 'badge-fhd' };
+  if (r.includes('720')) return { label: 'HD', class: 'badge-hd' };
+  if (r.includes('480')) return { label: 'SD', class: 'badge-sd' };
+  return { label: r || 'Unknown', class: '' };
 }
 
 function getPlatformIcon(platform: string): string {
