@@ -113,6 +113,7 @@ class DownloadManager:
         """Analyze URL — detect platform and extract metadata + formats.
         
         Uses native engine first; falls back to yt-dlp if native fails.
+        Caches thumbnail locally to avoid CDN expiration issues.
         """
         platform = self._detect_platform(url)
         engine = self._get_engine(platform)
@@ -120,6 +121,8 @@ class DownloadManager:
         try:
             result = await engine.analyze(url)
             result['platform'] = platform
+            # Cache thumbnail immediately while URL is fresh
+            result = await self._cache_analyze_thumbnail(result, platform)
             return result
         except Exception as native_err:
             # Hybrid fallback: if native engine fails, try yt-dlp
@@ -132,6 +135,7 @@ class DownloadManager:
                     result = await self.ytdlp.analyze(url)
                     result['platform'] = platform
                     result['_fallback'] = True
+                    result = await self._cache_analyze_thumbnail(result, platform)
                     return result
                 except Exception as fallback_err:
                     logger.error(f"yt-dlp fallback also failed: {fallback_err}")
@@ -141,6 +145,17 @@ class DownloadManager:
                     )
             logger.error(f"Analyze failed for {url}: {native_err}")
             raise DownloadError(f"Failed to analyze URL: {str(native_err)}")
+
+    async def _cache_analyze_thumbnail(self, result: dict, platform: str) -> dict:
+        """Cache the thumbnail from analyze result to local file."""
+        thumb_url = result.get('thumbnail', '')
+        video_id = result.get('video_id', '')
+        if thumb_url and thumb_url.startswith('http'):
+            cached = await self._cache_thumbnail(thumb_url, video_id, platform)
+            if cached != thumb_url:  # Successfully cached locally
+                result['thumbnail'] = cached
+                logger.debug(f"Thumbnail cached during analyze: {cached}")
+        return result
 
     async def start_download(
         self,
