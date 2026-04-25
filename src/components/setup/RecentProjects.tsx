@@ -2,9 +2,10 @@
  * RecentProjects — Grid display of recent project cards with thumbnails
  * Phase 09, Plan 02
  */
+import { useState, useRef, useEffect } from 'react';
 import { useLauncherStore, type ProjectMetadata } from '../../stores/useLauncherStore';
 import { openEditor, openDownloaderForProject } from '../../utils/windowManager';
-import { Folder, Clock, Trash, DownloadSimple } from '@phosphor-icons/react';
+import { Folder, Clock, Trash, DownloadSimple, PencilSimple } from '@phosphor-icons/react';
 
 function formatDate(timestamp: number): string {
   const d = new Date(timestamp);
@@ -23,19 +24,58 @@ function formatDate(timestamp: number): string {
 
 function ProjectCard({ project }: { project: ProjectMetadata }) {
   const removeProject = useLauncherStore((s) => s.removeProject);
+  const updateProject = useLauncherStore((s) => s.updateProject);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(project.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const handleOpen = async () => {
+    if (isEditing) return;
     await openEditor(project.id);
   };
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
-    removeProject(project.id);
+    if (window.confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}" không?`)) {
+      removeProject(project.id);
+    }
   };
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await openDownloaderForProject(project.id);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    setEditName(project.name);
+  };
+
+  const saveEdit = () => {
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== project.name) {
+      updateProject(project.id, { name: trimmed });
+    }
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditName(project.name);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') saveEdit();
+    if (e.key === 'Escape') cancelEdit();
   };
 
   return (
@@ -59,45 +99,53 @@ function ProjectCard({ project }: { project: ProjectMetadata }) {
         </div>
       )}
       <div className="launcher-project-info">
-        <p className="launcher-project-name">{project.name}</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {isEditing ? (
+          <div className="launcher-project-edit-row" onClick={e => e.stopPropagation()}>
+            <input 
+              ref={inputRef}
+              type="text" 
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={saveEdit}
+              className="launcher-project-edit-input"
+            />
+          </div>
+        ) : (
+          <p className="launcher-project-name">{project.name}</p>
+        )}
+        
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
           <span className="launcher-project-meta">
             <Clock size={10} weight="bold" style={{ marginRight: 4, verticalAlign: 'middle' }} />
             {formatDate(project.lastModified)}
           </span>
-          <div style={{ display: 'flex', gap: 4 }}>
-            <button
-              onClick={handleDownload}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--accent, #3b82f6)',
-                padding: 2,
-                borderRadius: 4,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title="Tải media cho dự án"
-            >
-              <DownloadSimple size={12} weight="bold" />
-            </button>
-            <button
-              onClick={handleRemove}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-muted, #666)',
-                padding: 2,
-                borderRadius: 4,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title="Xóa khỏi danh sách"
-            >
-              <Trash size={12} weight="bold" />
-            </button>
+          <div className="launcher-project-actions" style={{ display: 'flex', gap: 4 }}>
+            {!isEditing && (
+              <>
+                <button
+                  onClick={handleEditClick}
+                  className="launcher-card-btn"
+                  title="Đổi tên dự án"
+                >
+                  <PencilSimple size={12} weight="bold" />
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="launcher-card-btn"
+                  title="Tải media cho dự án"
+                >
+                  <DownloadSimple size={12} weight="bold" />
+                </button>
+                <button
+                  onClick={handleRemove}
+                  className="launcher-card-btn trash-btn"
+                  title="Xóa khỏi danh sách"
+                >
+                  <Trash size={12} weight="bold" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

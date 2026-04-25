@@ -2,7 +2,7 @@
  * HomeLauncher — CapCut-style Home/Project Manager
  * Phase 09, Plan 02: Full dashboard with hero, tools, and recent projects.
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import { openEditor, openTool } from '../../utils/windowManager';
 import { useLauncherStore } from '../../stores/useLauncherStore';
 import {
@@ -29,11 +29,17 @@ export function HomeLauncher() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleNewProject = async () => {
+    const defaultName = `Dự án ${projectCount + 1}`;
+    const name = window.prompt('Nhập tên dự án mới:', defaultName);
+    if (name === null) return; // User cancelled
+    
+    const finalName = name.trim() || defaultName;
     const id = `proj-${Date.now()}`;
+    
     // Add to launcher store
     useLauncherStore.getState().addProject({
       id,
-      name: `Dự án ${projectCount + 1}`,
+      name: finalName,
       path: '',
       createdAt: Date.now(),
       lastModified: Date.now(),

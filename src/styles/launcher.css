@@ -356,3 +356,49 @@
   font-size: 11px;
   color: var(--text-muted, #888);
 }
+
+/* Project Card Actions */
+.launcher-card-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, #888);
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.launcher-card-btn:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
+
+.launcher-card-btn.trash-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Inline Edit */
+.launcher-project-edit-row {
+  margin: 0 0 4px;
+}
+
+.launcher-project-edit-input {
+  width: 100%;
+  background: var(--surface, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--accent, #7c6aef);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 4px;
+  margin-left: -4px;
+  outline: none;
+}
+
+.launcher-project-edit-input:focus {
+  box-shadow: 0 0 0 2px rgba(124, 106, 239, 0.2);
+}
