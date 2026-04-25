@@ -30,20 +30,21 @@ export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps)
   }, [videoInfo, checkFileExistence]);
 
   const { videoFormats, audioFormats } = useMemo(() => {
-    // Sorting logic...
     const vf: VideoFormat[] = [];
     const af: VideoFormat[] = [];
     
     for (const f of videoInfo.formats) {
-      if (f.resolution !== 'audio only') {
-        vf.push(f);
-      } else {
+      // Normalize null/undefined resolution to empty string
+      const res = f.resolution ?? '';
+      if (res === 'audio only') {
         af.push(f);
+      } else {
+        vf.push(f);
       }
     }
 
     vf.sort((a, b) => {
-      const getHeight = (r: string | null | undefined) => parseInt((r || '0').replace(/[^0-9]/g, '')) || 0;
+      const getHeight = (r: string | null | undefined) => parseInt(String(r ?? '0').replace(/[^0-9]/g, '')) || 0;
       return getHeight(b.resolution) - getHeight(a.resolution);
     });
 
