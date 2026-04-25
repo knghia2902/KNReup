@@ -7,15 +7,11 @@ import type { CookieStatus } from '../../hooks/useDownloader';
 interface DouyinAuthWidgetProps {
   cookieStatus: CookieStatus | null;
   onSet: (cookieString: string) => Promise<any>;
-  onSync: (browser?: string) => Promise<any>;
-  isSyncing: boolean;
 }
 
 export function DouyinAuthWidget({ 
   cookieStatus, 
-  onSet,
-  onSync,
-  isSyncing 
+  onSet
 }: DouyinAuthWidgetProps) {
   const [isOpeningWebView, setIsOpeningWebView] = useState(false);
 
@@ -46,17 +42,7 @@ export function DouyinAuthWidget({
       const { invoke } = await import('@tauri-apps/api/core');
       pollInterval = setInterval(async () => {
         try {
-          // 1. Try backend sync first (most reliable decryption from disk)
-          console.log('Polling backend for cookie sync...');
-          const result = await onSync('auto');
-          if (result && result.success) {
-            console.log('Session synced via backend polling');
-            if (pollInterval) clearInterval(pollInterval);
-            webview.close();
-            return;
-          }
-
-          // 2. Fallback: Try custom native Rust command to get cookies from memory
+          // Poll native Rust command to get cookies from memory
           const cookies = await invoke<string>('get_webview_cookies', { 
             window: webview.label 
           });
@@ -65,7 +51,11 @@ export function DouyinAuthWidget({
             console.log('Session ID found via native capture');
             onSet(cookies);
             if (pollInterval) clearInterval(pollInterval);
-            webview.close();
+            try {
+              webview.close();
+            } catch (e) {
+              // Ignore window not found
+            }
           }
         } catch (e) {
           // Silently fail if window is closing
@@ -118,7 +108,7 @@ export function DouyinAuthWidget({
         <button 
           className="dl-auth-btn"
           onClick={handleLogin}
-          disabled={isSyncing || isOpeningWebView}
+          disabled={isOpeningWebView}
         >
           <Globe size={18} />
           {isOpeningWebView ? 'Login Open' : 'Login Douyin'}

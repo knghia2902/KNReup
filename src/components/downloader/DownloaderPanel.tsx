@@ -31,14 +31,12 @@ export function DownloaderPanel() {
     queue,
     history,
     cookieStatus,
-    isSyncingCookie,
     analyzeURL,
     startDownload,
     cancelDownload,
     deleteDownload,
     showInFolder,
     fetchHistory,
-    syncCookie,
     setCookie,
     checkCookie,
     checkFileExistence,
@@ -93,8 +91,6 @@ export function DownloaderPanel() {
                 <DouyinAuthWidget
                   cookieStatus={cookieStatus}
                   onSet={setCookie}
-                  onSync={syncCookie}
-                  isSyncing={isSyncingCookie}
                 />
               </div>
             </div>
