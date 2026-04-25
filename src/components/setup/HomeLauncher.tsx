@@ -28,12 +28,21 @@ export function HomeLauncher() {
   const projectCount = useLauncherStore((s) => s.recentProjects.length);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleNewProject = async () => {
-    const defaultName = `Dự án ${projectCount + 1}`;
-    const name = window.prompt('Nhập tên dự án mới:', defaultName);
-    if (name === null) return; // User cancelled
-    
-    const finalName = name.trim() || defaultName;
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+
+  const openCreateModal = () => {
+    setNewProjectName(`Dự án ${projectCount + 1}`);
+    setIsCreatingProject(true);
+  };
+
+  const closeCreateModal = () => {
+    setIsCreatingProject(false);
+  };
+
+  const handleNewProjectSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const finalName = newProjectName.trim() || `Dự án ${projectCount + 1}`;
     const id = `proj-${Date.now()}`;
     
     // Add to launcher store
@@ -44,6 +53,7 @@ export function HomeLauncher() {
       createdAt: Date.now(),
       lastModified: Date.now(),
     });
+    closeCreateModal();
     // Open editor window
     await openEditor(id);
   };
@@ -108,7 +118,7 @@ export function HomeLauncher() {
               Lồng tiếng, dịch phụ đề, và chỉnh sửa video chuyên nghiệp với AI
             </p>
             <div className="launcher-hero-actions">
-              <button className="launcher-create-btn" onClick={handleNewProject}>
+              <button className="launcher-create-btn" onClick={openCreateModal}>
                 <Plus size={18} weight="bold" />
                 Tạo dự án mới
               </button>
@@ -160,6 +170,29 @@ export function HomeLauncher() {
           </div>
         </div>
       </div>
+
+      {/* Custom Name Modal */}
+      {isCreatingProject && (
+        <div className="launcher-modal-overlay" onClick={closeCreateModal}>
+          <div className="launcher-modal" onClick={e => e.stopPropagation()}>
+            <h3 className="launcher-modal-title">Tạo dự án mới</h3>
+            <form onSubmit={handleNewProjectSubmit}>
+              <input
+                autoFocus
+                type="text"
+                className="launcher-modal-input"
+                placeholder="Nhập tên dự án..."
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+              />
+              <div className="launcher-modal-actions">
+                <button type="button" className="launcher-modal-btn cancel" onClick={closeCreateModal}>Hủy</button>
+                <button type="submit" className="launcher-modal-btn create">Tạo mới</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

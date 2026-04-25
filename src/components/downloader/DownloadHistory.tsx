@@ -6,7 +6,7 @@ interface DownloadHistoryProps {
   history: DownloadItem[];
   queue: DownloadItem[];
   onFetch: (limit?: number, offset?: number, platform?: string, projectId?: string) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: number, deleteFile?: boolean) => void;
   onCancel: (id: number) => void;
   onShow: (id: number) => void;
   onDownload?: (url: string, format_id?: string, overwrites?: boolean, meta?: Partial<DownloadItem>, projectId?: string, projectName?: string) => void;
@@ -45,6 +45,7 @@ export function DownloadHistory({
   history, queue, onFetch, onDelete, onCancel, onShow, onDownload, checkFileExistence, connected = true, projectId 
 }: DownloadHistoryProps) {
   const [missingFiles, setMissingFiles] = useState<Record<number, boolean>>({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   // Auto-refresh on focus or periodically
   useEffect(() => {
@@ -128,8 +129,41 @@ export function DownloadHistory({
   });
 
 
+  const handleDeleteClick = (id: number) => {
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId !== null) {
+      onDelete(deleteConfirmId, true);
+    }
+    setDeleteConfirmId(null);
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
+  };
+
   return (
     <div className="dl-recent-section">
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteConfirmId !== null && (
+        <div className="dl-modal-overlay" onClick={cancelDelete}>
+          <div className="dl-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="dl-modal-icon">🗑️</div>
+            <div className="dl-modal-text">
+              <h2>Xác nhận xóa</h2>
+              <p>
+                Bạn có chắc chắn muốn xóa lịch sử này và <strong>xóa luôn file video đã tải xuống</strong> (nếu có)?
+              </p>
+            </div>
+            <div className="dl-modal-actions">
+              <button className="dl-modal-btn secondary" onClick={cancelDelete}>Hủy</button>
+              <button className="dl-modal-btn primary" style={{ backgroundColor: '#ef4444' }} onClick={confirmDelete}>Xóa Đồng Ý</button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
       <div className="dl-recent-table">
@@ -223,8 +257,8 @@ export function DownloadHistory({
                       ) : (
                         <button 
                           className="dl-rt-btn delete" 
-                          onClick={() => onDelete(item.id)} 
-                          title="Xóa lịch sử"
+                          onClick={() => handleDeleteClick(item.id)} 
+                          title="Xóa lịch sử & file"
                         >
                           <Trash size={18} weight="bold" />
                         </button>

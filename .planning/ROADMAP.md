@@ -233,6 +233,17 @@ Plans:
 - [ ] 24-02-PLAN.md — Project Hub Experience (Editor Load & Launcher UI).
 - [ ] 24-03-PLAN.md — Downloader History Refinement (Project-specific filtering).
 
+### Phase 25: download video fb, tiktok, bilibili, hybird... Tham khảo http://github.com/Evil0ctal/Douyin_TikTok_Download_API/tree/main/crawlers
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 24
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 25 to break down)
+
+
 ---
 
 ## Phase 10: Voice Clone - OmniVoice Integration

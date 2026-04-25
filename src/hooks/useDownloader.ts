@@ -222,9 +222,9 @@ export function useDownloader() {
   }, []);
 
   // ─── Delete Download ──────────────────────────────────
-  const deleteDownload = useCallback(async (downloadId: number) => {
+  const deleteDownload = useCallback(async (downloadId: number, deleteFile: boolean = false) => {
     try {
-      await sidecar.fetch(`/api/download/${downloadId}`, { method: 'DELETE' });
+      await sidecar.fetch(`/api/download/${downloadId}?delete_file=${deleteFile}`, { method: 'DELETE' });
       setHistory(prev => prev.filter(item => item.id !== downloadId));
       setQueue(prev => prev.filter(item => item.id !== downloadId));
     } catch (err: any) {

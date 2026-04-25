@@ -73,6 +73,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 21 added: CapCut-Style Panel Auto-Switch
 - Phase 22 added: Full Mix Preview
 - Phase 23 added: Fix bugs and refine UI
+- Phase 25 added: download video fb, tiktok, bilibili, hybird... Tham khảo http://github.com/Evil0ctal/Douyin_TikTok_Download_API/tree/main/crawlers
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
@@ -116,3 +117,5 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 |------|------|--------|
 | 2026-04-23 | centralize-theme-control | Tập trung quyền đổi theme tại Home, xóa toggles ở Editor/Tools, đồng bộ real-time |
 | 2026-04-23 | fix-darkmode-sync-issue | Thống nhất logic Dark Mode bằng useTheme hook dùng chung |
+| 2026-04-25 | delete-downloader-file | Thêm popup xác nhận xóa và xóa luôn file gốc trong Downloader window |
+| 2026-04-25 | fix-downloader-delete-modal | Đổi popup window.confirm thành modal React custom cho chức năng xóa Downloader |
