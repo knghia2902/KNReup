@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useDownloader, type VideoInfo, VideoFormat, DownloadItem } from '../../hooks/useDownloader';
+import { sidecar } from '../../lib/sidecar';
 
 function getThumbnailSrc(url: string | null | undefined): string | null {
   if (!url) return null;
   const t = url.trim();
-  if (/^[A-Za-z]:[\\/]/.test(t) || t.startsWith('/')) return convertFileSrc(t);
+  if (/^[A-Za-z]:[\\\/]/.test(t) || t.startsWith('/')) return convertFileSrc(t);
+  if (t.startsWith('http')) return `${sidecar.getBaseUrl()}/api/proxy?url=${encodeURIComponent(t)}`;
   return t;
 }
 

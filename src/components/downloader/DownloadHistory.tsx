@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Trash, CloudArrowDown, ArrowCounterClockwise, StopCircle, FolderOpen, ArrowsLeftRight } from '@phosphor-icons/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { sidecar } from '../../lib/sidecar';
 import { useLauncherStore } from '../../stores/useLauncherStore';
 import type { DownloadItem } from '../../hooks/useDownloader';
 
 /**
- * Resolve thumbnail URL — local file paths go through Tauri asset protocol,
- * remote URLs are used directly (with onError fallback).
+ * Resolve thumbnail URL:
+ * - Local path → Tauri asset protocol
+ * - Remote URL → proxy through sidecar (adds UA/Referer to bypass CDN 403)
  */
 function getThumbnailSrc(url: string | null | undefined): string | null {
   if (!url) return null;
-  const trimmed = url.trim();
-  // Local file path (Windows drive letter or Unix /)
-  if (/^[A-Za-z]:[\\/]/.test(trimmed) || trimmed.startsWith('/')) {
-    return convertFileSrc(trimmed);
+  const t = url.trim();
+  if (/^[A-Za-z]:[\\\/]/.test(t) || t.startsWith('/')) {
+    return convertFileSrc(t);
   }
-  // Remote URL — pass through
-  return trimmed;
+  if (t.startsWith('http')) {
+    return `${sidecar.getBaseUrl()}/api/proxy?url=${encodeURIComponent(t)}`;
+  }
+  return t;
 }
 
 interface DownloadHistoryProps {

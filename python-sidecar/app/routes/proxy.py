@@ -70,10 +70,44 @@ async def proxy_url(url: str):
         # 2. Nếu là remote URL
         if target_path.startswith("http"):
             logger.info(f"Proxying remote URL: {target_path}")
+
+            # Detect referer from URL domain
+            try:
+                parsed = urllib.parse.urlparse(target_path)
+                referer = f"{parsed.scheme}://{parsed.netloc}/"
+            except Exception:
+                referer = ""
+
+            proxy_headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/130.0.0.0 Safari/537.36"
+                ),
+                "Referer": referer,
+                "Accept": "*/*",
+            }
+
+            # Detect content type from URL
+            content_type = "application/octet-stream"
+            url_lower = target_path.lower()
+            if any(ext in url_lower for ext in ('.jpg', '.jpeg', 'image/jpeg')):
+                content_type = "image/jpeg"
+            elif '.png' in url_lower or 'image/png' in url_lower:
+                content_type = "image/png"
+            elif '.webp' in url_lower:
+                content_type = "image/webp"
+            elif '.gif' in url_lower:
+                content_type = "image/gif"
+            elif any(ext in url_lower for ext in ('.mp3', '.m4a', 'audio/')):
+                content_type = "audio/mpeg"
+            elif any(ext in url_lower for ext in ('.mp4', '.m4v', 'video/')):
+                content_type = "video/mp4"
+
             async def stream():
                 try:
                     async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-                        async with client.stream("GET", target_path) as req:
+                        async with client.stream("GET", target_path, headers=proxy_headers) as req:
                             if req.status_code >= 400:
                                 logger.error(f"Remote server returned {req.status_code} for {target_path}")
                                 return
@@ -85,7 +119,7 @@ async def proxy_url(url: str):
             
             return StreamingResponse(
                 stream(),
-                media_type="audio/mpeg",
+                media_type=content_type,
                 headers=cors_headers
             )
         
