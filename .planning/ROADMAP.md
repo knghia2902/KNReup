@@ -229,19 +229,22 @@ Plans:
 **UAT**: Home -> Click Downloader dự án A -> Tải video -> Video lưu vào folder dự án A -> Mở Editor dự án A -> Video đã có sẵn trong Media Bin.
 
 **Plans:** 3 plans
-- [ ] 24-01-PLAN.md — Infrastructure & Integration Foundation (Backend & Store).
-- [ ] 24-02-PLAN.md — Project Hub Experience (Editor Load & Launcher UI).
-- [ ] 24-03-PLAN.md — Downloader History Refinement (Project-specific filtering).
+- [x] 24-01-PLAN.md — Infrastructure & Integration Foundation (Backend & Store).
+- [x] 24-02-PLAN.md — Project Hub Experience (Editor Load & Launcher UI).
+- [x] 24-03-PLAN.md — Downloader History Refinement (Project-specific filtering).
 
-### Phase 25: download video fb, tiktok, bilibili, hybird... Tham khảo http://github.com/Evil0ctal/Douyin_TikTok_Download_API/tree/main/crawlers
+### Phase 25: Social Media Crawlers (TikTok, Bilibili, Facebook, Hybrid)
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Native no-watermark crawlers for TikTok, Bilibili, Facebook with yt-dlp hybrid fallback.
+**Requirements**: DL-TT-01, DL-BL-01, DL-FB-01, DL-HY-01
 **Depends on:** Phase 24
-**Plans:** 0 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 25 to break down)
+- [x] 25-01-PLAN.md — TikTok No-Watermark Crawler (completed 2026-04-25)
+- [x] 25-02-PLAN.md — Bilibili & Facebook Crawlers (completed 2026-04-25)
+- [x] 25-03-PLAN.md — Facebook & Hybrid Fallback Crawlers (completed 2026-04-25)
+**Status**: ✅ Complete (2026-04-25)
 
 
 ---

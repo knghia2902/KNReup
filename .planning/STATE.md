@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 23 shipped directly to main
-last_updated: "2026-04-24T12:30:24.094Z"
-last_activity: 2026-04-24
+status: Phase 25 complete — Social Media Crawlers
+last_updated: "2026-04-25T23:45:00.000Z"
+last_activity: 2026-04-25
 progress:
   total_phases: 25
-  completed_phases: 11
-  total_plans: 33
-  completed_plans: 29
-  percent: 88
+  completed_phases: 12
+  total_plans: 36
+  completed_plans: 32
+  percent: 89
 ---
 
 # STATE.md — KNReup Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
-- **Phase:** 10
-- **Status:** Phase 23 shipped directly to main
-- **Last activity:** 2026-04-24
+- **Phase:** 25
+- **Status:** Phase 25 complete — Social Media Crawlers
+- **Last activity:** 2026-04-25
 
 ## Context
 
@@ -107,6 +107,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 18 | TTS Speed Control | 📝 Not Started |
 | 19 | Favorite Voice Profiles | 📝 Not Started |
 | 20 | Voice Studio Quick Wins | 📝 Not Started |
+| 25 | Social Media Crawlers | ✅ Complete |
 
 ---
 *Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*
