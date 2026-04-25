@@ -12,6 +12,9 @@ from typing import Optional, Callable
 from .base import DownloadError
 from .ytdlp_engine import YtdlpDownloader
 from .douyin_engine import DouyinDownloader
+from .tiktok_engine import TikTokEngine
+from .bilibili_engine import BilibiliEngine
+from .fb_engine import FacebookEngine
 import platform
 import re
 import subprocess
@@ -34,6 +37,9 @@ class DownloadManager:
         self.semaphore = asyncio.Semaphore(max_concurrent)
         self.ytdlp = YtdlpDownloader()
         self.douyin = DouyinDownloader()
+        self.tiktok = TikTokEngine()
+        self.bilibili = BilibiliEngine()
+        self.facebook = FacebookEngine()
         self._tasks: dict[int, asyncio.Task] = {}
         self._progress_callbacks: dict[int, list[Callable]] = {}
 
@@ -42,16 +48,29 @@ class DownloadManager:
         url_lower = url.lower()
         if 'douyin.com' in url_lower or 'iesdouyin.com' in url_lower:
             return 'douyin'
+        if 'tiktok.com' in url_lower:
+            return 'tiktok'
+        if 'bilibili.com' in url_lower or 'b23.tv' in url_lower:
+            return 'bilibili'
+        if 'facebook.com' in url_lower or 'fb.watch' in url_lower or 'fb.com' in url_lower:
+            return 'facebook'
         return self.ytdlp._detect_platform(url)
 
     def _get_engine(self, platform: str):
-        """Get the appropriate engine for a platform."""
-        if platform == 'douyin':
-            return self.douyin
-        return self.ytdlp
+        """Get the native engine for a platform (or yt-dlp fallback)."""
+        engines = {
+            'douyin': self.douyin,
+            'tiktok': self.tiktok,
+            'bilibili': self.bilibili,
+            'facebook': self.facebook,
+        }
+        return engines.get(platform, self.ytdlp)
 
     async def analyze(self, url: str) -> dict:
-        """Analyze URL — detect platform and extract metadata + formats."""
+        """Analyze URL — detect platform and extract metadata + formats.
+        
+        Uses native engine first; falls back to yt-dlp if native fails.
+        """
         platform = self._detect_platform(url)
         engine = self._get_engine(platform)
         
@@ -59,9 +78,26 @@ class DownloadManager:
             result = await engine.analyze(url)
             result['platform'] = platform
             return result
-        except Exception as e:
-            logger.error(f"Analyze failed for {url}: {e}")
-            raise DownloadError(f"Failed to analyze URL: {str(e)}")
+        except Exception as native_err:
+            # Hybrid fallback: if native engine fails, try yt-dlp
+            if engine is not self.ytdlp:
+                logger.warning(
+                    f"Native {engine.engine_name} analyze failed for {url}: {native_err}. "
+                    f"Falling back to yt-dlp."
+                )
+                try:
+                    result = await self.ytdlp.analyze(url)
+                    result['platform'] = platform
+                    result['_fallback'] = True
+                    return result
+                except Exception as fallback_err:
+                    logger.error(f"yt-dlp fallback also failed: {fallback_err}")
+                    raise DownloadError(
+                        f"Cả engine gốc ({engine.engine_name}) và yt-dlp đều thất bại. "
+                        f"Lỗi gốc: {native_err} | Lỗi yt-dlp: {fallback_err}"
+                    )
+            logger.error(f"Analyze failed for {url}: {native_err}")
+            raise DownloadError(f"Failed to analyze URL: {str(native_err)}")
 
     async def start_download(
         self,
@@ -206,7 +242,18 @@ class DownloadManager:
                             except Exception:
                                 pass
 
-                file_path = await engine.download(url, format_id, output_dir, progress_cb, overwrites=overwrites)
+                try:
+                    file_path = await engine.download(url, format_id, output_dir, progress_cb, overwrites=overwrites)
+                except Exception as native_dl_err:
+                    # Hybrid fallback: if native engine download fails, try yt-dlp
+                    if engine is not self.ytdlp:
+                        logger.warning(
+                            f"Native {engine.engine_name} download failed: {native_dl_err}. "
+                            f"Falling back to yt-dlp for download."
+                        )
+                        file_path = await self.ytdlp.download(url, format_id, output_dir, progress_cb, overwrites=overwrites)
+                    else:
+                        raise
 
                 
                 file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
