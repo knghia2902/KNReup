@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen } from '@tauri-apps/api/event';
-import { CheckCircle, Warning, Globe } from '@phosphor-icons/react';
+import { CheckCircle, Globe } from '@phosphor-icons/react';
 import type { CookieStatus } from '../../hooks/useDownloader';
 
 interface DouyinAuthWidgetProps {
@@ -101,47 +101,29 @@ export function DouyinAuthWidget({
     onSet('');
   };
 
-  const statusLabel = cookieStatus?.valid ? 'Logout' : cookieStatus === null ? 'No Session' : 'Session Expired';
-  const statusIcon = cookieStatus?.valid ? <CheckCircle weight="fill" /> : <Warning weight="fill" />;
-
   return (
     <div className="dl-auth-widget">
-      <div className="dl-auth-info">
-        <div className={`dl-status-dot ${cookieStatus?.valid ? 'active' : ''}`} />
-        {cookieStatus?.valid ? (
+      {cookieStatus?.valid ? (
+        <div className="dl-auth-info">
+          <div className="dl-status-dot active" />
           <button 
             className="dl-logout-btn" 
             onClick={handleLogout}
             title="Click to logout"
           >
-            {statusIcon}
-            {statusLabel}
-          </button>
-        ) : (
-          <span className="dl-status-text" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {statusIcon}
-            {statusLabel}
-          </span>
-        )}
-      </div>
-
-      {!cookieStatus?.valid && (
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            className="dl-auth-btn"
-            onClick={handleLogin}
-            disabled={isSyncing || isOpeningWebView}
-          >
-            <Globe size={18} />
-            {isOpeningWebView ? 'Login Open' : 'Login Douyin'}
+            <CheckCircle weight="fill" />
+            Logout
           </button>
         </div>
-      )}
-      
-      {cookieStatus?.message && !cookieStatus.valid && (
-        <span className="dl-error-message" style={{ paddingLeft: 0 }}>
-          {cookieStatus.message}
-        </span>
+      ) : (
+        <button 
+          className="dl-auth-btn"
+          onClick={handleLogin}
+          disabled={isSyncing || isOpeningWebView}
+        >
+          <Globe size={18} />
+          {isOpeningWebView ? 'Login Open' : 'Login Douyin'}
+        </button>
       )}
     </div>
   );
