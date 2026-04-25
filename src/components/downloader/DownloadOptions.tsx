@@ -1,5 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { useDownloader, type VideoInfo, VideoFormat, DownloadItem } from '../../hooks/useDownloader';
+
+function getThumbnailSrc(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const t = url.trim();
+  if (/^[A-Za-z]:[\\/]/.test(t) || t.startsWith('/')) return convertFileSrc(t);
+  return t;
+}
 
 interface DownloadOptionsProps {
   videoInfo: VideoInfo;
@@ -109,7 +117,7 @@ export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps)
         <div className="dl-thumbnail">
           {videoInfo.thumbnail ? (
             <img 
-              src={videoInfo.thumbnail} 
+              src={getThumbnailSrc(videoInfo.thumbnail) || ''} 
               alt={videoInfo.title} 
               onError={(e) => { 
                 (e.target as HTMLImageElement).style.display = 'none'; 

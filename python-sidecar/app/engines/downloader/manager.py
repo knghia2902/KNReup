@@ -42,6 +42,49 @@ class DownloadManager:
         self.facebook = FacebookEngine()
         self._tasks: dict[int, asyncio.Task] = {}
         self._progress_callbacks: dict[int, list[Callable]] = {}
+        self._thumb_cache_dir = os.path.join(DEFAULT_OUTPUT_DIR, '.thumbnails')
+        os.makedirs(self._thumb_cache_dir, exist_ok=True)
+
+    async def _cache_thumbnail(self, thumb_url: str, video_id: str, platform: str) -> str:
+        """Download thumbnail to local cache, return local file path.
+        
+        Falls back to original URL if download fails.
+        """
+        if not thumb_url or not thumb_url.startswith('http'):
+            return thumb_url
+
+        # Build local filename
+        safe_id = re.sub(r'[^\w\-]', '_', video_id or 'unknown')
+        ext = '.jpg'  # Default — most thumbnails are JPEG
+        if '.png' in thumb_url.lower():
+            ext = '.png'
+        elif '.webp' in thumb_url.lower():
+            ext = '.webp'
+        
+        local_path = os.path.join(self._thumb_cache_dir, f"{platform}_{safe_id}{ext}")
+
+        # Skip if already cached
+        if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+            return local_path
+
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                resp = await client.get(thumb_url, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': f'https://www.{platform}.com/',
+                })
+                if resp.status_code == 200 and len(resp.content) > 100:
+                    with open(local_path, 'wb') as f:
+                        f.write(resp.content)
+                    logger.debug(f"Cached thumbnail: {local_path}")
+                    return local_path
+                else:
+                    logger.debug(f"Thumbnail download returned {resp.status_code}, using remote URL")
+        except Exception as e:
+            logger.debug(f"Thumbnail cache failed: {e}")
+        
+        return thumb_url
 
     def _detect_platform(self, url: str) -> str:
         """Detect platform from URL."""
@@ -126,6 +169,9 @@ class DownloadManager:
         # Create or Update DB record to avoid duplicates
         try:
             video_id = info.get('video_id', '')
+            # Cache thumbnail locally to avoid CDN 403 issues
+            raw_thumb = info.get('thumbnail', '')
+            thumb_url = await self._cache_thumbnail(raw_thumb, video_id, platform)
             existing = await find_existing_download(url=url, video_id=video_id, media_type=media_type)
             
             if existing:
@@ -142,7 +188,7 @@ class DownloadManager:
                     metadata=None,
                     created_at=datetime.utcnow().isoformat().replace('T', ' '), 
                     title=info.get('title', existing.get('title', 'Unknown')),
-                    thumbnail_url=info.get('thumbnail', existing.get('thumbnail_url', '')),
+                    thumbnail_url=thumb_url or existing.get('thumbnail_url', ''),
                 )
                 if project_id:
                     update_fields['project_id'] = project_id
@@ -154,7 +200,7 @@ class DownloadManager:
                     title=info.get('title', 'Unknown'),
                     uploader=info.get('uploader', ''),
                     duration=info.get('duration', 0),
-                    thumbnail_url=info.get('thumbnail', ''),
+                    thumbnail_url=thumb_url,
                     video_id=video_id,
                     format_id=format_id,
                     resolution=format_id,

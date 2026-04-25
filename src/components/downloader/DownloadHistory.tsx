@@ -1,7 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Trash, CloudArrowDown, ArrowCounterClockwise, StopCircle, FolderOpen, ArrowsLeftRight } from '@phosphor-icons/react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { useLauncherStore } from '../../stores/useLauncherStore';
 import type { DownloadItem } from '../../hooks/useDownloader';
+
+/**
+ * Resolve thumbnail URL — local file paths go through Tauri asset protocol,
+ * remote URLs are used directly (with onError fallback).
+ */
+function getThumbnailSrc(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  // Local file path (Windows drive letter or Unix /)
+  if (/^[A-Za-z]:[\\/]/.test(trimmed) || trimmed.startsWith('/')) {
+    return convertFileSrc(trimmed);
+  }
+  // Remote URL — pass through
+  return trimmed;
+}
 
 interface DownloadHistoryProps {
   history: DownloadItem[];
@@ -229,7 +245,7 @@ export function DownloadHistory({
                   <div className="dl-rtc media">
                     <div className="dl-rt-thumb">
                       {item.thumbnail_url ? (
-                        <img src={item.thumbnail_url} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; e.currentTarget.parentElement!.querySelector('span')?.removeAttribute('style'); }} />
+                        <img src={getThumbnailSrc(item.thumbnail_url) || ''} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; e.currentTarget.parentElement!.querySelector('span')?.removeAttribute('style'); }} />
                       ) : null}
                       <span style={item.thumbnail_url ? { display: 'none' } : undefined}>{getPlatformIcon(item.platform)}</span>
                     </div>
