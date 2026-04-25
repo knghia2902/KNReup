@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ### Pending Todos
 
-- 2026-04-16: Redesign app using unified core technology like CapCut ([1 total pending])
+- 2026-04-16: Redesign app using unified core technology like CapCut ([3 total pending])
 
 ### File tham khảo
 
