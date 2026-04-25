@@ -97,17 +97,32 @@ export function DouyinAuthWidget({
     }
   };
 
-  const statusLabel = cookieStatus?.valid ? 'Session Active' : cookieStatus === null ? 'No Session' : 'Session Expired';
+  const handleLogout = () => {
+    onSet('');
+  };
+
+  const statusLabel = cookieStatus?.valid ? 'Logout' : cookieStatus === null ? 'No Session' : 'Session Expired';
   const statusIcon = cookieStatus?.valid ? <CheckCircle weight="fill" /> : <Warning weight="fill" />;
 
   return (
     <div className="dl-auth-widget">
       <div className="dl-auth-info">
         <div className={`dl-status-dot ${cookieStatus?.valid ? 'active' : ''}`} />
-        <span className="dl-status-text" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {statusIcon}
-          {statusLabel}
-        </span>
+        {cookieStatus?.valid ? (
+          <button 
+            className="dl-logout-btn" 
+            onClick={handleLogout}
+            title="Click to logout"
+          >
+            {statusIcon}
+            {statusLabel}
+          </button>
+        ) : (
+          <span className="dl-status-text" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {statusIcon}
+            {statusLabel}
+          </span>
+        )}
       </div>
 
       {!cookieStatus?.valid && (

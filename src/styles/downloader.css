@@ -115,6 +115,32 @@
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
 }
 
+.dl-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dl-steel);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  margin-left: -2px;
+  border-radius: 6px;
+  transition: all 0.2s var(--spring-smooth);
+}
+
+.dl-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.05); /* Slight highlight */
+  color: var(--dl-text);
+}
+
+.dl-logout-btn:active {
+  transform: scale(0.96);
+}
+
 .dl-auth-btn {
   background: var(--dl-surface);
   color: var(--dl-text);
