@@ -441,14 +441,18 @@ class BilibiliEngine(BaseDownloader):
                         output_path,
                     ]
 
-                    proc = await asyncio.create_subprocess_exec(
-                        *merge_cmd,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
-                    _, stderr = await proc.communicate()
-                    if proc.returncode != 0:
-                        logger.error(f"ffmpeg merge failed: {stderr.decode()}")
+                    import subprocess as sp
+
+                    def _run_merge():
+                        return sp.run(
+                            merge_cmd,
+                            capture_output=True,
+                            timeout=300,
+                        )
+
+                    result = await asyncio.to_thread(_run_merge)
+                    if result.returncode != 0:
+                        logger.error(f"ffmpeg merge failed: {result.stderr.decode()}")
                         raise DownloadError("ffmpeg merge failed for Bilibili DASH streams.")
 
                     # Cleanup temp files
@@ -479,7 +483,8 @@ class BilibiliEngine(BaseDownloader):
         except DownloadError:
             raise
         except Exception as e:
-            logger.error(f"Bilibili download failed: {e}")
+            import traceback
+            logger.error(f"Bilibili download failed: {e}\n{traceback.format_exc()}")
             raise DownloadError(f"Bilibili download failed: {str(e)}")
 
     async def _stream_download(

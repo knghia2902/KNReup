@@ -192,10 +192,24 @@ class DouyinDownloader(BaseDownloader):
                     'speed': 'Analysing...'
                 })
 
+            # Normalize URL to standard /video/AWEME_ID format for f2
+            import re as _re
+            normalized_url = url
+            modal_match = _re.search(r'modal_id=(\d+)', url)
+            if modal_match:
+                normalized_url = f"https://www.douyin.com/video/{modal_match.group(1)}"
+            elif not _re.search(r'(?:video|note)/\d+', url):
+                # Try extracting from analyze result
+                aweme_id = info.get('video_id', '')
+                if aweme_id:
+                    normalized_url = f"https://www.douyin.com/video/{aweme_id}"
+            
+            logger.info(f"DouyinDownloader: Normalized URL: {normalized_url}")
+
             # Use f2 to download
             from f2.apps.douyin.handler import DouyinHandler
             handler_kwargs = {
-                "url": url,
+                "url": normalized_url,
                 "path": output_dir,
                 "cookie": self._cookie or "",
                 "headers": {
@@ -217,7 +231,7 @@ class DouyinDownloader(BaseDownloader):
             handler.enable_bark = False
             
             # Download via handler
-            logger.info(f"DouyinDownloader: Starting f2 download for {url}")
+            logger.info(f"DouyinDownloader: Starting f2 download for {normalized_url}")
             await handler.handle_one_video()
             logger.info(f"DouyinDownloader: f2 handler.handle_one_video() returned")
 
