@@ -228,9 +228,10 @@ Plans:
 
 **UAT**: Home -> Click Downloader dự án A -> Tải video -> Video lưu vào folder dự án A -> Mở Editor dự án A -> Video đã có sẵn trong Media Bin.
 
-**Plans:** 2 plans
+**Plans:** 3 plans
 - [ ] 24-01-PLAN.md — Infrastructure & Integration Foundation (Backend & Store).
 - [ ] 24-02-PLAN.md — Project Hub Experience (Editor Load & Launcher UI).
+- [ ] 24-03-PLAN.md — Downloader History Refinement (Project-specific filtering).
 
 ---
 
