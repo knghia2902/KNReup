@@ -105,7 +105,6 @@ export function DouyinAuthWidget({
     <div className="dl-auth-widget">
       {cookieStatus?.valid ? (
         <div className="dl-auth-info">
-          <div className="dl-status-dot active" />
           <button 
             className="dl-logout-btn" 
             onClick={handleLogout}

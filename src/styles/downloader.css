@@ -119,7 +119,7 @@
 .dl-logout-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: var(--dl-surface);
   border: 1px solid var(--dl-border);
   cursor: pointer;
@@ -127,7 +127,7 @@
   font-family: inherit;
   font-size: 0.85rem;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 999px; /* Pill shape matches auth button */
   box-shadow: var(--dl-shadow);
   transition: all 0.2s var(--spring-smooth);
@@ -146,7 +146,7 @@
   background: var(--dl-surface);
   color: var(--dl-text);
   border: 1px solid var(--dl-border);
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-radius: 999px;
   /* Pill shape for auth */
   font-family: inherit;
