@@ -173,7 +173,7 @@ export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps)
             formats.map((f, i) => {
               const badge = getResolutionBadge(f.resolution);
               return (
-                <div className="dl-format-row" key={f.format_id}>
+                <div className="dl-format-row" key={`${f.format_id}-${i}`}>
                   <div className="dl-fr-icon">
                     {activeTab === 'video' ? '🎬' : '🎵'}
                   </div>
