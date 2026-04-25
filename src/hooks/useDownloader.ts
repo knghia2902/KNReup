@@ -40,6 +40,7 @@ export interface DownloadItem {
   file_path?: string;
   video_id: string;
   project_id?: string;
+  media_type?: 'video' | 'audio';
   status: 'pending' | 'analyzing' | 'downloading' | 'completed' | 'error' | 'cancelled';
   progress: number;
   speed: string;
@@ -117,11 +118,12 @@ export function useDownloader() {
     meta?: Partial<DownloadItem>,
     projectId?: string,
     projectName?: string,
+    mediaType: 'video' | 'audio' = 'video'
   ) => {
     try {
       const result = await sidecar.fetch<{ download_id: number }>('/api/download/start', {
         method: 'POST',
-        body: JSON.stringify({ url, format_id, overwrites, project_id: projectId || '', project_name: projectName || '' }),
+        body: JSON.stringify({ url, format_id, overwrites, project_id: projectId || '', project_name: projectName || '', media_type: mediaType }),
       });
 
       const downloadId = result.download_id;
@@ -232,6 +234,24 @@ export function useDownloader() {
     }
   }, []);
 
+  // ─── Move Download ────────────────────────────────────
+  const moveDownload = useCallback(async (downloadId: number, projectId: string, projectName: string = '') => {
+    try {
+      await sidecar.fetch(`/api/download/${downloadId}/move`, { 
+        method: 'PUT',
+        body: JSON.stringify({ project_id: projectId, project_name: projectName })
+      });
+      // Optionally re-fetch history if needed, or optimistically update queue/history
+      setHistory(prev => prev.map(item => 
+        item.id === downloadId ? { ...item, project_id: projectId } : item
+      ));
+      setQueue(prev => prev.map(item => 
+        item.id === downloadId ? { ...item, project_id: projectId } : item
+      ));
+    } catch (err: any) {
+      console.error('Move failed:', err);
+    }
+  }, []);
 
 
   // ─── Cookie Management ────────────────────────────────
@@ -288,10 +308,16 @@ export function useDownloader() {
     }
   }, []);
 
-  const checkFileExistence = useCallback(async (title: string, platform: string, video_id: string = '') => {
+  // ─── Check File Existence ─────────────────────────────
+  const checkFileExistence = useCallback(async (title: string, platform: string, videoId: string = '', downloadId?: number) => {
     try {
-      const params = new URLSearchParams({ title, platform, video_id });
-      const result = await sidecar.fetch<{ exists: boolean }>(`/api/download/check-file?${params}`);
+      const params = new URLSearchParams({
+        title,
+        platform,
+        video_id: videoId
+      });
+      if (downloadId) params.append('download_id', downloadId.toString());
+      const result = await sidecar.fetch<{ exists: boolean }>(`/api/download/check-file?${params.toString()}`);
       return result.exists;
     } catch {
       return false;
@@ -319,6 +345,7 @@ export function useDownloader() {
     startDownload,
     cancelDownload,
     deleteDownload,
+    moveDownload,
     openFile,
     showInFolder,
     fetchHistory,

@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLauncherStore, type ProjectMetadata } from '../../stores/useLauncherStore';
 import { openEditor, openDownloaderForProject } from '../../utils/windowManager';
+import { sidecar } from '../../lib/sidecar';
 import { Folder, Clock, Trash, DownloadSimple, PencilSimple } from '@phosphor-icons/react';
 
 function formatDate(timestamp: number): string {
@@ -42,9 +43,20 @@ function ProjectCard({ project }: { project: ProjectMetadata }) {
     await openEditor(project.id);
   };
 
-  const handleRemove = (e: React.MouseEvent) => {
+  const handleRemove = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}" không?`)) {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}" không?\n\nCẢNH BÁO: Toàn bộ thư mục chứa file đã tải về và file dự án sẽ bị xóa vĩnh viễn khỏi máy!`)) {
+      try {
+        await sidecar.fetch('/api/system/project', {
+          method: 'DELETE',
+          body: JSON.stringify({
+            project_name: project.name,
+            project_path: project.path || ''
+          })
+        });
+      } catch (err) {
+        console.error("Lỗi xóa thư mục dự án", err);
+      }
       removeProject(project.id);
     }
   };

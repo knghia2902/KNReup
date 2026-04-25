@@ -35,6 +35,7 @@ export function DownloaderPanel() {
     startDownload,
     cancelDownload,
     deleteDownload,
+    moveDownload,
     showInFolder,
     fetchHistory,
     setCookie,
@@ -49,23 +50,6 @@ export function DownloaderPanel() {
       checkCookie();
     }
   }, [connected, activeProjectId]);
-
-  const handleDownload = async (_videoId: string, formatId: string, overwrites: boolean = false) => {
-    if (!videoInfo) return;
-    try {
-      const url = videoInfo.webpage_url;
-      await startDownload(
-        url,
-        formatId,
-        overwrites,
-        undefined,
-        activeProjectId || undefined,
-        activeProject?.name,
-      );
-    } catch (err: any) {
-      console.error('Download failed:', err);
-    }
-  };
 
   return (
     <div className="dl-layout-wrapper">
@@ -111,9 +95,10 @@ export function DownloaderPanel() {
               <DownloadOptions
                 videoInfo={videoInfo}
                 history={history}
-                onDownload={handleDownload}
+                onDownload={(url, formatId, overwrites, mediaType) => {
+                  startDownload(url, formatId, overwrites, undefined, activeProjectId || undefined, activeProject?.name, mediaType);
+                }}
               />
-
             ) : (
               <div className="dl-empty-placeholder">
                 <div className="dl-ep-icon">✨</div>
@@ -135,6 +120,7 @@ export function DownloaderPanel() {
               queue={queue}
               onFetch={fetchHistory}
               onDelete={deleteDownload}
+              onMove={moveDownload}
               onCancel={cancelDownload}
               onDownload={startDownload}
               onShow={showInFolder}

@@ -58,6 +58,8 @@ async def init_db():
         if 'project_id' not in existing_cols:
             conn.execute('ALTER TABLE downloads ADD COLUMN project_id TEXT')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_downloads_project ON downloads(project_id)')
+        if 'media_type' not in existing_cols:
+            conn.execute('ALTER TABLE downloads ADD COLUMN media_type TEXT DEFAULT "video"')
         conn.commit()
     finally:
         conn.close()
@@ -75,16 +77,17 @@ async def add_download(
     resolution: str = "",
     metadata: Optional[dict] = None,
     project_id: Optional[str] = None,
+    media_type: str = "video",
 ) -> int:
     """Add a new download record. Returns download ID."""
     db = await get_db()
     try:
         cursor = await db.execute(
             """INSERT INTO downloads 
-               (url, platform, title, uploader, duration, thumbnail_url, video_id, format_id, resolution, metadata, project_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (url, platform, title, uploader, duration, thumbnail_url, video_id, format_id, resolution, metadata, project_id, media_type)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (url, platform, title, uploader, duration, thumbnail_url,
-             video_id, format_id, resolution, json.dumps(metadata) if metadata else None, project_id)
+             video_id, format_id, resolution, json.dumps(metadata) if metadata else None, project_id, media_type)
         )
         await db.commit()
         return cursor.lastrowid
@@ -181,19 +184,19 @@ async def delete_download(download_id: int) -> bool:
         await db.close()
 
 
-async def find_existing_download(url: str, video_id: str = "") -> Optional[dict]:
-    """Find existing download by URL or Video ID."""
+async def find_existing_download(url: str, video_id: str = "", media_type: str = "video") -> Optional[dict]:
+    """Find existing download by URL or Video ID AND media_type."""
     db = await get_db()
     try:
         if video_id:
             cursor = await db.execute(
-                "SELECT * FROM downloads WHERE video_id = ? OR url = ? ORDER BY created_at DESC", 
-                (video_id, url)
+                "SELECT * FROM downloads WHERE (video_id = ? OR url = ?) AND media_type = ? ORDER BY created_at DESC", 
+                (video_id, url, media_type)
             )
         else:
             cursor = await db.execute(
-                "SELECT * FROM downloads WHERE url = ? ORDER BY created_at DESC", 
-                (url,)
+                "SELECT * FROM downloads WHERE url = ? AND media_type = ? ORDER BY created_at DESC", 
+                (url, media_type)
             )
             
         row = await cursor.fetchone()

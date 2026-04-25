@@ -119,3 +119,4 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 2026-04-23 | fix-darkmode-sync-issue | Thống nhất logic Dark Mode bằng useTheme hook dùng chung |
 | 2026-04-25 | delete-downloader-file | Thêm popup xác nhận xóa và xóa luôn file gốc trong Downloader window |
 | 2026-04-25 | fix-downloader-delete-modal | Đổi popup window.confirm thành modal React custom cho chức năng xóa Downloader |
+| 2026-04-25 | remove-restore-feature | Bỏ tính năng Restore trong giao diện DownloadHistory |

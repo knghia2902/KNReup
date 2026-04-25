@@ -32,6 +32,7 @@ class StartDownloadRequest(BaseModel):
     overwrites: bool = False
     project_id: str = ""
     project_name: str = ""
+    media_type: str = "video"
 
 
 class CookieSyncRequest(BaseModel):
@@ -40,6 +41,11 @@ class CookieSyncRequest(BaseModel):
 
 class CookieSetRequest(BaseModel):
     cookie_string: str
+
+
+class MoveDownloadRequest(BaseModel):
+    project_id: str
+    project_name: str = ""
 
 
 # ─── Analyze ──────────────────────────────────────────────
@@ -68,6 +74,7 @@ async def start_download(req: StartDownloadRequest):
             overwrites=req.overwrites,
             project_id=req.project_id or None,
             project_name=req.project_name or None,
+            media_type=req.media_type,
         )
 
         return {"download_id": download_id, "status": "started"}
@@ -169,6 +176,16 @@ async def delete_download(download_id: int, delete_file: bool = False):
     return {"deleted": True}
 
 
+# ─── Move ────────────────────────────────────────────────
+@router.put("/{download_id}/move")
+async def move_download(download_id: int, req: MoveDownloadRequest):
+    """Move download to a different project or global."""
+    logger.info(f"MOVE request for download_id={download_id} to project_id={req.project_id}")
+    manager = get_download_manager()
+    await manager.move_download(download_id, req.project_id, req.project_name)
+    return {"moved": True}
+
+
 # ─── Cancel ──────────────────────────────────────────────
 @router.post("/cancel/{download_id}")
 async def cancel_download(download_id: int):
@@ -224,8 +241,8 @@ async def show_download_folder(download_id: int):
     return {"success": True}
 
 @router.get("/check-file")
-async def check_file(title: str, platform: str, video_id: str = ""):
+async def check_file(title: str, platform: str, video_id: str = "", download_id: int = 0):
     """Check if a video file exists on disk."""
     manager = get_download_manager()
-    exists = await manager.check_file_existence(title, platform, video_id)
+    exists = await manager.check_file_existence(title, platform, video_id, download_id)
     return {"exists": exists}

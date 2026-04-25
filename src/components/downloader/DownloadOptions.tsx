@@ -4,7 +4,7 @@ import { useDownloader, type VideoInfo, VideoFormat, DownloadItem } from '../../
 interface DownloadOptionsProps {
   videoInfo: VideoInfo;
   history: DownloadItem[];
-  onDownload: (url: string, format_id: string, overwrites: boolean) => void;
+  onDownload: (url: string, format_id: string, overwrites: boolean, mediaType: 'video' | 'audio') => void;
 }
 
 // ... helper functions (formatBytes, formatDuration, etc.) ...
@@ -62,14 +62,14 @@ export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps)
       setShowConfirm(true);
     } else {
       // Nếu không có file (ngay cả khi có trong history), cứ cho tải về ngay
-      onDownload(videoInfo.webpage_url || '', format_id, false);
+      onDownload(videoInfo.webpage_url || '', format_id, false, activeTab);
     }
   };
 
 
   const handleConfirm = () => {
     if (pendingFormatId) {
-      onDownload(videoInfo.webpage_url || '', pendingFormatId, true);
+      onDownload(videoInfo.webpage_url || '', pendingFormatId, true, activeTab);
     }
     setShowConfirm(false);
     setPendingFormatId(null);

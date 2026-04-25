@@ -69,7 +69,9 @@ function App() {
       setFilePaths(prev => {
         if (prev.includes(selectedPath)) return prev;
         const newPaths = [...prev, selectedPath];
-        if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: newPaths });
+        queueMicrotask(() => {
+          if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: newPaths });
+        });
         return newPaths;
       });
       setActiveFile(selectedPath);
@@ -99,22 +101,46 @@ function App() {
   }, []);
 
   const handleFileRemove = useCallback(
-    (removePath: string) => {
+    async (removePath: string) => {
       let nextActive: string | null = null;
       setFilePaths(prev => {
         const newPaths = prev.filter(p => p !== removePath);
-        if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: newPaths });
         
-        if (activeFile === removePath) {
-          nextActive = newPaths.length > 0 ? newPaths[newPaths.length - 1] : null;
-          setActiveFile(nextActive);
-          useSubtitleStore.getState().setActiveFile(nextActive);
-          useProjectStore.getState().setActiveFile(nextActive);
-          setVideoSrc(nextActive ? getVideoSrc(nextActive) : null);
-        }
+        queueMicrotask(() => {
+          if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: newPaths });
+          
+          if (activeFile === removePath) {
+            nextActive = newPaths.length > 0 ? newPaths[newPaths.length - 1] : null;
+            setActiveFile(nextActive);
+            useSubtitleStore.getState().setActiveFile(nextActive);
+            useProjectStore.getState().setActiveFile(nextActive);
+            setVideoSrc(nextActive ? getVideoSrc(nextActive) : null);
+          }
+        });
+        
         return newPaths;
       });
       useProjectStore.getState().removeFileData(removePath);
+
+      // Unlink the file from the current project in the Downloader database
+      if (projectId) {
+        try {
+          const { sidecar } = await import('./lib/sidecar');
+          const data = await sidecar.fetch<any>(`/api/download/history?limit=100&project_id=${encodeURIComponent(projectId)}`);
+          if (data && data.downloads) {
+            const item = data.downloads.find((d: any) => d.file_path === removePath);
+            if (item && item.id) {
+              await sidecar.fetch(`/api/download/${item.id}/move`, { 
+                method: 'PUT',
+                body: JSON.stringify({ project_id: '' })
+              });
+              console.log('[Media Bin] Unlinked download from project:', item.id);
+            }
+          }
+        } catch (e) {
+          console.warn('[Media Bin] Failed to unlink download:', e);
+        }
+      }
     },
     [activeFile, projectId]
   );
@@ -294,7 +320,9 @@ function App() {
               if (!merged.includes(p)) merged.push(p);
             }
             if (merged.length !== prev.length) {
-              if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: merged });
+              queueMicrotask(() => {
+                if (projectId) useLauncherStore.getState().updateProject(projectId, { filePaths: merged });
+              });
             }
             return merged;
           });

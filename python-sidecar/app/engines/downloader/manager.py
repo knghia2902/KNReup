@@ -71,9 +71,10 @@ class DownloadManager:
         overwrites: bool = False,
         project_id: Optional[str] = None,
         project_name: Optional[str] = None,
+        media_type: str = "video",
     ) -> int:
         """Start a download — returns download_id."""
-        logger.info(f"START_DOWNLOAD: url={url}, format_id={format_id}, overwrites={overwrites}, project_id={project_id}")
+        logger.info(f"START_DOWNLOAD: url={url}, format_id={format_id}, media_type={media_type}, project_id={project_id}")
         
         # Analyze first if not already analyzed
         platform = self._detect_platform(url)
@@ -89,11 +90,11 @@ class DownloadManager:
         # Create or Update DB record to avoid duplicates
         try:
             video_id = info.get('video_id', '')
-            existing = await find_existing_download(url=url, video_id=video_id)
+            existing = await find_existing_download(url=url, video_id=video_id, media_type=media_type)
             
             if existing:
                 download_id = existing['id']
-                logger.info(f"Found existing download record: id={download_id}, moving to top.")
+                logger.info(f"Found existing {media_type} download record: id={download_id}, moving to top.")
                 # Update and bring to top by refreshing created_at
                 update_fields = dict(
                     status='pending',
@@ -122,6 +123,7 @@ class DownloadManager:
                     format_id=format_id,
                     resolution=format_id,
                     project_id=project_id,
+                    media_type=media_type,
                 )
                 logger.info(f"Created new download record: id={download_id}")
         except Exception as e:
@@ -141,7 +143,7 @@ class DownloadManager:
         
         # Spawn worker
         task = asyncio.create_task(
-            self._download_worker(download_id, url, platform, format_id, output_dir, overwrites, project_name)
+            self._download_worker(download_id, url, platform, format_id, output_dir, overwrites, project_name, media_type)
         )
         self._tasks[download_id] = task
         
@@ -163,6 +165,7 @@ class DownloadManager:
         output_dir: str,
         overwrites: bool,
         project_name: Optional[str] = None,
+        media_type: str = "video",
     ):
 
         """Background download worker with semaphore concurrency control."""
@@ -173,10 +176,11 @@ class DownloadManager:
                 engine = self._get_engine(platform)
                 
                 if not output_dir:
+                    media_sub = 'audio' if media_type == 'audio' else 'video'
                     if project_name:
-                        output_dir = os.path.join(DEFAULT_OUTPUT_DIR, self._slugify(project_name), platform)
+                        output_dir = os.path.join(DEFAULT_OUTPUT_DIR, self._slugify(project_name), media_sub, platform)
                     else:
-                        output_dir = os.path.join(DEFAULT_OUTPUT_DIR, platform)
+                        output_dir = os.path.join(DEFAULT_OUTPUT_DIR, 'global', media_sub, platform)
                 os.makedirs(output_dir, exist_ok=True)
 
                 async def progress_cb(data):
@@ -286,6 +290,36 @@ class DownloadManager:
         
         return await delete_download(download_id)
 
+    async def move_download(self, download_id: int, project_id: str, project_name: str = "") -> bool:
+        """Update the project_id of a download and physically move the file."""
+        record = await get_download(download_id)
+        file_path = record.get('file_path') if record else None
+        
+        if file_path and os.path.exists(file_path):
+            media_type = record.get('media_type', 'video')
+            media_sub = 'audio' if media_type == 'audio' else 'video'
+            platform = record.get('platform', 'unknown')
+            
+            if project_id and project_name:
+                new_dir = os.path.join(DEFAULT_OUTPUT_DIR, self._slugify(project_name), media_sub, platform)
+            else:
+                new_dir = os.path.join(DEFAULT_OUTPUT_DIR, 'global', media_sub, platform)
+                
+            os.makedirs(new_dir, exist_ok=True)
+            new_file_path = os.path.join(new_dir, os.path.basename(file_path))
+            
+            if new_file_path != file_path:
+                try:
+                    import shutil
+                    shutil.move(file_path, new_file_path)
+                    file_path = new_file_path
+                    logger.info(f"Moved download {download_id} file to {new_file_path}")
+                except Exception as e:
+                    logger.error(f"Failed to move file to {new_file_path}: {e}")
+                    
+        await update_download(download_id, project_id=project_id, file_path=file_path)
+        return True
+
     async def cancel_download(self, download_id: int) -> bool:
         """Cancel a running download and notify listeners — always updates DB to unstick UI."""
         task = self._tasks.get(download_id)
@@ -338,15 +372,18 @@ class DownloadManager:
         """Check Douyin cookie validity."""
         return await self.douyin.check_cookie()
 
-    async def check_file_existence(self, title: str, platform: str, video_id: str = "") -> bool:
+    async def check_file_existence(self, title: str, platform: str, video_id: str = "", download_id: int = 0) -> bool:
         """Check if a file exists on disk for a given video."""
-        output_dir = os.path.join(DEFAULT_OUTPUT_DIR, platform)
-        if not os.path.exists(output_dir):
+        # 1. Fast Path: Check against DB file_path
+        if download_id:
+            record = await get_download(download_id)
+            if record and record.get('file_path'):
+                if os.path.exists(record['file_path']):
+                    return True
+
+        if not os.path.exists(DEFAULT_OUTPUT_DIR):
             return False
 
-        # If we have the direct file_path in DB, check it first
-        # (This would need record fetching, but we usually call this with title/platform from UI)
-        
         # Normalize search terms
         def normalize(s: str) -> str:
             if not s: return ""
@@ -358,8 +395,8 @@ class DownloadManager:
         
         try:
             import glob
-            # Recursive check for video files
-            pattern = os.path.join(output_dir, "**", "*.*")
+            # Recursive check for video files across all download folders (including projects)
+            pattern = os.path.join(DEFAULT_OUTPUT_DIR, "**", "*.*")
             for f_path in glob.glob(pattern, recursive=True):
                 if not f_path.lower().endswith(('.mp4', '.webm', '.mkv', '.m4v')):
                     continue
