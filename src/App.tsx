@@ -279,13 +279,14 @@ function App() {
     if (!projectId || !connected) return;
     const loadProjectMedia = async () => {
       try {
-        const resp = await fetch(`http://127.0.0.1:42069/api/download/history?limit=100&project_id=${encodeURIComponent(projectId)}`);
-        if (!resp.ok) return;
-        const data = await resp.json();
+        const { sidecar } = await import('./lib/sidecar');
+        const data = await sidecar.fetch<any>(`/api/download/history?limit=100&project_id=${encodeURIComponent(projectId)}`);
+        
         const downloads = data.downloads || [];
         const completedPaths = downloads
           .filter((d: any) => d.status === 'completed' && d.file_path)
           .map((d: any) => d.file_path as string);
+          
         if (completedPaths.length > 0) {
           setFilePaths(prev => {
             const merged = [...prev];
