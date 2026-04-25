@@ -229,10 +229,9 @@ export function DownloadHistory({
                   <div className="dl-rtc media">
                     <div className="dl-rt-thumb">
                       {item.thumbnail_url ? (
-                        <img src={item.thumbnail_url} alt="" />
-                      ) : (
-                        <span>{getPlatformIcon(item.platform)}</span>
-                      )}
+                        <img src={item.thumbnail_url} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; e.currentTarget.parentElement!.querySelector('span')?.removeAttribute('style'); }} />
+                      ) : null}
+                      <span style={item.thumbnail_url ? { display: 'none' } : undefined}>{getPlatformIcon(item.platform)}</span>
                     </div>
                     <span className="dl-rt-title" title={item.title}>
                       {item.media_type === 'audio' && <span className="dl-badge-audio" style={{ fontSize: '10px', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderRadius: '4px', marginRight: '8px', fontWeight: 600, verticalAlign: 'middle' }}>AUDIO</span>}

@@ -108,12 +108,18 @@ export function DownloadOptions({ videoInfo, onDownload }: DownloadOptionsProps)
         {/* ... thumbnail and info meta ... */}
         <div className="dl-thumbnail">
           {videoInfo.thumbnail ? (
-            <img src={videoInfo.thumbnail} alt={videoInfo.title} />
-          ) : (
-            <div className="dl-thumb-placeholder">
-              <span>{getPlatformIcon(videoInfo.platform)}</span>
-            </div>
-          )}
+            <img 
+              src={videoInfo.thumbnail} 
+              alt={videoInfo.title} 
+              onError={(e) => { 
+                (e.target as HTMLImageElement).style.display = 'none'; 
+                e.currentTarget.parentElement!.querySelector('.dl-thumb-placeholder')?.removeAttribute('style');
+              }} 
+            />
+          ) : null}
+          <div className="dl-thumb-placeholder" style={videoInfo.thumbnail ? { display: 'none' } : undefined}>
+            <span>{getPlatformIcon(videoInfo.platform)}</span>
+          </div>
           {videoInfo.duration > 0 && (
             <span className="dl-duration-badge">{formatDuration(videoInfo.duration)}</span>
           )}
