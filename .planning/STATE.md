@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 25 complete — Social Media Crawlers
-last_updated: "2026-04-25T23:45:00.000Z"
+status: completed
+last_updated: "2026-04-27T04:46:51.453Z"
 last_activity: 2026-04-25
 progress:
-  total_phases: 25
+  total_phases: 16
   completed_phases: 12
-  total_plans: 36
-  completed_plans: 32
-  percent: 89
+  total_plans: 35
+  completed_plans: 33
+  percent: 94
 ---
 
 # STATE.md — KNReup Project State
@@ -74,6 +74,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 22 added: Full Mix Preview
 - Phase 23 added: Fix bugs and refine UI
 - Phase 25 added: download video fb, tiktok, bilibili, hybird... Tham khảo http://github.com/Evil0ctal/Douyin_TikTok_Download_API/tree/main/crawlers
+- Phase 08.3 inserted after Phase 08.2: Tạo ra một Phase riêng biệt tiếp theo chỉ để đập đi xây lại cấu trúc Timeline thành Main Track (URGENT)
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
