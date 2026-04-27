@@ -49,8 +49,11 @@ export function AudioLibrary() {
 
   // Load imported file from config on mount
   useEffect(() => {
-    if (config.audio_file && !AUDIO_SAMPLES.some(s => s.url === config.audio_file) && !importedFiles.includes(config.audio_file)) {
-      setImportedFiles(prev => [...prev, config.audio_file]);
+    if (config.audio_file && !AUDIO_SAMPLES.some(s => s.url === config.audio_file)) {
+      setImportedFiles(prev => {
+        if (prev.includes(config.audio_file)) return prev;
+        return [...prev, config.audio_file];
+      });
     }
   }, []);
 
@@ -80,9 +83,10 @@ export function AudioLibrary() {
       });
       if (selected && typeof selected === 'string') {
         // Chỉ thêm vào danh sách imported files, KHÔNG auto-enable BGM
-        if (!importedFiles.includes(selected)) {
-          setImportedFiles(prev => [...prev, selected]);
-        }
+        setImportedFiles(prev => {
+          if (prev.includes(selected)) return prev;
+          return [...prev, selected];
+        });
         config.updateConfig({ audio_file: selected });
       }
     } catch (err) {
