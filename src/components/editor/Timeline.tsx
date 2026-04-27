@@ -94,6 +94,11 @@ export function Timeline({ filePaths }: TimelineProps) {
   const maxSubTime = segments.length > 0 ? segments[segments.length - 1].end : 0;
   const activeDuration = config.vid_clip_duration || videoDuration || 0;
 
+  // ─── Timeline Offset: ripple khi chưa sub ───
+  // Khi chưa có subtitle: clip dồn về 0 trên timeline (timelineOffset = vid_clip_start)
+  // Khi có subtitle: giữ clip tại vid_clip_start (timelineOffset = 0) để subtitle sync
+  const timelineOffset = segments.length === 0 ? (config.vid_clip_start || 0) : 0;
+
   // ─── Migration: sync old stores → clip model ───
   useEffect(() => {
     if (videoDuration > 1) {
@@ -106,9 +111,11 @@ export function Timeline({ filePaths }: TimelineProps) {
   useEffect(() => {
     const clips: (import('../../types/timeline').Clip | SubtitleClip)[] = [];
 
-    // Video → Main Track
+    // Video → Main Track (apply timelineOffset for ripple)
     if (currentVideoPath && activeDuration > 0) {
-      clips.push(projectToVideoClip(config, currentVideoPath, activeDuration));
+      const vidClip = projectToVideoClip(config, currentVideoPath, activeDuration);
+      vidClip.timelineStart = (config.vid_clip_start || 0) - timelineOffset;
+      clips.push(vidClip);
     }
 
     // BGM → BGM Track
@@ -120,7 +127,7 @@ export function Timeline({ filePaths }: TimelineProps) {
     clips.push(...subClips);
 
     timelineStore.setClips(clips);
-  }, [currentVideoPath, activeDuration, config.vid_clip_start, config.audio_enabled, config.audio_file, config.audio_clip_start, config.audio_clip_duration, config.audio_timeline_start, segments]);
+  }, [currentVideoPath, activeDuration, config.vid_clip_start, config.audio_enabled, config.audio_file, config.audio_clip_start, config.audio_clip_duration, config.audio_timeline_start, segments, timelineOffset]);
 
   // ─── Duration / Zoom ───
   const rawDuration = Math.max(activeDuration, maxSubTime, timelineStore.getTotalDuration(), 1);
@@ -179,7 +186,7 @@ export function Timeline({ filePaths }: TimelineProps) {
       if (playheadRef.current && !isDraggingPlayhead) {
         const video = document.querySelector('video');
         if (video) {
-          const time = video.currentTime;
+          const time = video.currentTime - timelineOffset; // Map video time → timeline pos
           if (time !== lastTime) {
             lastTime = time;
             setCurrentTime(time);
@@ -191,7 +198,7 @@ export function Timeline({ filePaths }: TimelineProps) {
     };
     animationFrameId = requestAnimationFrame(updatePlayhead);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [pixelsPerSecond, isDraggingPlayhead, scrollLeft]);
+  }, [pixelsPerSecond, isDraggingPlayhead, scrollLeft, timelineOffset]);
 
   // ─── Pointer drag events (playhead + clip drag + resize) ───
   useEffect(() => {
@@ -208,7 +215,7 @@ export function Timeline({ filePaths }: TimelineProps) {
         setCurrentTime(t);
         if (playheadRef.current) playheadRef.current.style.transform = `translateX(${t * pixelsPerSecond + TIMELINE_OFFSET_X - tlbody.scrollLeft}px)`;
         const video = document.querySelector('video');
-        if (video) video.currentTime = t;
+        if (video) video.currentTime = t + timelineOffset; // Map timeline pos → video time
         AudioMixer.cancelTTS();
       }
 
@@ -471,7 +478,7 @@ export function Timeline({ filePaths }: TimelineProps) {
             const newTime = Math.max(0, (pointerX - TIMELINE_OFFSET_X) / pixelsPerSecond);
             const { time: snappedTime } = getSnapMetadata(newTime);
             const video = document.querySelector('video');
-            if (video) video.currentTime = snappedTime;
+            if (video) video.currentTime = snappedTime + timelineOffset; // Map timeline pos → video time
             setCurrentTime(snappedTime);
             if (playheadRef.current) playheadRef.current.style.transform = `translateX(${snappedTime * pixelsPerSecond + TIMELINE_OFFSET_X - tlbody.scrollLeft}px)`;
             updateConfig({ selectedClipId: null });
