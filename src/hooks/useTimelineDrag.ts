@@ -6,13 +6,6 @@ import { useTimelineStore } from '../stores/useTimelineStore';
  * Hook này chỉ quản lý state — logic xử lý pointer events 
  * nằm trong Timeline.tsx useEffect.
  */
-interface DragState {
-  isDraggingPlayhead: boolean;
-  draggingClipId: string | null;
-  resizingClip: { clipId: string; side: 'left' | 'right' } | null;
-  activeSnapTime: number | null;
-}
-
 export function useTimelineDrag() {
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
