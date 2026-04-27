@@ -207,6 +207,17 @@ Plans:
 **Plans:** 1/1 plans executed
 - [x] 08.2-01-PLAN.md — Audio Refactor & Local Import implementation.
 
+### Phase 08.3: Main Track Timeline Refactor (INSERTED)
+> **Mục tiêu**: Tạo ra một Phase riêng biệt tiếp theo chỉ để đập đi xây lại cấu trúc Timeline thành Main Track
+> **Output**: Cấu trúc Timeline mới hỗ trợ Main Track giống CapCut và cho phép add trên 2 thành phần (drag-drop đa luồng).
+
+**Depends on:** Phase 08.0
+
+**Plans:** 3 plans
+- [ ] 08.3-01-PLAN.md — Data Foundation: Clip Model & useTimelineStore.
+- [ ] 08.3-02-PLAN.md — Component Decomposition: Timeline Layout & Track Components.
+- [ ] 08.3-03-PLAN.md — Behavior Migration: Drag/Drop, Snap, Playhead & Keyboard.
+
 ### Phase 11: Voice Studio Full Features
 
 **Goal:** Nâng cấp công cụ Voice Clone thành Voice Studio toàn diện với TTS đa engine và hệ thống quản lý lịch sử âm thanh cục bộ.
