@@ -478,7 +478,7 @@ export function Timeline({ filePaths }: TimelineProps) {
   // ─── Media Bin Drag-Drop (D-10, D-11) ───
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const data = e.dataTransfer.getData('application/json');
+    const data = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
     if (!data) return;
     try {
       const { filePath, mediaType, duration } = JSON.parse(data);
@@ -601,6 +601,7 @@ export function Timeline({ filePaths }: TimelineProps) {
           }}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
+          onDragEnter={(e) => e.preventDefault()}
           style={{ flex: 1, overflow: 'auto', position: 'relative', background: 'var(--bg-primary)', display: 'block' }}
         >
           <div style={{ width: timelineWidthPx, height: 1, pointerEvents: 'none' }} />

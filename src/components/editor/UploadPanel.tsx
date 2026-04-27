@@ -54,7 +54,7 @@ export function UploadPanel({ onFileSelected, onFileSwitch, onFileRemoved, disab
                 onClick={() => onFileSwitch?.(path)}
                 draggable="true"
                 onDragStart={(e) => {
-                  e.dataTransfer.setData('application/json', JSON.stringify({ filePath: path, mediaType: 'video' }));
+                  e.dataTransfer.setData('text/plain', JSON.stringify({ filePath: path, mediaType: 'video' }));
                 }}
                 style={{ cursor: 'grab' }}
               >
