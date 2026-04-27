@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { TrackMeta, isOverlayTrack } from '../../types/timeline';
-import { TextT, Waveform, SpeakerHigh, MusicNote, Lock, LockOpen, Eye, EyeSlash, SpeakerSlash, Stack } from '@phosphor-icons/react';
+import { TextT, Waveform, SpeakerHigh, MusicNote, Lock, LockOpen, Eye, EyeSlash, SpeakerSlash } from '@phosphor-icons/react';
 
 interface TrackHeaderProps {
   track: TrackMeta;
@@ -11,7 +11,13 @@ interface TrackHeaderProps {
 
 // CapCut style icons cho mỗi track type
 function getTrackIcon(trackId: string) {
-  if (isOverlayTrack(trackId)) return <Stack size={14} weight="bold" />;
+  if (isOverlayTrack(trackId)) return (
+    <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor">
+      <rect x="40" y="40" width="176" height="56" rx="8" opacity="0.8" />
+      <rect x="40" y="112" width="176" height="56" rx="8" opacity="0.5" />
+      <rect x="40" y="184" width="176" height="32" rx="8" opacity="0.3" />
+    </svg>
+  );
   switch (trackId) {
     case 'sub':  return <TextT size={14} weight="bold" />;
     case 'main': return <Waveform size={14} weight="bold" />;
