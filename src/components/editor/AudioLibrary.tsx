@@ -107,7 +107,6 @@ export function AudioLibrary() {
   };
 
   const handlePreview = (url: string) => {
-    setPreviewUrl(url);
     config.updateConfig({ audio_file: url });
   };
 
