@@ -72,7 +72,6 @@ export function AudioLibrary() {
       });
       if (selected && typeof selected === 'string') {
         config.updateConfig({ 
-          audio_enabled: true, 
           audio_file: selected 
         });
       }
@@ -83,7 +82,6 @@ export function AudioLibrary() {
 
   const handleSelectTrack = (url: string) => {
     config.updateConfig({
-      audio_enabled: true,
       audio_file: url,
     });
   };
@@ -112,13 +110,23 @@ export function AudioLibrary() {
       <div className="mlist" style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
         {/* LOCAL AUDIO INDICATOR */}
         {config.audio_file && !AUDIO_SAMPLES.some(s => s.url === config.audio_file) && (
-          <div className="audio-lib-item active" style={{ marginBottom: '8px', border: '1px solid var(--accent)' }}>
+          <div 
+            className="audio-lib-item active" 
+            style={{ marginBottom: '8px', border: '1px solid var(--accent)', cursor: 'grab' }}
+            draggable="true"
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/json', JSON.stringify({ 
+                filePath: config.audio_file, 
+                mediaType: 'audio' 
+              }));
+            }}
+          >
             <div className="audio-lib-icon"><Waveform size={20} weight="fill" /></div>
             <div className="audio-lib-info" style={{ flex: 1 }}>
               <div className="audio-lib-name" style={{ fontSize: '11px', fontWeight: 600 }}>{config.audio_file.split(/[/\\]/).pop()}</div>
-              <div className="audio-lib-meta">Local File</div>
+              <div className="audio-lib-meta">Local File · Kéo vào Timeline</div>
             </div>
-            <button className="btn-icon" onClick={() => config.updateConfig({ audio_file: '' })}><X size={14} /></button>
+            <button className="btn-icon" onClick={(e) => { e.stopPropagation(); config.updateConfig({ audio_file: '' }); }}><X size={14} /></button>
           </div>
         )}
 
@@ -131,7 +139,14 @@ export function AudioLibrary() {
               key={sample.id}
               className={`audio-lib-item ${isActive ? 'active' : ''}`}
               onClick={() => handleSelectTrack(sample.url)}
-              style={{ cursor: 'pointer', marginBottom: '4px', borderRadius: '6px', padding: '8px', display: 'flex', alignItems: 'center', gap: '10px', background: isActive ? 'var(--accent-subtle)' : 'transparent' }}
+              draggable="true"
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/json', JSON.stringify({ 
+                  filePath: sample.url, 
+                  mediaType: 'audio' 
+                }));
+              }}
+              style={{ cursor: 'grab', marginBottom: '4px', borderRadius: '6px', padding: '8px', display: 'flex', alignItems: 'center', gap: '10px', background: isActive ? 'var(--accent-subtle)' : 'transparent' }}
             >
               <div className="audio-lib-icon">
                 <Waveform size={20} weight={isActive ? "fill" : "duotone"} color={isActive ? "var(--accent)" : "var(--text-muted)"} />

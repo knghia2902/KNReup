@@ -54,7 +54,7 @@ export function UploadPanel({ onFileSelected, onFileSwitch, onFileRemoved, disab
                 onClick={() => onFileSwitch?.(path)}
                 draggable="true"
                 onDragStart={(e) => {
-                  e.dataTransfer.setData('application/knreup-asset', JSON.stringify({ type: 'media', path }));
+                  e.dataTransfer.setData('application/json', JSON.stringify({ filePath: path, mediaType: 'video' }));
                 }}
                 style={{ cursor: 'grab' }}
               >
