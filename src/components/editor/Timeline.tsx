@@ -281,12 +281,10 @@ export function Timeline({ filePaths }: TimelineProps) {
       const cmdOrCtrl = e.metaKey || e.ctrlKey;
       
       if (cmdOrCtrl && e.key.toLowerCase() === 'b') {
-        // Split at playhead
+        // Split at playhead — chỉ hoạt động cho subtitle (tạo 2 segments)
+        // True video split (chia đôi thành 2 clips) cần multi-clip model → future phase
         if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
           useSubtitleStore.getState().splitSegment(selectedId, currentTime);
-        } else if (selectedClipId === 'vid-main' || selectedClipId === 'audio-main') {
-          // Split Main/Audio clip: trim right side at playhead (giữ phần trái)
-          config.splitRight(currentTime, activeDuration);
         }
         e.preventDefault();
       }
