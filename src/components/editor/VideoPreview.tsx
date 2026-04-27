@@ -862,6 +862,28 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
     };
   }, []);
 
+  // ─── Playback Range Enforcement ─────────────────────
+  // Enforce vid_clip_start + vid_clip_duration boundaries during playback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const clipStart = projectConfig.vid_clip_start || 0;
+    const clipDuration = projectConfig.vid_clip_duration || 0;
+    if (clipDuration <= 0) return;
+
+    const clipEnd = clipStart + clipDuration;
+
+    const enforceRange = () => {
+      if (video.currentTime >= clipEnd - 0.05) {
+        video.pause();
+        video.currentTime = clipEnd - 0.05;
+      }
+    };
+
+    video.addEventListener('timeupdate', enforceRange);
+    return () => video.removeEventListener('timeupdate', enforceRange);
+  }, [projectConfig.vid_clip_start, projectConfig.vid_clip_duration]);
+
   if (!videoSrc) {
     return (
       <>
