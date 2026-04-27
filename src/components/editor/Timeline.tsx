@@ -5,10 +5,9 @@ import { useTimelineStore } from '../../stores/useTimelineStore';
 import { TimelineToolbar } from './TimelineToolbar';
 import { TrackHeader } from './TrackHeader';
 import { TrackRow } from './TrackRow';
-import { formatTimeShort } from '../../utils/time';
 import { AudioMixer } from '../../lib/audioMixer';
-import { TRACK_ORDER, TrackId } from '../../types/timeline';
-import { projectToVideoClip, projectToAudioClip, segmentsToSubtitleClips, subtitleClipsToSegments } from '../../utils/timelineMigration';
+import { TRACK_ORDER } from '../../types/timeline';
+import { projectToVideoClip, projectToAudioClip, segmentsToSubtitleClips } from '../../utils/timelineMigration';
 import { SubtitleClip } from '../../types/timeline';
 
 const TIMELINE_OFFSET_X = 4;
@@ -285,6 +284,9 @@ export function Timeline({ filePaths }: TimelineProps) {
         // Split at playhead
         if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
           useSubtitleStore.getState().splitSegment(selectedId, currentTime);
+        } else if (selectedClipId === 'vid-main' || selectedClipId === 'audio-main') {
+          // Split Main/Audio clip: trim right side at playhead (giữ phần trái)
+          config.splitRight(currentTime, activeDuration);
         }
         e.preventDefault();
       }
@@ -446,7 +448,7 @@ export function Timeline({ filePaths }: TimelineProps) {
       <div style={{ display: 'flex', flex: 1, overflowY: 'auto' }}>
         
         {/* Track headers column */}
-        <div style={{ width: 80, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-secondary)', zIndex: 20 }}>
+        <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-secondary)', zIndex: 20 }}>
           <div style={{ height: 26, borderBottom: '1px solid var(--border)', background: 'var(--bg-primary)' }} />
           {TRACK_ORDER.map(trackId => (
             <TrackHeader
