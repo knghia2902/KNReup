@@ -15,6 +15,7 @@ export interface SubtitleSegmentCompat {
 
 /**
  * Chuyển đổi ProjectStore video config → Clip trên Main Track
+ * timelineStart = vid_clip_start (clip position khớp video time, giữ subtitle sync)
  */
 export function projectToVideoClip(
   config: Pick<ProjectConfig, 'vid_clip_start' | 'vid_clip_duration'>,

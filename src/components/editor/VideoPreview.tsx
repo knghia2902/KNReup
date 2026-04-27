@@ -863,8 +863,8 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
   }, []);
 
   // ─── Playback Range Enforcement ─────────────────────
-  // Enforce vid_clip_start + vid_clip_duration boundaries during playback
-  // Khi Q (split left) cắt phần đầu → video không được play trước clip start
+  // Enforce vid_clip_start + vid_clip_duration boundaries
+  // Handles: play (nhảy về clip start), timeupdate (pause tại end), seeked (clamp khi kéo playhead)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -874,26 +874,28 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
 
     const clipEnd = clipStart + clipDuration;
 
-    const enforceRange = () => {
-      // Clamp END: pause khi chạy quá clip end
+    // Clamp END: pause khi chạy quá clip end
+    const enforceEnd = () => {
       if (video.currentTime >= clipEnd - 0.05) {
         video.pause();
         video.currentTime = clipEnd - 0.05;
       }
     };
 
-    // Clamp START: khi play bắt đầu, nếu playhead < clip start → seek about clip start
+    // Clamp START: kéo playhead hoặc play trước clip start → nhảy về clip start
     const enforceStart = () => {
-      if (video.currentTime < clipStart) {
+      if (clipStart > 0 && video.currentTime < clipStart) {
         video.currentTime = clipStart;
       }
     };
 
-    video.addEventListener('timeupdate', enforceRange);
+    video.addEventListener('timeupdate', enforceEnd);
     video.addEventListener('play', enforceStart);
+    video.addEventListener('seeked', enforceStart);
     return () => {
-      video.removeEventListener('timeupdate', enforceRange);
+      video.removeEventListener('timeupdate', enforceEnd);
       video.removeEventListener('play', enforceStart);
+      video.removeEventListener('seeked', enforceStart);
     };
   }, [projectConfig.vid_clip_start, projectConfig.vid_clip_duration]);
 
