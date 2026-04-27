@@ -7,7 +7,7 @@ import { TrackHeader } from './TrackHeader';
 import { TrackRow } from './TrackRow';
 import { AudioMixer } from '../../lib/audioMixer';
 import { getTrackOrder, isOverlayTrack } from '../../types/timeline';
-import { projectToVideoClip, projectToAudioClip, segmentsToSubtitleClips } from '../../utils/timelineMigration';
+import { projectToVideoClip, segmentsToSubtitleClips } from '../../utils/timelineMigration';
 import { SubtitleClip, ClipType } from '../../types/timeline';
 
 const TIMELINE_OFFSET_X = 4;
@@ -126,16 +126,18 @@ export function Timeline({ filePaths }: TimelineProps) {
       clips.push(vidClip);
     }
 
-    // BGM → BGM Track
-    const audioClip = projectToAudioClip(config);
-    if (audioClip) clips.push(audioClip);
+    // BGM → BGM Track (chỉ khi đã được place lên timeline qua drag-drop)
+    // Audio clip không tự tạo từ config — user phải drag từ Media Bin
+    // Legacy compat: nếu đã có clip BGM trong store thì giữ lại
+    const existingBgmClips = timelineStore.getTrackClips('bgm');
+    existingBgmClips.forEach(c => clips.push(c));
 
     // Subtitles → SUB Track
     const subClips = segmentsToSubtitleClips(segments);
     clips.push(...subClips);
 
     timelineStore.setClips(clips);
-  }, [currentVideoPath, activeDuration, config.vid_clip_start, config.audio_enabled, config.audio_file, config.audio_clip_start, config.audio_clip_duration, config.audio_timeline_start, segments, timelineOffset]);
+  }, [currentVideoPath, activeDuration, config.vid_clip_start, segments, timelineOffset]);
 
   // ─── Duration / Zoom ───
   const rawDuration = Math.max(activeDuration, maxSubTime, timelineStore.getTotalDuration(), 1);
@@ -466,11 +468,14 @@ export function Timeline({ filePaths }: TimelineProps) {
     const data = e.dataTransfer.getData('application/json');
     if (!data) return;
     try {
-      const { filePath, mediaType } = JSON.parse(data);
+      const { filePath, mediaType, duration } = JSON.parse(data);
       if (mediaType === 'video') {
-        timelineStore.appendClipToTrack('main', { type: 'video', sourceFile: filePath, sourceStart: 0, sourceDuration: 0, timelineDuration: 0 });
+        timelineStore.appendClipToTrack('main', { type: 'video', sourceFile: filePath, sourceStart: 0, sourceDuration: duration || 0, timelineDuration: duration || 0 });
       } else if (mediaType === 'audio') {
-        timelineStore.appendClipToTrack('bgm', { type: 'audio', sourceFile: filePath, sourceStart: 0, sourceDuration: 0, timelineDuration: 0 });
+        const dur = duration || 200;
+        timelineStore.appendClipToTrack('bgm', { type: 'audio', sourceFile: filePath, sourceStart: 0, sourceDuration: dur, timelineDuration: dur });
+        // Sync config cho backward compat (Properties panel)
+        updateConfig({ audio_enabled: true, audio_file: filePath, audio_clip_duration: dur });
       }
     } catch { /* invalid JSON */ }
   };
