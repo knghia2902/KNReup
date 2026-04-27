@@ -1,8 +1,8 @@
-import { Waveform, UploadSimple, MusicNotes, X } from '@phosphor-icons/react';
+import { Waveform, UploadSimple, MusicNotes, X, Plus } from '@phosphor-icons/react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { open } from '@tauri-apps/plugin-dialog';
 import { getMediaSrc } from '../../utils/url';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 /**
  * Built-in royalty-free audio samples.
@@ -45,6 +45,14 @@ const AUDIO_SAMPLES = [
 export function AudioLibrary() {
   const config = useProjectStore();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [importedFiles, setImportedFiles] = useState<string[]>([]);
+
+  // Load imported file from config on mount
+  useEffect(() => {
+    if (config.audio_file && !AUDIO_SAMPLES.some(s => s.url === config.audio_file) && !importedFiles.includes(config.audio_file)) {
+      setImportedFiles(prev => [...prev, config.audio_file]);
+    }
+  }, []);
 
   // Clean up AudioMixer connection since VideoPreview handles BGM mixing
   useEffect(() => {
@@ -71,19 +79,36 @@ export function AudioLibrary() {
         filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'aac', 'flac', 'm4a'] }]
       });
       if (selected && typeof selected === 'string') {
-        config.updateConfig({ 
-          audio_file: selected 
-        });
+        // Chỉ thêm vào danh sách imported files, KHÔNG auto-enable BGM
+        if (!importedFiles.includes(selected)) {
+          setImportedFiles(prev => [...prev, selected]);
+        }
+        config.updateConfig({ audio_file: selected });
       }
     } catch (err) {
       console.error("Failed to import audio:", err);
     }
   };
 
-  const handleSelectTrack = (url: string) => {
-    config.updateConfig({
-      audio_file: url,
-    });
+  const handleAddToTimeline = (filePath: string) => {
+    // Dispatch custom event để Timeline nhận và tạo clip
+    window.dispatchEvent(new CustomEvent('add-audio-to-timeline', { 
+      detail: { filePath, mediaType: 'audio' } 
+    }));
+    // Sync config cho backward compat (Properties panel)
+    config.updateConfig({ audio_enabled: true, audio_file: filePath });
+  };
+
+  const handleRemoveImported = (filePath: string) => {
+    setImportedFiles(prev => prev.filter(f => f !== filePath));
+    if (config.audio_file === filePath) {
+      config.updateConfig({ audio_file: '' });
+    }
+  };
+
+  const handlePreview = (url: string) => {
+    setPreviewUrl(url);
+    config.updateConfig({ audio_file: url });
   };
 
   return (
@@ -108,29 +133,41 @@ export function AudioLibrary() {
       </div>
 
       <div className="mlist" style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
-        {/* LOCAL AUDIO INDICATOR */}
-        {config.audio_file && !AUDIO_SAMPLES.some(s => s.url === config.audio_file) && (
+        {/* IMPORTED LOCAL FILES */}
+        {importedFiles.map((filePath) => (
           <div 
+            key={filePath}
             className="audio-lib-item active" 
-            style={{ marginBottom: '8px', border: '1px solid var(--accent)', cursor: 'grab' }}
-            draggable="true"
-            onDragStart={(e) => {
-              e.dataTransfer.setData('application/json', JSON.stringify({ 
-                filePath: config.audio_file, 
-                mediaType: 'audio' 
-              }));
-            }}
+            style={{ marginBottom: '6px', border: '1px solid var(--accent)', borderRadius: '6px', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <div className="audio-lib-icon"><Waveform size={20} weight="fill" /></div>
-            <div className="audio-lib-info" style={{ flex: 1 }}>
-              <div className="audio-lib-name" style={{ fontSize: '11px', fontWeight: 600 }}>{config.audio_file.split(/[/\\]/).pop()}</div>
-              <div className="audio-lib-meta">Local File · Kéo vào Timeline</div>
+            <div className="audio-lib-icon"><Waveform size={18} weight="fill" color="var(--accent)" /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{filePath.split(/[/\\]/).pop()}</div>
+              <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Local File</div>
             </div>
-            <button className="btn-icon" onClick={(e) => { e.stopPropagation(); config.updateConfig({ audio_file: '' }); }}><X size={14} /></button>
+            {/* Add to Timeline button */}
+            <button 
+              onClick={() => handleAddToTimeline(filePath)}
+              title="Thêm vào Timeline"
+              style={{ 
+                background: 'var(--accent)', border: 'none', borderRadius: '3px', 
+                cursor: 'pointer', display: 'flex', padding: '2px 4px',
+                color: '#fff', fontSize: '9px', alignItems: 'center', gap: '2px',
+              }}
+            >
+              <Plus size={10} weight="bold" /> BGM
+            </button>
+            <button 
+              className="btn-icon" 
+              onClick={(e) => { e.stopPropagation(); handleRemoveImported(filePath); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '2px' }}
+            >
+              <X size={12} />
+            </button>
           </div>
-        )}
+        ))}
 
-        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Library Tracks</div>
+        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', marginTop: importedFiles.length > 0 ? '8px' : '0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Library Tracks</div>
         
         {AUDIO_SAMPLES.map((sample) => {
           const isActive = config.audio_file === sample.url;
@@ -138,23 +175,28 @@ export function AudioLibrary() {
             <div
               key={sample.id}
               className={`audio-lib-item ${isActive ? 'active' : ''}`}
-              onClick={() => handleSelectTrack(sample.url)}
-              draggable="true"
-              onDragStart={(e) => {
-                e.dataTransfer.setData('application/json', JSON.stringify({ 
-                  filePath: sample.url, 
-                  mediaType: 'audio' 
-                }));
-              }}
-              style={{ cursor: 'grab', marginBottom: '4px', borderRadius: '6px', padding: '8px', display: 'flex', alignItems: 'center', gap: '10px', background: isActive ? 'var(--accent-subtle)' : 'transparent' }}
+              onClick={() => handlePreview(sample.url)}
+              style={{ cursor: 'pointer', marginBottom: '4px', borderRadius: '6px', padding: '8px', display: 'flex', alignItems: 'center', gap: '8px', background: isActive ? 'var(--accent-subtle)' : 'transparent' }}
             >
               <div className="audio-lib-icon">
-                <Waveform size={20} weight={isActive ? "fill" : "duotone"} color={isActive ? "var(--accent)" : "var(--text-muted)"} />
+                <Waveform size={18} weight={isActive ? "fill" : "duotone"} color={isActive ? "var(--accent)" : "var(--text-muted)"} />
               </div>
-              <div className="audio-lib-info" style={{ flex: 1 }}>
-                <div className="audio-lib-name" style={{ fontSize: '11px', fontWeight: isActive ? 600 : 400 }}>{sample.name}</div>
-                <div className="audio-lib-meta" style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{sample.genre} • {sample.duration}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '11px', fontWeight: isActive ? 600 : 400 }}>{sample.name}</div>
+                <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{sample.genre} • {sample.duration}</div>
               </div>
+              {/* Add to Timeline button */}
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleAddToTimeline(sample.url); }}
+                title="Thêm vào Timeline"
+                style={{ 
+                  background: 'rgba(var(--accent-rgb, 99,102,241), 0.15)', border: '1px solid rgba(var(--accent-rgb, 99,102,241), 0.3)', 
+                  borderRadius: '3px', cursor: 'pointer', display: 'flex', padding: '2px 4px',
+                  color: 'var(--accent)', fontSize: '9px', alignItems: 'center', gap: '2px',
+                }}
+              >
+                <Plus size={10} weight="bold" /> BGM
+              </button>
               {isActive && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
             </div>
           );
@@ -162,7 +204,7 @@ export function AudioLibrary() {
       </div>
 
       {/* ACTIVE AUDIO PREVIEW */}
-      {config.audio_enabled && config.audio_file && (
+      {config.audio_file && (
         <div style={{ padding: '12px', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
           <div style={{ padding: '4px', background: 'var(--bg-surface)', borderRadius: '6px' }}>
             <audio ref={audioRef} crossOrigin="anonymous" controls style={{ width: '100%', height: '24px' }} src={getMediaSrc(config.audio_file) || ''} />

@@ -462,6 +462,19 @@ export function Timeline({ filePaths }: TimelineProps) {
     return () => el.removeEventListener('wheel', handleWheel);
   }, [updateConfig]);
 
+  // ─── Audio Add-to-Timeline (custom event from AudioLibrary) ───
+  useEffect(() => {
+    const handleAudioAdd = (e: Event) => {
+      const { filePath } = (e as CustomEvent).detail;
+      if (filePath) {
+        const dur = 200; // Default — sẽ được AudioTrack cập nhật khi load metadata
+        timelineStore.appendClipToTrack('bgm', { type: 'audio', sourceFile: filePath, sourceStart: 0, sourceDuration: dur, timelineDuration: dur });
+      }
+    };
+    window.addEventListener('add-audio-to-timeline', handleAudioAdd);
+    return () => window.removeEventListener('add-audio-to-timeline', handleAudioAdd);
+  }, []);
+
   // ─── Media Bin Drag-Drop (D-10, D-11) ───
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
