@@ -219,6 +219,19 @@ Plans:
 - [x] 08.3-03-PLAN.md — Behavior Migration: Drag/Drop, Snap, Playhead & Keyboard. (completed 2026-04-27)
 **Status**: ✅ Complete (2026-04-27)
 
+### Phase 08.4: Advanced Timeline Drag-Drop (INSERTED)
+> **Mục tiêu**: Nâng cấp tương tác Timeline lên Mức 2 — overlay tracks tự tạo, insert chen clip, ghost preview, kéo clip giữa tracks.
+> **Output**: Timeline drag-drop ngang cấp CapCut Professional.
+
+**Depends on:** Phase 08.3
+
+- **Overlay Track Auto-Create**: Kéo video lên phía trên Main Track → tự động tạo overlay track mới.
+- **Insert Between Clips**: Kéo clip vào giữa 2 clip trên Main Track → chen vào, clips sau dồn ra.
+- **Ghost Preview**: Hiển thị clip mờ (ghost) theo con chuột khi đang kéo, track đích sáng lên.
+- **Cross-Track Drag**: Cho phép kéo clip giữa các track (Main → Overlay, Overlay → Main).
+
+**UAT**: Kéo video lên trên Main Track → overlay track tự tạo → kéo clip chèn giữa 2 clip → ghost preview hiển thị → kéo clip từ overlay xuống Main Track.
+
 ### Phase 11: Voice Studio Full Features
 
 **Goal:** Nâng cấp công cụ Voice Clone thành Voice Studio toàn diện với TTS đa engine và hệ thống quản lý lịch sử âm thanh cục bộ.
