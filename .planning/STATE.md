@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-27T05:01:01.453Z"
+status: planning
+last_updated: "2026-04-27T08:42:42.131Z"
 last_activity: 2026-04-27
 progress:
-  total_phases: 16
-  completed_phases: 12
-  total_plans: 38
-  completed_plans: 33
-  percent: 87
+  total_phases: 17
+  completed_phases: 13
+  total_plans: 41
+  completed_plans: 36
+  percent: 88
 ---
 
 # STATE.md — KNReup Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 08.3 — main-track-timeline-refactor
+**Current focus:** Phase 08.4 — Advanced Timeline Drag-Drop
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
-- **Phase:** 25
-- **Status:** Executing Phase 08.3
+- **Phase:** 09
+- **Status:** Ready to plan
 - **Last activity:** 2026-04-27
 
 ## Context
