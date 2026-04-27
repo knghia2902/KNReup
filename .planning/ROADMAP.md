@@ -232,10 +232,10 @@ Plans:
 
 **UAT**: Kéo video lên trên Main Track → overlay track tự tạo → kéo clip chèn giữa 2 clip → ghost preview hiển thị → kéo clip từ overlay xuống Main Track.
 
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 - [x] 08.4-01-PLAN.md — Dynamic Overlay Track System (Wave 1)
-- [ ] 08.4-02-PLAN.md — Insert Between Clips & Ghost Preview (Wave 2)
-- [ ] 08.4-03-PLAN.md — Cross-Track Drag & Overlay Auto-Create (Wave 2)
+- [x] 08.4-02-PLAN.md — Insert Between Clips & Ghost Preview (Wave 2)
+- [x] 08.4-03-PLAN.md — Cross-Track Drag & Overlay Auto-Create (Wave 2)
 
 ### Phase 11: Voice Studio Full Features
 
