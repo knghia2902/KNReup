@@ -213,7 +213,7 @@ Plans:
 
 **Depends on:** Phase 08.0
 
-**Plans:** 3 plans
+**Plans:** 0/3 plans executed
 - [ ] 08.3-01-PLAN.md — Data Foundation: Clip Model & useTimelineStore.
 - [ ] 08.3-02-PLAN.md — Component Decomposition: Timeline Layout & Track Components.
 - [ ] 08.3-03-PLAN.md — Behavior Migration: Drag/Drop, Snap, Playhead & Keyboard.
