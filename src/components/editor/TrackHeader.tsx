@@ -1,6 +1,6 @@
 import { memo } from 'react';
-import { TrackMeta } from '../../types/timeline';
-import { TextT, Waveform, SpeakerHigh, MusicNote, Lock, LockOpen, Eye, EyeSlash, SpeakerSlash } from '@phosphor-icons/react';
+import { TrackMeta, isOverlayTrack } from '../../types/timeline';
+import { TextT, Waveform, SpeakerHigh, MusicNote, Lock, LockOpen, Eye, EyeSlash, SpeakerSlash, Stack } from '@phosphor-icons/react';
 
 interface TrackHeaderProps {
   track: TrackMeta;
@@ -11,6 +11,7 @@ interface TrackHeaderProps {
 
 // CapCut style icons cho mỗi track type
 function getTrackIcon(trackId: string) {
+  if (isOverlayTrack(trackId)) return <Stack size={14} weight="bold" />;
   switch (trackId) {
     case 'sub':  return <TextT size={14} weight="bold" />;
     case 'main': return <Waveform size={14} weight="bold" />;
@@ -22,6 +23,7 @@ function getTrackIcon(trackId: string) {
 
 export const TrackHeader = memo(({ track, onToggleMute, onToggleLock, onToggleVisibility }: TrackHeaderProps) => {
   const isMain = track.id === 'main';
+  const isOverlay = isOverlayTrack(track.id);
 
   return (
     <div style={{ 
@@ -31,12 +33,12 @@ export const TrackHeader = memo(({ track, onToggleMute, onToggleLock, onToggleVi
       justifyContent: 'space-between', 
       padding: '0 4px', 
       borderBottom: '1px solid var(--border-subtle)', 
-      background: isMain ? 'rgba(var(--accent-rgb, 99,102,241), 0.06)' : 'transparent',
+      background: isMain ? 'rgba(var(--accent-rgb, 99,102,241), 0.06)' : isOverlay ? 'rgba(167,139,250,0.06)' : 'transparent',
     }}>
       {/* Track icon (CapCut style — no text label) */}
       <div style={{ 
         width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: isMain ? 'var(--accent)' : 'var(--text-muted)', 
+        color: isMain ? 'var(--accent)' : isOverlay ? '#a78bfa' : 'var(--text-muted)', 
         opacity: 0.8,
         flexShrink: 0,
       }}>

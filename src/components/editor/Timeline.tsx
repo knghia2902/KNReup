@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, memo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useTimelineStore } from '../../stores/useTimelineStore';
@@ -6,9 +6,9 @@ import { TimelineToolbar } from './TimelineToolbar';
 import { TrackHeader } from './TrackHeader';
 import { TrackRow } from './TrackRow';
 import { AudioMixer } from '../../lib/audioMixer';
-import { TRACK_ORDER } from '../../types/timeline';
+import { getTrackOrder, isOverlayTrack } from '../../types/timeline';
 import { projectToVideoClip, projectToAudioClip, segmentsToSubtitleClips } from '../../utils/timelineMigration';
-import { SubtitleClip } from '../../types/timeline';
+import { SubtitleClip, ClipType } from '../../types/timeline';
 
 const TIMELINE_OFFSET_X = 4;
 
@@ -81,6 +81,7 @@ export function Timeline({ filePaths }: TimelineProps) {
 
   const playheadRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const cleanupTimerRef = useRef<number | null>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -88,6 +89,13 @@ export function Timeline({ filePaths }: TimelineProps) {
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
   const [resizingClip, setResizingClip] = useState<{ clipId: string; side: 'left' | 'right' } | null>(null);
   const [activeSnapTime, setActiveSnapTime] = useState<number | null>(null);
+  const [ghostState, setGhostState] = useState<{ x: number; width: number; trackY: number } | null>(null);
+  const [insertIndicator, setInsertIndicator] = useState<{ trackId: string; timePosition: number; index: number } | null>(null);
+  const [highlightTrackId, setHighlightTrackId] = useState<string | null>(null);
+
+  // Dynamic track order (overlay tracks between SUB and MAIN)
+  const overlayIds = timelineStore.overlayTrackIds || [];
+  const trackOrder = useMemo(() => getTrackOrder(overlayIds), [overlayIds]);
 
   const pixelsPerSecond = Math.max(0.0001, 50 * timelineZoom);
   const currentVideoPath = activeFile || (filePaths.length > 0 ? filePaths[0] : null);
@@ -200,6 +208,47 @@ export function Timeline({ filePaths }: TimelineProps) {
     return () => cancelAnimationFrame(animationFrameId);
   }, [pixelsPerSecond, isDraggingPlayhead, scrollLeft, timelineOffset]);
 
+  // ─── Cross-track drop validation ───
+  const canDropOnTrack = useCallback((clipType: ClipType, sourceTrackId: string, targetTrackId: string): boolean => {
+    if (sourceTrackId === targetTrackId) return true; // same track = reposition
+    if (clipType === 'video') return targetTrackId === 'main' || isOverlayTrack(targetTrackId) || targetTrackId === '__new_overlay__';
+    if (clipType === 'audio') return ['bgm', 'tts'].includes(targetTrackId);
+    return false; // subtitle: no cross-track
+  }, []);
+
+  // ─── Track-at-Y detection ───
+  const getTrackAtY = useCallback((mouseY: number): string | null => {
+    const rulerHeight = 26;
+    let acc = rulerHeight;
+    for (const tId of trackOrder) {
+      const track = timelineStore.tracks[tId];
+      if (!track) continue;
+      const bottom = acc + track.height;
+      if (mouseY >= acc && mouseY < bottom) return tId;
+      acc = bottom;
+    }
+    // Phía trên tất cả tracks → tạo overlay mới
+    if (mouseY < rulerHeight) return '__new_overlay__';
+    return null;
+  }, [trackOrder, timelineStore.tracks]);
+
+  // ─── Insert position detection ───
+  const detectInsertPosition = useCallback((trackId: string, timePos: number, excludeClipId: string) => {
+    const state = useTimelineStore.getState();
+    const clipIds = (state.trackClips[trackId] || []).filter(id => id !== excludeClipId);
+    for (let i = 0; i <= clipIds.length; i++) {
+      const prevClip = i > 0 ? state.clips[clipIds[i - 1]] : null;
+      const nextClip = i < clipIds.length ? state.clips[clipIds[i]] : null;
+      const gapStart = prevClip ? prevClip.timelineStart + prevClip.timelineDuration : 0;
+      const gapEnd = nextClip ? nextClip.timelineStart : Infinity;
+      const threshold = 0.5;
+      if (Math.abs(timePos - gapStart) < threshold || (timePos >= gapStart && timePos <= gapEnd && gapEnd - gapStart > 0.1)) {
+        return { index: i, snapTime: gapStart };
+      }
+    }
+    return null;
+  }, []);
+
   // ─── Pointer drag events (playhead + clip drag + resize) ───
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
@@ -207,6 +256,7 @@ export function Timeline({ filePaths }: TimelineProps) {
       if (!tlbody) return;
       const rect = tlbody.getBoundingClientRect();
       const x = e.clientX - rect.left + tlbody.scrollLeft - TIMELINE_OFFSET_X;
+      const mouseY = e.clientY - rect.top + tlbody.scrollTop;
       const newTime = Math.max(0, x / pixelsPerSecond);
       const { snapped, time: t } = getSnapMetadata(newTime);
       setActiveSnapTime(snapped ? t : null);
@@ -215,17 +265,33 @@ export function Timeline({ filePaths }: TimelineProps) {
         setCurrentTime(t);
         if (playheadRef.current) playheadRef.current.style.transform = `translateX(${t * pixelsPerSecond + TIMELINE_OFFSET_X - tlbody.scrollLeft}px)`;
         const video = document.querySelector('video');
-        if (video) video.currentTime = t + timelineOffset; // Map timeline pos → video time
+        if (video) video.currentTime = t + timelineOffset;
         AudioMixer.cancelTTS();
       }
 
       if (draggingClipId) {
         const clip = timelineStore.clips[draggingClipId];
         if (clip) {
-          // Sync back to old stores for backward compatibility
-          if (clip.trackId === 'main') updateConfig({ vid_clip_start: t });
-          else if (clip.trackId === 'bgm') updateConfig({ audio_timeline_start: t });
-          timelineStore.updateClip(draggingClipId, { timelineStart: t });
+          // Detect target track
+          const targetTrackId = getTrackAtY(mouseY);
+          const validDrop = targetTrackId ? canDropOnTrack(clip.type as ClipType, clip.trackId, targetTrackId) : false;
+          setHighlightTrackId(validDrop ? targetTrackId : null);
+
+          // Ghost preview
+          const clipWidthPx = clip.timelineDuration * pixelsPerSecond;
+          setGhostState({ x: e.clientX - rect.left - clipWidthPx / 2, width: clipWidthPx, trackY: mouseY });
+
+          // Insert detection (trên target track hoặc track hiện tại)
+          const checkTrack = (validDrop && targetTrackId && targetTrackId !== '__new_overlay__') ? targetTrackId : clip.trackId;
+          const insertPos = detectInsertPosition(checkTrack, t, draggingClipId);
+          setInsertIndicator(insertPos ? { trackId: checkTrack, timePosition: insertPos.snapTime, index: insertPos.index } : null);
+
+          // Same-track reposition (backward compat)
+          if (!targetTrackId || targetTrackId === clip.trackId || !validDrop) {
+            if (clip.trackId === 'main') updateConfig({ vid_clip_start: t });
+            else if (clip.trackId === 'bgm') updateConfig({ audio_timeline_start: t });
+            timelineStore.updateClip(draggingClipId, { timelineStart: t });
+          }
         }
       }
 
@@ -253,18 +319,44 @@ export function Timeline({ filePaths }: TimelineProps) {
           } else {
             updateConfig({ audio_clip_duration: Math.max(0.1, t - audio_timeline_start) });
           }
-        } else if (clip.trackId === 'sub') {
-          // SubtitleTrack tự handle drag/resize riêng — skip
         }
       }
     };
 
     const handlePointerUp = () => {
       if (isDraggingPlayhead) AudioMixer.muteAll(false);
+
+      // Cross-track drop logic
+      if (draggingClipId && highlightTrackId) {
+        const clip = timelineStore.clips[draggingClipId];
+        if (clip && highlightTrackId !== clip.trackId) {
+          if (highlightTrackId === '__new_overlay__') {
+            // Tạo overlay track mới và di chuyển clip sang
+            const newTrackId = timelineStore.createOverlayTrack();
+            timelineStore.moveClipToTrack(draggingClipId, newTrackId);
+          } else if (insertIndicator && insertIndicator.trackId === highlightTrackId) {
+            // Ripple insert vào vị trí chính xác
+            timelineStore.rippleInsert(draggingClipId, highlightTrackId, insertIndicator.index);
+          } else {
+            // Simple move
+            timelineStore.moveClipToTrack(draggingClipId, highlightTrackId);
+          }
+          // Schedule cleanup overlay tracks trống
+          if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
+          cleanupTimerRef.current = window.setTimeout(() => timelineStore.cleanupEmptyOverlayTracks(), 500);
+        } else if (clip && insertIndicator && insertIndicator.trackId === clip.trackId) {
+          // Same-track ripple insert
+          timelineStore.rippleInsert(draggingClipId, clip.trackId, insertIndicator.index);
+        }
+      }
+
       setIsDraggingPlayhead(false);
       setDraggingClipId(null);
       setResizingClip(null);
       setActiveSnapTime(null);
+      setGhostState(null);
+      setInsertIndicator(null);
+      setHighlightTrackId(null);
       const video = document.querySelector('video');
       if (video && !video.paused) {
         AudioMixer.scheduleTTS(useSubtitleStore.getState().segments, video.currentTime);
@@ -279,7 +371,7 @@ export function Timeline({ filePaths }: TimelineProps) {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDraggingPlayhead, draggingClipId, resizingClip, pixelsPerSecond]);
+  }, [isDraggingPlayhead, draggingClipId, resizingClip, pixelsPerSecond, highlightTrackId, insertIndicator]);
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
@@ -455,15 +547,19 @@ export function Timeline({ filePaths }: TimelineProps) {
         {/* Track headers column */}
         <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-secondary)', zIndex: 20 }}>
           <div style={{ height: 26, borderBottom: '1px solid var(--border)', background: 'var(--bg-primary)' }} />
-          {TRACK_ORDER.map(trackId => (
-            <TrackHeader
-              key={trackId}
-              track={timelineStore.tracks[trackId]}
-              onToggleMute={() => timelineStore.toggleTrackMute(trackId)}
-              onToggleLock={() => timelineStore.toggleTrackLock(trackId)}
-              onToggleVisibility={() => timelineStore.toggleTrackVisibility(trackId)}
-            />
-          ))}
+          {trackOrder.map(trackId => {
+            const track = timelineStore.tracks[trackId];
+            if (!track) return null;
+            return (
+              <TrackHeader
+                key={trackId}
+                track={track}
+                onToggleMute={() => timelineStore.toggleTrackMute(trackId)}
+                onToggleLock={() => timelineStore.toggleTrackLock(trackId)}
+                onToggleVisibility={() => timelineStore.toggleTrackVisibility(trackId)}
+              />
+            );
+          })}
         </div>
 
         {/* Scrollable track content */}
@@ -501,22 +597,78 @@ export function Timeline({ filePaths }: TimelineProps) {
                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: activeSnapTime * pixelsPerSecond + TIMELINE_OFFSET_X - scrollLeft, width: '1px', background: '#22c55e', zIndex: 50, pointerEvents: 'none' }} />
               )}
 
-              {/* 4 Track rows: SUB / MAIN / TTS / BGM */}
-              {TRACK_ORDER.map(trackId => (
-                <TrackRow
-                  key={trackId}
-                  track={timelineStore.tracks[trackId]}
-                  clips={timelineStore.getTrackClips(trackId)}
-                  pixelsPerSecond={pixelsPerSecond}
-                  scrollLeft={scrollLeft}
-                  viewportWidth={viewportWidth}
-                  timelineWidth={timelineWidthPx}
-                  selectedClipId={timelineStore.selectedClipId}
-                  onClipSelect={handleClipSelect}
-                  onClipDragStart={handleClipDragStart}
-                  onClipResizeStart={handleClipResizeStart}
+              {/* New Overlay Drop Zone (chỉ hiện khi đang kéo video clip) */}
+              {draggingClipId && timelineStore.clips[draggingClipId]?.type === 'video' && (
+                <div
+                  style={{
+                    height: 20,
+                    background: highlightTrackId === '__new_overlay__' ? 'rgba(167, 139, 250, 0.15)' : 'rgba(167, 139, 250, 0.04)',
+                    borderBottom: '1px dashed rgba(167, 139, 250, 0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, color: 'var(--text-muted)', transition: 'background 0.15s ease',
+                  }}
+                >
+                  {highlightTrackId === '__new_overlay__' ? '+ Thả để tạo Overlay Track' : ''}
+                </div>
+              )}
+
+              {/* Dynamic Track rows */}
+              {trackOrder.map(trackId => {
+                const track = timelineStore.tracks[trackId];
+                if (!track) return null;
+                return (
+                  <TrackRow
+                    key={trackId}
+                    track={track}
+                    clips={timelineStore.getTrackClips(trackId)}
+                    pixelsPerSecond={pixelsPerSecond}
+                    scrollLeft={scrollLeft}
+                    viewportWidth={viewportWidth}
+                    timelineWidth={timelineWidthPx}
+                    selectedClipId={timelineStore.selectedClipId}
+                    isHighlighted={highlightTrackId === trackId}
+                    onClipSelect={handleClipSelect}
+                    onClipDragStart={handleClipDragStart}
+                    onClipResizeStart={handleClipResizeStart}
+                  />
+                );
+              })}
+
+              {/* Insert indicator (vạch xanh) */}
+              {insertIndicator && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: insertIndicator.timePosition * pixelsPerSecond + TIMELINE_OFFSET_X - scrollLeft,
+                    top: 26, bottom: 0,
+                    width: 2,
+                    background: '#22c55e',
+                    zIndex: 150,
+                    pointerEvents: 'none',
+                    animation: 'pulse-insert 1s ease-in-out infinite',
+                  }}
                 />
-              ))}
+              )}
+
+              {/* Ghost preview (hình mờ khi đang kéo) */}
+              {ghostState && draggingClipId && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: ghostState.x,
+                    top: ghostState.trackY - 20,
+                    width: ghostState.width,
+                    height: 40,
+                    background: highlightTrackId ? 'var(--accent-subtle)' : 'rgba(239,68,68,0.1)',
+                    opacity: 0.45,
+                    border: `2px dashed ${highlightTrackId ? 'var(--accent)' : '#ef4444'}`,
+                    borderRadius: 6,
+                    pointerEvents: 'none',
+                    zIndex: 200,
+                    transition: 'left 0.03s linear, top 0.03s linear',
+                  }}
+                />
+              )}
 
               {/* Playhead */}
               <div

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Clip, SubtitleClip, TrackId, TrackMeta, TimelineState } from '../types/timeline';
+import { Clip, SubtitleClip, TrackMeta, TimelineState, OverlayTrackId, isOverlayTrack } from '../types/timeline';
 
-const DEFAULT_TRACKS: Record<TrackId, TrackMeta> = {
+const DEFAULT_TRACKS: Record<string, TrackMeta> = {
   sub:  { id: 'sub',  label: 'SUB',  color: '#f59e0b', height: 40, locked: false, visible: true, volume: 1.0, muted: false },
   main: { id: 'main', label: 'MAIN', color: 'var(--accent)', height: 60, locked: false, visible: true, volume: 1.0, muted: false },
   tts:  { id: 'tts',  label: 'TTS',  color: '#f59e0b', height: 40, locked: false, visible: true, volume: 1.0, muted: false },
@@ -17,6 +17,7 @@ const INITIAL_STATE: TimelineState = {
   scrollX: 0,
   snapEnabled: true,
   snapThreshold: 12,
+  overlayTrackIds: [],
 };
 
 interface TimelineActions {
@@ -27,14 +28,21 @@ interface TimelineActions {
   selectClip: (clipId: string | null) => void;
 
   // Track operations
-  updateTrack: (trackId: TrackId, partial: Partial<TrackMeta>) => void;
-  toggleTrackMute: (trackId: TrackId) => void;
-  toggleTrackLock: (trackId: TrackId) => void;
-  toggleTrackVisibility: (trackId: TrackId) => void;
+  updateTrack: (trackId: string, partial: Partial<TrackMeta>) => void;
+  toggleTrackMute: (trackId: string) => void;
+  toggleTrackLock: (trackId: string) => void;
+  toggleTrackVisibility: (trackId: string) => void;
 
   // Multi-clip operations
-  appendClipToTrack: (trackId: TrackId, clip: Omit<Clip, 'id' | 'trackId' | 'timelineStart'>) => void;
+  appendClipToTrack: (trackId: string, clip: Omit<Clip, 'id' | 'trackId' | 'timelineStart'>) => void;
   rippleDelete: (clipId: string) => void;
+  rippleInsert: (clipId: string, targetTrackId: string, insertIndex: number) => void;
+
+  // Dynamic track management
+  createOverlayTrack: () => OverlayTrackId;
+  removeOverlayTrack: (trackId: OverlayTrackId) => void;
+  cleanupEmptyOverlayTracks: () => void;
+  moveClipToTrack: (clipId: string, targetTrackId: string) => void;
 
   // Timeline config
   setZoom: (zoom: number) => void;
@@ -43,8 +51,8 @@ interface TimelineActions {
 
   // Bulk operations
   setClips: (clips: (Clip | SubtitleClip)[]) => void;
-  getTrackClips: (trackId: TrackId) => (Clip | SubtitleClip)[];
-  getTrackDuration: (trackId: TrackId) => number;
+  getTrackClips: (trackId: string) => (Clip | SubtitleClip)[];
+  getTrackDuration: (trackId: string) => number;
   getTotalDuration: () => number;
 
   // Reset
@@ -59,8 +67,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
   // === Clip CRUD ===
 
   addClip: (clip) => set((state) => {
-    const trackId = clip.trackId as TrackId;
+    const trackId = clip.trackId;
     const newClips = { ...state.clips, [clip.id]: clip };
+
+    // Tự tạo trackClips entry nếu chưa có (overlay tracks)
     const currentTrackClips = [...(state.trackClips[trackId] || [])];
 
     // Giữ sorted by timelineStart
@@ -83,16 +93,18 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
     const clip = state.clips[clipId];
     if (!clip) return state;
 
-    const trackId = clip.trackId as TrackId;
+    const trackId = clip.trackId;
     const newClips = { ...state.clips };
     delete newClips[clipId];
 
+    const newTrackClips = {
+      ...state.trackClips,
+      [trackId]: (state.trackClips[trackId] || []).filter(id => id !== clipId),
+    };
+
     return {
       clips: newClips,
-      trackClips: {
-        ...state.trackClips,
-        [trackId]: state.trackClips[trackId].filter(id => id !== clipId),
-      },
+      trackClips: newTrackClips,
       selectedClipId: state.selectedClipId === clipId ? null : state.selectedClipId,
     };
   }),
@@ -105,8 +117,8 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
     const newClips = { ...state.clips, [clipId]: updated };
 
     // Re-sort track nếu timelineStart thay đổi
-    const trackId = clip.trackId as TrackId;
-    let trackClipIds = state.trackClips[trackId];
+    const trackId = clip.trackId;
+    let trackClipIds = state.trackClips[trackId] || [];
     if (partial.timelineStart !== undefined) {
       trackClipIds = [...trackClipIds].sort((a, b) => {
         const ca = newClips[a];
@@ -135,21 +147,21 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
   toggleTrackMute: (trackId) => set((state) => ({
     tracks: {
       ...state.tracks,
-      [trackId]: { ...state.tracks[trackId], muted: !state.tracks[trackId].muted },
+      [trackId]: { ...state.tracks[trackId], muted: !state.tracks[trackId]?.muted },
     },
   })),
 
   toggleTrackLock: (trackId) => set((state) => ({
     tracks: {
       ...state.tracks,
-      [trackId]: { ...state.tracks[trackId], locked: !state.tracks[trackId].locked },
+      [trackId]: { ...state.tracks[trackId], locked: !state.tracks[trackId]?.locked },
     },
   })),
 
   toggleTrackVisibility: (trackId) => set((state) => ({
     tracks: {
       ...state.tracks,
-      [trackId]: { ...state.tracks[trackId], visible: !state.tracks[trackId].visible },
+      [trackId]: { ...state.tracks[trackId], visible: !state.tracks[trackId]?.visible },
     },
   })),
 
@@ -183,7 +195,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
     const clip = state.clips[clipId];
     if (!clip) return state;
 
-    const trackId = clip.trackId as TrackId;
+    const trackId = clip.trackId;
     const duration = clip.timelineDuration;
     const clipStart = clip.timelineStart;
 
@@ -191,8 +203,8 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
     const newClips = { ...state.clips };
     delete newClips[clipId];
 
-    // Dịch tất cả clips SAU clip đó lùi lại `duration` trên CÙNG track (D-08)
-    const trackClipIds = state.trackClips[trackId].filter(id => id !== clipId);
+    // Dịch tất cả clips SAU clip đó lùi lại `duration` trên CÙNG track
+    const trackClipIds = (state.trackClips[trackId] || []).filter(id => id !== clipId);
     trackClipIds.forEach(id => {
       const c = newClips[id];
       if (c && c.timelineStart > clipStart) {
@@ -210,6 +222,154 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
     };
   }),
 
+  rippleInsert: (clipId, targetTrackId, insertIndex) => set((state) => {
+    const clip = state.clips[clipId];
+    if (!clip) return state;
+
+    const newClips = { ...state.clips };
+    const oldTrackId = clip.trackId;
+
+    // Xóa clip khỏi track cũ
+    const oldTrackClips = (state.trackClips[oldTrackId] || []).filter(id => id !== clipId);
+
+    // Tính timelineStart mới = end time của clip trước insertIndex
+    const targetTrackClips = [...(state.trackClips[targetTrackId] || [])].filter(id => id !== clipId);
+    let newStart = 0;
+    if (insertIndex > 0 && targetTrackClips.length > 0) {
+      const prevIdx = Math.min(insertIndex - 1, targetTrackClips.length - 1);
+      const prevClipId = targetTrackClips[prevIdx];
+      const prevClip = newClips[prevClipId];
+      if (prevClip) newStart = prevClip.timelineStart + prevClip.timelineDuration;
+    }
+
+    // Update clip trackId & position
+    const insertedDuration = clip.timelineDuration;
+    newClips[clipId] = { ...clip, trackId: targetTrackId, timelineStart: newStart };
+
+    // Dồn tất cả clips SAU insertIndex ra phía sau
+    for (let i = insertIndex; i < targetTrackClips.length; i++) {
+      const cId = targetTrackClips[i];
+      const c = newClips[cId];
+      if (c) newClips[cId] = { ...c, timelineStart: c.timelineStart + insertedDuration };
+    }
+
+    // Insert clipId vào đúng vị trí
+    targetTrackClips.splice(insertIndex, 0, clipId);
+
+    return {
+      clips: newClips,
+      trackClips: {
+        ...state.trackClips,
+        [oldTrackId]: oldTrackClips,
+        [targetTrackId]: targetTrackClips,
+      },
+    };
+  }),
+
+  // === Dynamic Track Management ===
+
+  createOverlayTrack: () => {
+    const state = get();
+    // Tìm max overlay number hiện tại
+    let maxNum = 0;
+    state.overlayTrackIds.forEach(id => {
+      const num = parseInt(id.replace('overlay-', ''));
+      if (num > maxNum) maxNum = num;
+    });
+    const newId = `overlay-${maxNum + 1}` as OverlayTrackId;
+
+    set((s) => ({
+      tracks: {
+        ...s.tracks,
+        [newId]: {
+          id: newId,
+          label: `OVL-${maxNum + 1}`,
+          color: '#a78bfa',
+          height: 50,
+          locked: false,
+          visible: true,
+          volume: 1.0,
+          muted: false,
+        },
+      },
+      trackClips: {
+        ...s.trackClips,
+        [newId]: [],
+      },
+      overlayTrackIds: [...s.overlayTrackIds, newId],
+    }));
+
+    return newId;
+  },
+
+  removeOverlayTrack: (trackId) => set((state) => {
+    if (!isOverlayTrack(trackId)) return state;
+
+    const newTracks = { ...state.tracks };
+    delete newTracks[trackId];
+
+    const newTrackClips = { ...state.trackClips };
+    delete newTrackClips[trackId];
+
+    return {
+      tracks: newTracks,
+      trackClips: newTrackClips,
+      overlayTrackIds: state.overlayTrackIds.filter(id => id !== trackId),
+    };
+  }),
+
+  cleanupEmptyOverlayTracks: () => set((state) => {
+    const toRemove = state.overlayTrackIds.filter(
+      id => (state.trackClips[id] || []).length === 0
+    );
+    if (toRemove.length === 0) return state;
+
+    const newTracks = { ...state.tracks };
+    const newTrackClips = { ...state.trackClips };
+    toRemove.forEach(id => {
+      delete newTracks[id];
+      delete newTrackClips[id];
+    });
+
+    return {
+      tracks: newTracks,
+      trackClips: newTrackClips,
+      overlayTrackIds: state.overlayTrackIds.filter(id => !toRemove.includes(id)),
+    };
+  }),
+
+  moveClipToTrack: (clipId, targetTrackId) => set((state) => {
+    const clip = state.clips[clipId];
+    if (!clip) return state;
+
+    const oldTrackId = clip.trackId;
+    if (oldTrackId === targetTrackId) return state;
+
+    // Xóa clip khỏi track cũ
+    const oldTrackClips = (state.trackClips[oldTrackId] || []).filter(id => id !== clipId);
+
+    // Update clip trackId
+    const newClips = { ...state.clips };
+    newClips[clipId] = { ...clip, trackId: targetTrackId };
+
+    // Thêm vào track mới (giữ sorted by timelineStart)
+    const targetClips = [...(state.trackClips[targetTrackId] || []), clipId];
+    targetClips.sort((a, b) => {
+      const ca = newClips[a];
+      const cb = newClips[b];
+      return (ca?.timelineStart || 0) - (cb?.timelineStart || 0);
+    });
+
+    return {
+      clips: newClips,
+      trackClips: {
+        ...state.trackClips,
+        [oldTrackId]: oldTrackClips,
+        [targetTrackId]: targetClips,
+      },
+    };
+  }),
+
   // === Timeline config ===
 
   setZoom: (zoom) => set({ zoom }),
@@ -221,21 +381,27 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
 
   // === Bulk operations ===
 
-  setClips: (clips) => set(() => {
+  setClips: (clips) => set((state) => {
     const clipRegistry: Record<string, Clip | SubtitleClip> = {};
-    const trackClips: Record<TrackId, string[]> = { main: [], sub: [], tts: [], bgm: [] };
+    const trackClips: Record<string, string[]> = { main: [], sub: [], tts: [], bgm: [] };
+
+    // Thêm overlay tracks đã tồn tại
+    state.overlayTrackIds.forEach(id => {
+      trackClips[id] = [];
+    });
 
     clips.forEach(clip => {
       clipRegistry[clip.id] = clip;
-      const trackId = clip.trackId as TrackId;
-      if (trackClips[trackId]) {
-        trackClips[trackId].push(clip.id);
+      const trackId = clip.trackId;
+      if (!trackClips[trackId]) {
+        trackClips[trackId] = [];
       }
+      trackClips[trackId].push(clip.id);
     });
 
     // Sort each track by timelineStart
     Object.keys(trackClips).forEach(trackId => {
-      trackClips[trackId as TrackId].sort((a, b) => {
+      trackClips[trackId].sort((a, b) => {
         const ca = clipRegistry[a];
         const cb = clipRegistry[b];
         return (ca?.timelineStart || 0) - (cb?.timelineStart || 0);
@@ -270,5 +436,5 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
 
   // === Reset ===
 
-  reset: () => set({ ...INITIAL_STATE, tracks: { ...DEFAULT_TRACKS } }),
+  reset: () => set({ ...INITIAL_STATE, tracks: { ...DEFAULT_TRACKS }, overlayTrackIds: [] }),
 }));

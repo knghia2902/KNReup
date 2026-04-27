@@ -10,6 +10,7 @@ interface TrackRowProps {
   viewportWidth: number;
   timelineWidth: number;
   selectedClipId: string | null;
+  isHighlighted?: boolean;
   onClipSelect: (clipId: string) => void;
   onClipDragStart: (clipId: string, e: React.PointerEvent) => void;
   onClipResizeStart: (clipId: string, side: 'left' | 'right', e: React.PointerEvent) => void;
@@ -25,6 +26,7 @@ export const TrackRow = memo(({
   viewportWidth,
   timelineWidth,
   selectedClipId,
+  isHighlighted = false,
   onClipSelect,
   onClipDragStart,
   onClipResizeStart,
@@ -48,7 +50,10 @@ export const TrackRow = memo(({
         borderBottom: '1px solid var(--border-subtle)',
         position: 'relative',
         overflow: 'hidden',
-        background: isMain ? 'rgba(var(--accent-rgb, 99,102,241), 0.03)' : 'transparent',
+        background: isHighlighted
+          ? 'rgba(99, 102, 241, 0.1)'
+          : isMain ? 'rgba(var(--accent-rgb, 99,102,241), 0.03)' : 'transparent',
+        transition: 'background 0.15s ease',
       }}
     >
       <div style={{
