@@ -16,6 +16,7 @@ import {
   VideoCamera,
   ChartBar,
   GearSix,
+  Scissors,
 } from '@phosphor-icons/react';
 import { RecentProjects } from './RecentProjects';
 import '../../styles/design-system.css';
@@ -159,6 +160,11 @@ export function HomeLauncher() {
                 <Microphone size={24} weight="duotone" />
                 <span>Voice Studio</span>
                 <span className="launcher-tool-desc">Text-to-Speech & Voice Clone</span>
+              </button>
+              <button className="launcher-tool-card" onClick={() => openTool('smart-crop')}>
+                <Scissors size={24} weight="duotone" />
+                <span>Smart Crop</span>
+                <span className="launcher-tool-desc">AI crop 16:9 → 9:16</span>
               </button>
             </div>
           </div>

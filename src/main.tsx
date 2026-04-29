@@ -25,6 +25,8 @@ function RootApp() {
           import('./components/downloader/DownloaderPanel').then((m) => setView(() => m.DownloaderPanel));
         } else if (toolId === 'voice-studio' || toolId === 'voice-clone') {
           import('./components/tools/VoiceCloneWindow').then((m) => setView(() => m.VoiceCloneWindow));
+        } else if (toolId === 'smart-crop') {
+          import('./components/SmartCrop/SmartCropWindow').then((m) => setView(() => m.SmartCropWindow));
         } else {
           // Fallback — show launcher
           import('./components/setup/HomeLauncher').then((m) => setView(() => m.HomeLauncher));

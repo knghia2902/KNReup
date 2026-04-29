@@ -100,6 +100,7 @@ export async function openTool(toolId: string): Promise<WebviewWindow | null> {
   const toolConfigs: Record<string, { title: string; width: number; height: number }> = {
     downloader: { title: 'KNReup Downloader', width: 1000, height: 700 },
     'voice-studio': { title: 'KNReup Voice Studio', width: 1000, height: 750 },
+    'smart-crop': { title: 'KNReup Smart Crop', width: 1200, height: 800 },
   };
 
   const config = toolConfigs[toolId] || { title: `KNReup — ${toolId}`, width: 800, height: 600 };
