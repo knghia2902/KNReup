@@ -35,3 +35,7 @@ f2>=0.9.0
 aiosqlite>=0.19.0
 pywin32>=306
 cryptography>=42.0.0
+# TrackingFace Smart Crop dependencies
+ultralytics>=8.0.0
+numpy>=1.24
+ffmpeg-python>=0.2

@@ -64,9 +64,11 @@ app.include_router(proxy.router, prefix="/api")
 
 from app.routes import tts_profiles
 from app.routes import projects
+from app.routes import face_crop
 app.include_router(tts_profiles.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(downloader_router, prefix="/api")
+app.include_router(face_crop.router, prefix="/api", tags=["Smart Crop"])
 
 def find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
