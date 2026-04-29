@@ -98,6 +98,8 @@ export const useSubtitleStore = create<SubtitleStore>((set) => ({
       
       const duration = seg.end - seg.start;
       if (duration <= 0) return state;
+      if (splitTime <= seg.start + 0.05 || splitTime >= seg.end - 0.05) return state; // Ignore if playhead isn't properly within the clip
+
       const ratio = (splitTime - seg.start) / duration;
       
       const splitText = (text: string) => {

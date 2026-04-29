@@ -1,10 +1,10 @@
 import { memo } from 'react';
-import { TrackMeta, Clip, SubtitleClip } from '../../types/timeline';
+import { TrackMeta } from '../../types/timeline';
 import { ClipBlock } from './ClipBlock';
+import { useTimelineStore } from '../../stores/useTimelineStore';
 
 interface TrackRowProps {
   track: TrackMeta;
-  clips: (Clip | SubtitleClip)[];
   pixelsPerSecond: number;
   scrollLeft: number;
   viewportWidth: number;
@@ -14,13 +14,13 @@ interface TrackRowProps {
   onClipSelect: (clipId: string) => void;
   onClipDragStart: (clipId: string, e: React.PointerEvent) => void;
   onClipResizeStart: (clipId: string, side: 'left' | 'right', e: React.PointerEvent) => void;
+  isLocked?: boolean;
 }
 
 const TIMELINE_OFFSET_X = 4;
 
 export const TrackRow = memo(({
   track,
-  clips,
   pixelsPerSecond,
   scrollLeft,
   viewportWidth,
@@ -30,17 +30,14 @@ export const TrackRow = memo(({
   onClipSelect,
   onClipDragStart,
   onClipResizeStart,
+  isLocked = false,
 }: TrackRowProps) => {
   const isMain = track.id === 'main';
 
-  // Virtualization: chỉ render clips visible trong viewport
+  const clipIds = useTimelineStore(s => s.trackClips[track.id] || []);
+
   const viewportStartTime = Math.max(0, scrollLeft / pixelsPerSecond);
   const viewportEndTime = (scrollLeft + viewportWidth) / pixelsPerSecond;
-
-  const visibleClips = clips.filter(clip => {
-    const clipEnd = clip.timelineStart + clip.timelineDuration;
-    return clipEnd > viewportStartTime && clip.timelineStart < viewportEndTime;
-  });
 
   return (
     <div
@@ -63,18 +60,21 @@ export const TrackRow = memo(({
         width: timelineWidth,
         height: '100%',
       }}>
-        {visibleClips.map(clip => (
+        {clipIds.map(clipId => (
           <ClipBlock
-            key={clip.id}
-            clip={clip}
+            key={clipId}
+            clipId={clipId}
             pixelsPerSecond={pixelsPerSecond}
             scrollLeft={scrollLeft}
             viewportWidth={viewportWidth}
-            isSelected={selectedClipId === clip.id}
+            viewportStartTime={viewportStartTime}
+            viewportEndTime={viewportEndTime}
+            isSelected={selectedClipId === clipId}
             isMainTrack={isMain}
-            onSelect={() => onClipSelect(clip.id)}
-            onDragStart={(e) => onClipDragStart(clip.id, e)}
-            onResizeStart={(side, e) => onClipResizeStart(clip.id, side, e)}
+            onSelect={() => onClipSelect(clipId)}
+            onDragStart={(e: React.PointerEvent) => onClipDragStart(clipId, e)}
+            onResizeStart={(side: 'left' | 'right', e: React.PointerEvent) => onClipResizeStart(clipId, side, e)}
+            isLocked={isMain ? isLocked : false}
           />
         ))}
       </div>

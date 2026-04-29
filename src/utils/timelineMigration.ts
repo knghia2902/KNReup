@@ -23,7 +23,7 @@ export function projectToVideoClip(
   videoDuration: number
 ): Clip {
   return {
-    id: crypto.randomUUID(),
+    id: 'vid-main-clip',  // Stable ID — sync useEffect runs repeatedly, must not create duplicates
     trackId: 'main',
     type: 'video',
     sourceFile: videoPath,
@@ -42,7 +42,7 @@ export function projectToAudioClip(
 ): Clip | null {
   if (!config.audio_enabled || !config.audio_file) return null;
   return {
-    id: crypto.randomUUID(),
+    id: 'bgm-main-clip',  // Stable ID
     trackId: 'bgm',
     type: 'audio',
     sourceFile: config.audio_file,

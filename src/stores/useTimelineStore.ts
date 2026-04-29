@@ -24,6 +24,7 @@ interface TimelineActions {
   // Clip CRUD
   addClip: (clip: Clip | SubtitleClip) => void;
   removeClip: (clipId: string) => void;
+  deleteAndCompactTrack: (clipId: string, trackId: string) => void;
   updateClip: (clipId: string, partial: Partial<Clip>) => void;
   selectClip: (clipId: string | null) => void;
 
@@ -37,6 +38,7 @@ interface TimelineActions {
   appendClipToTrack: (trackId: string, clip: Omit<Clip, 'id' | 'trackId' | 'timelineStart'>) => void;
   rippleDelete: (clipId: string) => void;
   rippleInsert: (clipId: string, targetTrackId: string, insertIndex: number) => void;
+  compactTrack: (trackId: string) => void;
 
   // Dynamic track management
   createOverlayTrack: () => OverlayTrackId;
@@ -105,6 +107,44 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
     return {
       clips: newClips,
       trackClips: newTrackClips,
+      selectedClipId: state.selectedClipId === clipId ? null : state.selectedClipId,
+    };
+  }),
+
+  // Atomic function to remove a clip and instantly compact the track to avoid any gaps
+  deleteAndCompactTrack: (clipId, trackId) => set((state) => {
+    const clip = state.clips[clipId];
+    if (!clip || clip.trackId !== trackId) return state;
+
+    // 1. Remove the clip
+    const newClips = { ...state.clips };
+    delete newClips[clipId];
+    const newTrackClips = {
+      ...state.trackClips,
+      [trackId]: (state.trackClips[trackId] || []).filter(id => id !== clipId),
+    };
+
+    // 2. Compact the track immediately
+    const sorted = [...(newTrackClips[trackId] || [])].sort((a, b) => {
+      const ca = newClips[a];
+      const cb = newClips[b];
+      return (ca?.timelineStart || 0) - (cb?.timelineStart || 0);
+    });
+
+    let cursor = 0;
+    sorted.forEach(id => {
+      const c = newClips[id];
+      if (c) {
+        if (c.timelineStart !== cursor) {
+          newClips[id] = { ...c, timelineStart: cursor };
+        }
+        cursor += c.timelineDuration;
+      }
+    });
+
+    return {
+      clips: newClips,
+      trackClips: { ...newTrackClips, [trackId]: sorted },
       selectedClipId: state.selectedClipId === clipId ? null : state.selectedClipId,
     };
   }),
@@ -264,6 +304,36 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
         [targetTrackId]: targetTrackClips,
       },
     };
+  }),
+
+  // Magnetic timeline: dồn clips về đầu, xóa gap giữa các clips
+  compactTrack: (trackId) => set((state) => {
+    const trackClipIds = state.trackClips[trackId] || [];
+    if (trackClipIds.length === 0) return state;
+
+    // Sort by current timelineStart
+    const sorted = [...trackClipIds].sort((a, b) => {
+      const ca = state.clips[a];
+      const cb = state.clips[b];
+      return (ca?.timelineStart || 0) - (cb?.timelineStart || 0);
+    });
+
+    const newClips = { ...state.clips };
+    let cursor = 0;
+    let changed = false;
+
+    sorted.forEach(clipId => {
+      const clip = newClips[clipId];
+      if (!clip) return;
+      if (clip.timelineStart !== cursor) {
+        newClips[clipId] = { ...clip, timelineStart: cursor };
+        changed = true;
+      }
+      cursor += clip.timelineDuration;
+    });
+
+    if (!changed) return state;
+    return { clips: newClips, trackClips: { ...state.trackClips, [trackId]: sorted } };
   }),
 
   // === Dynamic Track Management ===

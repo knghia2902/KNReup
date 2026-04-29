@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, type RefObject } from 'react';
 import { Play, Pause, SkipBack, SkipForward } from '@phosphor-icons/react';
+import { useTimelineStore } from '../../stores/useTimelineStore';
+import { AudioMixer } from '../../lib/audioMixer';
 
 // Định nghĩa trực tiếp ở đây để đảm bảo không bị lỗi import/cache
 function formatTimeLocal(secs: number): string {
@@ -17,36 +19,70 @@ interface VideoControlsProps {
 export function VideoControls({ videoRef }: VideoControlsProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  // Total timeline duration = longest element on any track (CapCut-style)
+  const timelineTotalDur = useTimelineStore(s => s.getTotalDuration());
+  const duration = Math.max(timelineTotalDur, videoDuration);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const onTimeUpdate = () => setCurrentTime(video.currentTime);
-    const onLoadedMetadata = () => setDuration(video.duration);
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onLoadedMetadata = () => setVideoDuration(video.duration);
+    const onPlay = () => { console.log('[VC] onPlay → true'); setIsPlaying(true); };
+    const onPause = () => {
+      console.log('[VC] onPause, ended=', video.ended, 'virtualSeek=', (window as any).__virtualSeekActive);
+      if ((window as any).__virtualSeekActive) {
+        (window as any).__virtualSeekActive = false; // Clear flag here (async pause)
+        return; // Skip — virtual playhead is taking over
+      }
+      if (!video.ended) { console.log('[VC] onPause → false'); setIsPlaying(false); }
+    };
+
+    // Virtual playhead events from Timeline
+    const onVirtualStarted = () => { console.log('[VC] onVirtualStarted → true'); setIsPlaying(true); };
+    const onVirtualEnded = () => { console.log('[VC] onVirtualEnded → false'); setIsPlaying(false); };
 
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
+    window.addEventListener('virtual-playhead-started', onVirtualStarted);
+    window.addEventListener('virtual-playhead-ended', onVirtualEnded);
 
     return () => {
       video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
+      window.removeEventListener('virtual-playhead-started', onVirtualStarted);
+      window.removeEventListener('virtual-playhead-ended', onVirtualEnded);
     };
   }, [videoRef]);
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (video.paused) video.play();
-    else video.pause();
-  }, [videoRef]);
+    AudioMixer.resume();
+
+    if (isPlaying) {
+      // Currently playing (real video or virtual playhead) → pause everything
+      if (!video.paused) video.pause();
+      window.dispatchEvent(new CustomEvent('stop-virtual-playhead'));
+      const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+      if (bgm && !bgm.paused) bgm.pause();
+      setIsPlaying(false);
+    } else {
+      window.dispatchEvent(new CustomEvent('play-requested'));
+      setIsPlaying(true);
+      // Play BGM within user gesture context (browser autoplay policy)
+      const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+      if (bgm && bgm.readyState > 0 && bgm.src) {
+        bgm.play().catch(e => console.warn('[BGM] togglePlay play failed:', e));
+      }
+    }
+  }, [videoRef, isPlaying]);
 
   const skipBackward = useCallback(() => {
     const video = videoRef.current;
@@ -65,7 +101,9 @@ export function VideoControls({ videoRef }: VideoControlsProps) {
       
       const rect = e.currentTarget.getBoundingClientRect();
       const pos = (e.clientX - rect.left) / rect.width;
-      video.currentTime = pos * duration;
+      const seekTime = pos * duration;
+      // Clamp to video's actual duration to prevent ending the video
+      video.currentTime = Math.min(seekTime, video.duration - 0.01);
     },
     [videoRef, duration]
   );

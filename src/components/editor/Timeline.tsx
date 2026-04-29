@@ -7,7 +7,7 @@ import { TrackHeader } from './TrackHeader';
 import { TrackRow } from './TrackRow';
 import { AudioMixer } from '../../lib/audioMixer';
 import { getTrackOrder, isOverlayTrack } from '../../types/timeline';
-import { projectToVideoClip, segmentsToSubtitleClips } from '../../utils/timelineMigration';
+import { projectToVideoClip, projectToAudioClip, segmentsToSubtitleClips } from '../../utils/timelineMigration';
 import { SubtitleClip, ClipType } from '../../types/timeline';
 
 const TIMELINE_OFFSET_X = 4;
@@ -86,12 +86,17 @@ export function Timeline({ filePaths }: TimelineProps) {
   const [viewportWidth, setViewportWidth] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
+  const wasPlayingBeforeDragRef = useRef(false); // Pause video during drag, resume on mouseup
+  const lastDraggedTimeRef = useRef<number | null>(null); // Last position during playhead drag
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
-  const [resizingClip, setResizingClip] = useState<{ clipId: string; side: 'left' | 'right' } | null>(null);
+  const [resizingClip, setResizingClip] = useState<{ clipId: string; side: 'left' | 'right'; origStart: number; origEnd: number } | null>(null);
   const [activeSnapTime, setActiveSnapTime] = useState<number | null>(null);
-  const [ghostState, setGhostState] = useState<{ x: number; width: number; trackY: number } | null>(null);
-  const [insertIndicator, setInsertIndicator] = useState<{ trackId: string; timePosition: number; index: number } | null>(null);
   const [highlightTrackId, setHighlightTrackId] = useState<string | null>(null);
+
+  const dragTimeRef = useRef<{ time: number } | null>(null);
+  const dragOffsetRef = useRef<number>(0);
+  const lastMouseYRef = useRef<number>(0); // Track mouse Y for cross-track drop detection
+  const resizeDataRef = useRef<{ start: number; duration: number } | null>(null);
 
   // Dynamic track order (overlay tracks between SUB and MAIN)
   const overlayIds = timelineStore.overlayTrackIds || [];
@@ -100,7 +105,13 @@ export function Timeline({ filePaths }: TimelineProps) {
   const pixelsPerSecond = Math.max(0.0001, 50 * timelineZoom);
   const currentVideoPath = activeFile || (filePaths.length > 0 ? filePaths[0] : null);
   const maxSubTime = segments.length > 0 ? segments[segments.length - 1].end : 0;
-  const activeDuration = config.vid_clip_duration || videoDuration || 0;
+  // activeDuration = end of the last clip on main track (covers all split clips)
+  const mainTrackEnd = useMemo(() => {
+    const mainClips = timelineStore.getTrackClips('main');
+    if (mainClips.length === 0) return config.vid_clip_duration || videoDuration || 0;
+    return Math.max(...mainClips.map(c => c.timelineStart + c.timelineDuration));
+  }, [timelineStore.clips, config.vid_clip_duration, videoDuration]);
+  const activeDuration = mainTrackEnd || videoDuration || 0;
 
   // ─── Timeline Offset: ripple khi chưa sub ───
   // Khi chưa có subtitle: clip dồn về 0 trên timeline (timelineOffset = vid_clip_start)
@@ -116,28 +127,49 @@ export function Timeline({ filePaths }: TimelineProps) {
     }
   }, [videoDuration]);
 
-  useEffect(() => {
-    const clips: (import('../../types/timeline').Clip | SubtitleClip)[] = [];
+  const currentVideoPathRef = useRef<string | null>(null);
 
-    // Video → Main Track (apply timelineOffset for ripple)
-    if (currentVideoPath && activeDuration > 0) {
-      const vidClip = projectToVideoClip(config, currentVideoPath, activeDuration);
-      vidClip.timelineStart = (config.vid_clip_start || 0) - timelineOffset;
-      clips.push(vidClip);
+  useEffect(() => {
+    // If video file changed, we must re-seed the timeline
+    const isNewVideo = currentVideoPath !== currentVideoPathRef.current;
+    if (isNewVideo) {
+      currentVideoPathRef.current = currentVideoPath || null;
     }
 
-    // BGM → BGM Track (chỉ khi đã được place lên timeline qua drag-drop)
-    // Audio clip không tự tạo từ config — user phải drag từ Media Bin
-    // Legacy compat: nếu đã có clip BGM trong store thì giữ lại
+    const clips: (import('../../types/timeline').Clip | SubtitleClip)[] = [];
+
+    // Video → Main Track
+    // Only seed from config if it's a new video OR if the store is empty of main clips
+    const existingMainClips = timelineStore.getTrackClips('main');
+    
+    if (isNewVideo || existingMainClips.length === 0) {
+      if (currentVideoPath && (config.vid_clip_duration || videoDuration) > 0) {
+        const vidClip = projectToVideoClip(config, currentVideoPath, config.vid_clip_duration || videoDuration);
+        vidClip.timelineStart = 0;
+        vidClip.sourceStart = config.vid_clip_start || 0;
+        clips.push(vidClip);
+      }
+    } else {
+      // Preserve ALL existing video clips (main and splits)
+      existingMainClips.forEach(c => clips.push(c));
+    }
+
+    // BGM → BGM Track (create from config if none exists, preserve existing)
     const existingBgmClips = timelineStore.getTrackClips('bgm');
-    existingBgmClips.forEach(c => clips.push(c));
+    if (existingBgmClips.length > 0) {
+      existingBgmClips.forEach(c => clips.push(c));
+    } else if (config.audio_enabled && config.audio_file) {
+      const audioClip = projectToAudioClip(config);
+      if (audioClip) clips.push(audioClip);
+    }
 
     // Subtitles → SUB Track
     const subClips = segmentsToSubtitleClips(segments);
     clips.push(...subClips);
 
     timelineStore.setClips(clips);
-  }, [currentVideoPath, activeDuration, config.vid_clip_start, segments, timelineOffset]);
+    timelineStore.compactTrack('main');
+  }, [currentVideoPath, config.vid_clip_duration, config.vid_clip_start, segments, timelineOffset]);
 
   // ─── Duration / Zoom ───
   const rawDuration = Math.max(activeDuration, maxSubTime, timelineStore.getTotalDuration(), 1);
@@ -189,14 +221,236 @@ export function Timeline({ filePaths }: TimelineProps) {
   };
 
   // ─── Playhead RAF ───
+  const virtualTimeRef = useRef<{ active: boolean; startWall: number; startTime: number }>({ active: false, startWall: 0, startTime: 0 });
+  const virtualCompletedRef = useRef(false); // Prevent re-triggering after reaching totalEnd
+  const pausedVirtualTimeRef = useRef<number | null>(null); // Seek position past video end (paused)
+
   useEffect(() => {
     let animationFrameId: number;
     let lastTime = -1;
+    const video = document.querySelector('video');
+
+    const onPlay = () => {
+      virtualCompletedRef.current = false;
+      virtualTimeRef.current.active = false;
+      // NOTE: Do NOT clear pausedVirtualTimeRef here.
+      // It is consumed explicitly by onPlayRequested.
+      // Clearing it here would lose the stored seek position
+      // when user seeks past video end then presses Play.
+    };
+
+    // Explicitly handle 'ended' to start virtual playhead mode
+    const onEnded = () => {
+      if (virtualCompletedRef.current) return;
+      const totalEnd = timelineStore.getTotalDuration();
+      console.log('[Timeline] Video ended, totalEnd=', totalEnd, 'videoDuration=', video?.duration);
+      if (video && totalEnd > video.duration + 0.5) {
+        // If user seeked to a position past video end, start from there
+        const startFrom = pausedVirtualTimeRef.current !== null ? pausedVirtualTimeRef.current : video.duration;
+        pausedVirtualTimeRef.current = null;
+        console.log('[Timeline] Starting virtual playhead from', startFrom, 'to', totalEnd);
+        virtualTimeRef.current = { active: true, startWall: performance.now(), startTime: startFrom };
+        window.dispatchEvent(new CustomEvent('virtual-playhead-started'));
+      }
+    };
+
+    // Stop virtual playhead on manual pause
+    const onStopVirtual = () => {
+      if (virtualTimeRef.current.active) {
+        console.log('[Timeline] Stopping virtual playhead (user pause)');
+        // Save current virtual position for potential resume
+        const currentVirtualTime = virtualTimeRef.current.startTime + (performance.now() - virtualTimeRef.current.startWall) / 1000;
+        pausedVirtualTimeRef.current = currentVirtualTime;
+        virtualTimeRef.current.active = false;
+        const bgm = document.querySelector('audio[data-bgm]');
+        if (bgm && !(bgm as HTMLAudioElement).paused) (bgm as HTMLAudioElement).pause();
+        // Notify VideoControls to show Play button
+        window.dispatchEvent(new CustomEvent('virtual-playhead-ended'));
+      }
+    };
+
+    // Seek back into video range → stop virtual mode
+    const onSeeked = () => {
+      if (video && !video.ended) {
+        virtualTimeRef.current.active = false;
+        virtualCompletedRef.current = false;
+        pausedVirtualTimeRef.current = null;
+      }
+    };
+
+    // Play requested — centralized handler for ALL play actions
+    const onPlayRequested = () => {
+      const totalEnd = timelineStore.getTotalDuration();
+      
+      if (pausedVirtualTimeRef.current !== null) {
+        // We have a stored position (from seeking past video end)
+        const storedTime = pausedVirtualTimeRef.current;
+        
+        if (video && storedTime <= video.duration) {
+          // Stored position is within video range — resume normal playback
+          console.log('[Timeline] Play from stored position (within video):', storedTime.toFixed(2));
+          pausedVirtualTimeRef.current = null;
+          virtualCompletedRef.current = false;
+          virtualTimeRef.current.active = false;
+          video.currentTime = Math.max(0, Math.min(storedTime, video.duration - 0.01));
+          video.play();
+          setVideoEnded_force(false);
+        } else if (storedTime < totalEnd) {
+          // Stored position is past video but within timeline — start virtual playhead
+          console.log('[Timeline] Resume virtual from pausedVirtualTime=', storedTime.toFixed(2));
+          pausedVirtualTimeRef.current = null;
+          virtualCompletedRef.current = false;
+          virtualTimeRef.current = { active: true, startWall: performance.now(), startTime: storedTime };
+          // Ensure video is paused and shows black screen
+          if (video && !video.paused) video.pause();
+          setVideoEnded_force(true);
+          window.dispatchEvent(new CustomEvent('virtual-playhead-started'));
+          // Resume BGM from stored position
+          const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+          if (bgm && bgm.readyState > 0) {
+            const bgmOffset = storedTime - (config.audio_timeline_start || 0);
+            if (bgmOffset >= 0 && bgmOffset < bgm.duration) {
+              bgm.currentTime = bgmOffset;
+              bgm.play().catch(e => console.warn('[BGM] virtual resume failed:', e));
+            }
+          }
+        } else {
+          // Past total end — restart from 0
+          console.log('[Timeline] Past total end, restart from beginning');
+          pausedVirtualTimeRef.current = null;
+          virtualCompletedRef.current = false;
+          virtualTimeRef.current.active = false;
+          if (video) {
+            const firstClip = timelineStore.getTrackClips('main')[0];
+            video.currentTime = firstClip?.sourceStart || 0;
+            video.play();
+          }
+          setVideoEnded_force(false);
+        }
+      } else if (video && !video.ended && video.paused) {
+        // No stored position, video paused within range — simple resume
+        // Enforce clip boundaries
+        const firstClip = timelineStore.getTrackClips('main')[0];
+        if (firstClip && video.currentTime < firstClip.sourceStart) {
+          video.currentTime = firstClip.sourceStart;
+        }
+        console.log('[Timeline] Simple resume from', video.currentTime.toFixed(2));
+        video.play();
+        setVideoEnded_force(false);
+      } else if (video) {
+        // Video ended or other state — restart from 0
+        console.log('[Timeline] Restart from beginning');
+        pausedVirtualTimeRef.current = null;
+        virtualCompletedRef.current = false;
+        virtualTimeRef.current.active = false;
+        const firstClip = timelineStore.getTrackClips('main')[0];
+        video.currentTime = firstClip?.sourceStart || 0;
+        video.play();
+        setVideoEnded_force(false);
+      }
+    };
+    // Helper to clear black screen
+    const setVideoEnded_force = (val: boolean) => {
+      window.dispatchEvent(new CustomEvent(val ? 'force-video-ended' : 'force-video-playing'));
+    };
+
+    if (video) {
+      video.addEventListener('play', onPlay);
+      video.addEventListener('ended', onEnded);
+      video.addEventListener('seeked', onSeeked);
+    }
+    window.addEventListener('stop-virtual-playhead', onStopVirtual);
+    window.addEventListener('play-requested', onPlayRequested);
+
     const updatePlayhead = () => {
       if (playheadRef.current && !isDraggingPlayhead) {
-        const video = document.querySelector('video');
-        if (video) {
-          const time = video.currentTime - timelineOffset; // Map video time → timeline pos
+        const v = document.querySelector('video');
+        if (v) {
+          const totalEnd = timelineStore.getTotalDuration();
+          let time: number;
+
+          if (virtualTimeRef.current.active) {
+            // Virtual playhead: advance using wall clock
+            time = virtualTimeRef.current.startTime + (performance.now() - virtualTimeRef.current.startWall) / 1000;
+
+            // Sync BGM during virtual playhead mode
+            const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+            if (bgm && bgm.readyState > 0) {
+              const bgmOffset = time - (config.audio_timeline_start || 0);
+              const bgmDur = bgm.duration && isFinite(bgm.duration) ? bgm.duration : 9999;
+              if (bgmOffset >= 0 && bgmOffset < bgmDur) {
+                if (bgm.paused) bgm.play().catch(() => {});
+                if (Math.abs(bgm.currentTime - bgmOffset) > 0.5) bgm.currentTime = bgmOffset;
+              } else if (!bgm.paused) {
+                bgm.pause();
+              }
+            }
+
+            if (time >= totalEnd) {
+              time = totalEnd;
+              virtualTimeRef.current.active = false;
+              virtualCompletedRef.current = true;
+              pausedVirtualTimeRef.current = totalEnd;
+              if (v && !v.paused) v.pause();
+              const bgmEl = document.querySelector('audio[data-bgm]');
+              if (bgmEl && !(bgmEl as HTMLAudioElement).paused) (bgmEl as HTMLAudioElement).pause();
+              window.dispatchEvent(new CustomEvent('virtual-playhead-ended'));
+            }
+          } else if (pausedVirtualTimeRef.current !== null) {
+            // Paused at a position past video end
+            time = pausedVirtualTimeRef.current;
+          } else {
+            // Normal mode: timeline drives video, but video playback drives timeline time
+            const mainClips = timelineStore.getTrackClips('main');
+            
+            // Find the clip that corresponds to the CURRENT timeline position (lastTime)
+            const activeClip = mainClips.find(c => 
+              lastTime >= c.timelineStart && lastTime < c.timelineStart + c.timelineDuration
+            );
+
+            if (activeClip) {
+              const clipSourceEnd = activeClip.sourceStart + activeClip.timelineDuration;
+              if (v.currentTime >= clipSourceEnd) {
+                // The native video played past the end of the current timeline clip!
+                // We MUST jump over the gap to the next clip on the timeline.
+                const nextClip = mainClips.find(c => c.timelineStart >= activeClip.timelineStart + activeClip.timelineDuration - 0.05);
+                
+                if (nextClip) {
+                  v.currentTime = nextClip.sourceStart;
+                  time = nextClip.timelineStart;
+                } else {
+                  // No next clip found, but we reached the end of the last clip
+                  time = activeClip.timelineStart + activeClip.timelineDuration;
+                }
+              } else {
+                // Video is playing within the active clip. Translate source time to timeline time.
+                // Enforce it doesn't go backwards if user seeks fast
+                const expectedTime = activeClip.timelineStart + Math.max(0, v.currentTime - activeClip.sourceStart);
+                time = expectedTime;
+              }
+            } else {
+              // Fallback if playhead is somehow completely out of bounds of any clip
+              const fallbackClip = mainClips.find(c => v.currentTime >= c.sourceStart && v.currentTime < c.sourceStart + c.timelineDuration);
+              if (fallbackClip) {
+                time = fallbackClip.timelineStart + (v.currentTime - fallbackClip.sourceStart);
+              } else {
+                const mainTrackEnd = mainClips.length > 0 
+                  ? Math.max(...mainClips.map(c => c.timelineStart + c.timelineDuration))
+                  : 0;
+                  
+                if (lastTime >= mainTrackEnd) {
+                   if (v && !v.paused) v.pause();
+                   virtualTimeRef.current = { active: true, startWall: performance.now(), startTime: lastTime };
+                   window.dispatchEvent(new CustomEvent('virtual-playhead-started'));
+                   window.dispatchEvent(new CustomEvent('force-video-ended'));
+                   time = lastTime;
+                } else {
+                   time = v.currentTime - timelineOffset;
+                }
+              }
+            }
+          }
+
           if (time !== lastTime) {
             lastTime = time;
             setCurrentTime(time);
@@ -207,7 +461,16 @@ export function Timeline({ filePaths }: TimelineProps) {
       animationFrameId = requestAnimationFrame(updatePlayhead);
     };
     animationFrameId = requestAnimationFrame(updatePlayhead);
-    return () => cancelAnimationFrame(animationFrameId);
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('stop-virtual-playhead', onStopVirtual);
+      window.removeEventListener('play-requested', onPlayRequested);
+      if (video) {
+        video.removeEventListener('play', onPlay);
+        video.removeEventListener('ended', onEnded);
+        video.removeEventListener('seeked', onSeeked);
+      }
+    };
   }, [pixelsPerSecond, isDraggingPlayhead, scrollLeft, timelineOffset]);
 
   // ─── Cross-track drop validation ───
@@ -234,22 +497,7 @@ export function Timeline({ filePaths }: TimelineProps) {
     return null;
   }, [trackOrder, timelineStore.tracks]);
 
-  // ─── Insert position detection ───
-  const detectInsertPosition = useCallback((trackId: string, timePos: number, excludeClipId: string) => {
-    const state = useTimelineStore.getState();
-    const clipIds = (state.trackClips[trackId] || []).filter(id => id !== excludeClipId);
-    for (let i = 0; i <= clipIds.length; i++) {
-      const prevClip = i > 0 ? state.clips[clipIds[i - 1]] : null;
-      const nextClip = i < clipIds.length ? state.clips[clipIds[i]] : null;
-      const gapStart = prevClip ? prevClip.timelineStart + prevClip.timelineDuration : 0;
-      const gapEnd = nextClip ? nextClip.timelineStart : Infinity;
-      const threshold = 0.5;
-      if (Math.abs(timePos - gapStart) < threshold || (timePos >= gapStart && timePos <= gapEnd && gapEnd - gapStart > 0.1)) {
-        return { index: i, snapTime: gapStart };
-      }
-    }
-    return null;
-  }, []);
+
 
   // ─── Pointer drag events (playhead + clip drag + resize) ───
   useEffect(() => {
@@ -259,40 +507,63 @@ export function Timeline({ filePaths }: TimelineProps) {
       const rect = tlbody.getBoundingClientRect();
       const x = e.clientX - rect.left + tlbody.scrollLeft - TIMELINE_OFFSET_X;
       const mouseY = e.clientY - rect.top + tlbody.scrollTop;
+      lastMouseYRef.current = mouseY;
       const newTime = Math.max(0, x / pixelsPerSecond);
       const { snapped, time: t } = getSnapMetadata(newTime);
       setActiveSnapTime(snapped ? t : null);
 
       if (isDraggingPlayhead) {
+        virtualTimeRef.current.active = false;
+        virtualCompletedRef.current = false;
+        lastDraggedTimeRef.current = t;
         setCurrentTime(t);
         if (playheadRef.current) playheadRef.current.style.transform = `translateX(${t * pixelsPerSecond + TIMELINE_OFFSET_X - tlbody.scrollLeft}px)`;
         const video = document.querySelector('video');
-        if (video) video.currentTime = t + timelineOffset;
+        if (video) {
+          if (t + timelineOffset > video.duration) {
+            // Past video end — store as paused virtual position, sync BGM
+            pausedVirtualTimeRef.current = t;
+            // Pause video and show black screen
+            if (!video.paused) video.pause();
+            window.dispatchEvent(new CustomEvent('force-video-ended'));
+            const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+            if (bgm && bgm.readyState > 0) {
+              if (!bgm.paused) bgm.pause();
+              const bgmOffset = t - (config.audio_timeline_start || 0);
+              if (bgmOffset >= 0 && bgmOffset < bgm.duration) {
+                bgm.currentTime = bgmOffset;
+              }
+            }
+          } else {
+            pausedVirtualTimeRef.current = null;
+            const clampedT = Math.min(t + timelineOffset, video.duration - 0.01);
+            video.currentTime = Math.max(0, clampedT);
+            // Sync BGM to dragged position
+            const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+            if (bgm && bgm.readyState > 0) {
+              const bgmOffset = t - (config.audio_timeline_start || 0);
+              if (bgmOffset >= 0 && bgmOffset < bgm.duration) {
+                bgm.currentTime = bgmOffset;
+              }
+            }
+          }
+        }
         AudioMixer.cancelTTS();
       }
+
+
 
       if (draggingClipId) {
         const clip = timelineStore.clips[draggingClipId];
         if (clip) {
-          // Detect target track
-          const targetTrackId = getTrackAtY(mouseY);
-          const validDrop = targetTrackId ? canDropOnTrack(clip.type as ClipType, clip.trackId, targetTrackId) : false;
-          setHighlightTrackId(validDrop ? targetTrackId : null);
+          // Pure DOM drag — zero React overhead
+          const adjustedTime = Math.max(0, t - dragOffsetRef.current);
+          dragTimeRef.current = { time: adjustedTime };
 
-          // Ghost preview
-          const clipWidthPx = clip.timelineDuration * pixelsPerSecond;
-          setGhostState({ x: e.clientX - rect.left - clipWidthPx / 2, width: clipWidthPx, trackY: mouseY });
-
-          // Insert detection (trên target track hoặc track hiện tại)
-          const checkTrack = (validDrop && targetTrackId && targetTrackId !== '__new_overlay__') ? targetTrackId : clip.trackId;
-          const insertPos = detectInsertPosition(checkTrack, t, draggingClipId);
-          setInsertIndicator(insertPos ? { trackId: checkTrack, timePosition: insertPos.snapTime, index: insertPos.index } : null);
-
-          // Same-track reposition (backward compat)
-          if (!targetTrackId || targetTrackId === clip.trackId || !validDrop) {
-            if (clip.trackId === 'main') updateConfig({ vid_clip_start: t });
-            else if (clip.trackId === 'bgm') updateConfig({ audio_timeline_start: t });
-            timelineStore.updateClip(draggingClipId, { timelineStart: t });
+          // Move clip element directly via DOM (no store update, no re-render)
+          const clipEl = containerRef.current?.querySelector(`[data-clip-id="${draggingClipId}"]`) as HTMLElement | null;
+          if (clipEl) {
+            clipEl.style.left = `${adjustedTime * pixelsPerSecond}px`;
           }
         }
       }
@@ -300,66 +571,206 @@ export function Timeline({ filePaths }: TimelineProps) {
       if (resizingClip) {
         const clip = timelineStore.clips[resizingClip.clipId];
         if (!clip) return;
+        const dt = t;
+
         if (clip.trackId === 'main') {
-          const { vid_clip_start, vid_clip_duration } = useProjectStore.getState();
-          const dur = vid_clip_duration || videoDuration;
+          // Find collision bounds from adjacent split clips
+          const mainClipIds = (useTimelineStore.getState().trackClips['main'] || []).filter((id: string) => id !== resizingClip.clipId);
+          const neighbors = mainClipIds.map((id: string) => timelineStore.clips[id]).filter(Boolean);
+
+          const origStart = resizingClip.origStart;
+          const origEnd = resizingClip.origEnd;
+          let newStart = origStart;
+          let newDur = origEnd - origStart;
+
           if (resizingClip.side === 'left') {
-            const limit_t = vid_clip_start - (videoDuration - dur);
-            const safe_t = Math.max(t, limit_t);
-            const newDur = dur - (safe_t - vid_clip_start);
-            updateConfig({ vid_clip_start: safe_t, vid_clip_duration: Math.max(0.1, newDur) });
+            newStart = Math.max(0, dt);
+            // Don't extend left past previous clip's end
+            for (const n of neighbors) {
+              const nEnd = n.timelineStart + n.timelineDuration;
+              if (nEnd <= origEnd && newStart < nEnd) newStart = nEnd;
+            }
+            newDur = Math.max(0.1, origEnd - newStart);
           } else {
-            updateConfig({ vid_clip_duration: Math.max(0.1, Math.min(videoDuration, t - vid_clip_start)) });
+            let maxEnd = videoDuration; // Absolute max
+            // Don't extend right past next clip's start
+            for (const n of neighbors) {
+              if (n.timelineStart >= origStart && n.timelineStart < maxEnd) maxEnd = n.timelineStart;
+            }
+            newDur = Math.max(0.1, Math.min(maxEnd - origStart, dt - origStart));
           }
+          resizeDataRef.current = { start: newStart, duration: newDur };
+          timelineStore.updateClip(resizingClip.clipId, { timelineStart: newStart, timelineDuration: newDur });
         } else if (clip.trackId === 'bgm') {
           const { audio_timeline_start, audio_clip_duration } = useProjectStore.getState();
           const dur = audio_clip_duration || 200;
+          let newStart = audio_timeline_start;
+          let newDur = dur;
           if (resizingClip.side === 'left') {
-            const safe_t = Math.max(0, t);
-            const newDur = dur - (safe_t - audio_timeline_start);
-            updateConfig({ audio_timeline_start: safe_t, audio_clip_duration: Math.max(0.1, newDur) });
+            const safe_t = Math.max(0, dt);
+            newDur = Math.max(0.1, dur - (safe_t - audio_timeline_start));
+            newStart = safe_t;
           } else {
-            updateConfig({ audio_clip_duration: Math.max(0.1, t - audio_timeline_start) });
+            newDur = Math.max(0.1, dt - audio_timeline_start);
           }
+          resizeDataRef.current = { start: newStart, duration: newDur };
+          timelineStore.updateClip(resizingClip.clipId, { timelineStart: newStart, timelineDuration: newDur });
+        } else if (clip.type === 'subtitle') {
+          // Subtitle resize: use original bounds stored at resize start
+          const origEnd = resizingClip.origEnd;
+          const origStart = resizingClip.origStart;
+          let newStart = origStart;
+          let newDur = origEnd - origStart;
+          if (resizingClip.side === 'left') {
+            newStart = Math.max(0, Math.min(dt, origEnd - 0.1));
+            newDur = origEnd - newStart;
+          } else {
+            newDur = Math.max(0.1, dt - origStart);
+          }
+          resizeDataRef.current = { start: newStart, duration: newDur };
+          timelineStore.updateClip(resizingClip.clipId, { timelineStart: newStart, timelineDuration: newDur });
         }
       }
     };
 
     const handlePointerUp = () => {
-      if (isDraggingPlayhead) AudioMixer.muteAll(false);
+      if (isDraggingPlayhead) {
+        AudioMixer.resume();
+      }
 
-      // Cross-track drop logic
-      if (draggingClipId && highlightTrackId) {
+      // Finalize drag — sync to config stores
+      if (draggingClipId) {
         const clip = timelineStore.clips[draggingClipId];
-        if (clip && highlightTrackId !== clip.trackId) {
-          if (highlightTrackId === '__new_overlay__') {
-            // Tạo overlay track mới và di chuyển clip sang
-            const newTrackId = timelineStore.createOverlayTrack();
-            timelineStore.moveClipToTrack(draggingClipId, newTrackId);
-          } else if (insertIndicator && insertIndicator.trackId === highlightTrackId) {
-            // Ripple insert vào vị trí chính xác
-            timelineStore.rippleInsert(draggingClipId, highlightTrackId, insertIndicator.index);
-          } else {
-            // Simple move
-            timelineStore.moveClipToTrack(draggingClipId, highlightTrackId);
+        if (clip && dragTimeRef.current) {
+          const t = dragTimeRef.current.time;
+
+          // Commit final position to store (was DOM-only during drag)
+          timelineStore.updateClip(draggingClipId, { timelineStart: t });
+
+          // Enforce collision on drop — push out of overlaps
+          const trackClipIds = (useTimelineStore.getState().trackClips[clip.trackId] || []).filter((id: string) => id !== draggingClipId);
+          const clipDur = clip.timelineDuration;
+          let finalTime = t;
+          for (const otherId of trackClipIds) {
+            const o = timelineStore.clips[otherId];
+            if (!o) continue;
+            const oEnd = o.timelineStart + o.timelineDuration;
+            if (finalTime < oEnd && finalTime + clipDur > o.timelineStart) {
+              const overlapLeft = oEnd - finalTime;
+              const overlapRight = finalTime + clipDur - o.timelineStart;
+              finalTime = overlapLeft < overlapRight ? oEnd : Math.max(0, o.timelineStart - clipDur);
+            }
           }
-          // Schedule cleanup overlay tracks trống
+          if (finalTime !== t) {
+            timelineStore.updateClip(draggingClipId, { timelineStart: finalTime });
+          }
+
+          // Cross-track drop detection (deferred from pointermove for perf)
+          const targetTrackId = getTrackAtY(lastMouseYRef.current);
+          if (targetTrackId && targetTrackId !== clip.trackId) {
+            if (targetTrackId === '__new_overlay__') {
+              const newTrackId = timelineStore.createOverlayTrack();
+              timelineStore.moveClipToTrack(draggingClipId, newTrackId);
+            } else {
+              const validDrop = canDropOnTrack(clip.type as ClipType, clip.trackId, targetTrackId);
+              if (validDrop) {
+                timelineStore.moveClipToTrack(draggingClipId, targetTrackId);
+              }
+            }
+          }
+
+          // Always compact main track to prevent gaps if a clip was pulled out or rearranged
+          timelineStore.compactTrack('main');
+
+          // Sync config stores
+          if (clip.trackId === 'bgm') updateConfig({ audio_timeline_start: t });
+
+          // Subtitle drag: sync position back to useSubtitleStore
+          if (clip.type === 'subtitle' && draggingClipId.startsWith('sub-')) {
+            const subId = parseInt(draggingClipId.replace('sub-', ''), 10);
+            const duration = clip.timelineDuration;
+            useSubtitleStore.getState().trimSegment(subId, t, t + duration);
+          }
+
+          // Cleanup empty overlay tracks
           if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
           cleanupTimerRef.current = window.setTimeout(() => timelineStore.cleanupEmptyOverlayTracks(), 500);
-        } else if (clip && insertIndicator && insertIndicator.trackId === clip.trackId) {
-          // Same-track ripple insert
-          timelineStore.rippleInsert(draggingClipId, clip.trackId, insertIndicator.index);
         }
       }
 
+      // Finalize resize — commit deferred config values
+      if (resizingClip && resizeDataRef.current) {
+        const clip = timelineStore.clips[resizingClip.clipId];
+        const { start, duration } = resizeDataRef.current;
+        if (resizingClip.clipId === 'vid-main-clip') {
+          updateConfig({ vid_clip_start: start, vid_clip_duration: duration });
+        } else if (resizingClip.clipId === 'bgm-main-clip') {
+          updateConfig({ audio_timeline_start: start, audio_clip_duration: duration });
+        } else if (clip?.trackId === 'bgm') {
+          // bgm-split clips: no config update, just visual
+        } else if (clip?.type === 'subtitle' && resizingClip.clipId.startsWith('sub-')) {
+          const subId = parseInt(resizingClip.clipId.replace('sub-', ''), 10);
+          useSubtitleStore.getState().trimSegment(subId, start, start + duration);
+        }
+      }
+
+      if (draggingClipId) {
+        // Fix: The raw DOM drag might leave the element with a stale inline style.
+        // We force the element to jump to the final, compacted state computed by the store.
+        const clipEl = containerRef.current?.querySelector(`[data-clip-id="${draggingClipId}"]`) as HTMLElement | null;
+        if (clipEl) {
+          const finalClip = useTimelineStore.getState().clips[draggingClipId];
+          if (finalClip) {
+            clipEl.style.left = `${finalClip.timelineStart * pixelsPerSecond}px`;
+          } else {
+            clipEl.style.left = ''; // Fallback if clip was somehow deleted
+          }
+        }
+      }
+
+      resizeDataRef.current = null;
+      dragTimeRef.current = null;
       setIsDraggingPlayhead(false);
       setDraggingClipId(null);
       setResizingClip(null);
       setActiveSnapTime(null);
-      setGhostState(null);
-      setInsertIndicator(null);
       setHighlightTrackId(null);
+      // Resume playback if video was playing before drag
       const video = document.querySelector('video');
+      if (lastDraggedTimeRef.current !== null && video) {
+        const draggedTime = lastDraggedTimeRef.current;
+        const draggedVideoTime = draggedTime + timelineOffset;
+
+        if (wasPlayingBeforeDragRef.current) {
+          if (draggedVideoTime <= video.duration) {
+            // Dragged within video range → seek + resume video play
+            video.currentTime = Math.max(0, Math.min(draggedVideoTime, video.duration - 0.01));
+            video.play().catch(() => {});
+            window.dispatchEvent(new CustomEvent('force-video-playing'));
+          } else {
+            // Dragged past video end → start virtual playhead (CapCut-style)
+            pausedVirtualTimeRef.current = null;
+            virtualTimeRef.current = { active: true, startWall: performance.now(), startTime: draggedTime };
+            window.dispatchEvent(new CustomEvent('virtual-playhead-started'));
+            // Resume BGM from dragged position
+            const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+            if (bgm && bgm.readyState > 0) {
+              const bgmOffset = draggedTime - (config.audio_timeline_start || 0);
+              if (bgmOffset >= 0 && bgmOffset < bgm.duration) {
+                bgm.currentTime = bgmOffset;
+                bgm.play().catch(e => console.warn('[BGM] drag-resume failed:', e));
+              }
+            }
+          }
+        } else {
+          // Was paused → just ensure video.currentTime matches (don't auto-play)
+          if (draggedVideoTime <= video.duration) {
+            video.currentTime = Math.max(0, Math.min(draggedVideoTime, video.duration - 0.01));
+          }
+        }
+      }
+      lastDraggedTimeRef.current = null;
+      wasPlayingBeforeDragRef.current = false;
       if (video && !video.paused) {
         AudioMixer.scheduleTTS(useSubtitleStore.getState().segments, video.currentTime);
       }
@@ -373,7 +784,7 @@ export function Timeline({ filePaths }: TimelineProps) {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDraggingPlayhead, draggingClipId, resizingClip, pixelsPerSecond, highlightTrackId, insertIndicator]);
+  }, [isDraggingPlayhead, draggingClipId, resizingClip, pixelsPerSecond, highlightTrackId]);
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
@@ -381,57 +792,96 @@ export function Timeline({ filePaths }: TimelineProps) {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
       const cmdOrCtrl = e.metaKey || e.ctrlKey;
       
+      const activeClipId = timelineStore.selectedClipId || selectedClipId;
+      const clip = activeClipId ? timelineStore.clips[activeClipId] : null;
+      
       if (cmdOrCtrl && e.key.toLowerCase() === 'b') {
-        // Split at playhead — chỉ hoạt động cho subtitle (tạo 2 segments)
-        // True video split (chia đôi thành 2 clips) cần multi-clip model → future phase
-        if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
+        // Split at playhead — divide selected clip into two pieces
+        if (activeClipId?.startsWith('sub-') && selectedId !== null) {
           useSubtitleStore.getState().splitSegment(selectedId, currentTime);
+        } else if (clip && (clip.type === 'video' || clip.type === 'audio')) {
+          if (currentTime > clip.timelineStart && currentTime < clip.timelineStart + clip.timelineDuration) {
+            const splitPoint = currentTime - clip.timelineStart;
+            const leftDur = splitPoint;
+            const rightDur = clip.timelineDuration - splitPoint;
+            timelineStore.updateClip(clip.id, { timelineDuration: leftDur, sourceDuration: leftDur });
+            
+            if (clip.id === 'vid-main-clip') updateConfig({ vid_clip_duration: leftDur });
+            if (clip.id === 'bgm-main-clip') updateConfig({ audio_clip_duration: leftDur });
+            
+            timelineStore.addClip({
+              id: `${clip.type}-split-${Date.now()}`, trackId: clip.trackId, type: clip.type,
+              sourceFile: clip.sourceFile, sourceStart: clip.sourceStart + splitPoint,
+              sourceDuration: rightDur, timelineStart: currentTime, timelineDuration: rightDur,
+            });
+          }
         }
         e.preventDefault();
       }
       if (e.key.toLowerCase() === 'q') {
-        if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
+        // Trim left (keep right portion)
+        if (activeClipId?.startsWith('sub-') && selectedId !== null) {
           const seg = segments.find(s => s.id === selectedId);
           if (seg && currentTime > seg.start && currentTime < seg.end) {
             useSubtitleStore.getState().trimSegment(selectedId, currentTime, seg.end);
           }
-        } else {
-          config.splitLeft(currentTime, activeDuration);
+        } else if (clip && (clip.type === 'video' || clip.type === 'audio')) {
+          if (currentTime > clip.timelineStart && currentTime < clip.timelineStart + clip.timelineDuration) {
+            const cutAmount = currentTime - clip.timelineStart;
+            timelineStore.updateClip(clip.id, {
+              sourceStart: clip.sourceStart + cutAmount,
+              timelineDuration: clip.timelineDuration - cutAmount,
+              sourceDuration: clip.sourceDuration - cutAmount,
+              timelineStart: currentTime,
+            });
+            timelineStore.compactTrack(clip.trackId);
+          }
         }
         e.preventDefault();
       }
       if (e.key.toLowerCase() === 'w') {
-        if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
+        // Trim right (keep left portion)
+        if (activeClipId?.startsWith('sub-') && selectedId !== null) {
           const seg = segments.find(s => s.id === selectedId);
           if (seg && currentTime > seg.start && currentTime < seg.end) {
             useSubtitleStore.getState().trimSegment(selectedId, seg.start, currentTime);
           }
-        } else {
-          config.splitRight(currentTime, activeDuration);
+        } else if (clip && (clip.type === 'video' || clip.type === 'audio')) {
+          if (currentTime > clip.timelineStart && currentTime < clip.timelineStart + clip.timelineDuration) {
+            const newDur = currentTime - clip.timelineStart;
+            timelineStore.updateClip(clip.id, {
+              timelineDuration: newDur,
+              sourceDuration: newDur,
+            });
+            timelineStore.compactTrack(clip.trackId);
+          }
         }
         e.preventDefault();
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedClipId === 'audio-main') {
+        if (activeClipId === 'audio-main') {
           updateConfig({ audio_enabled: false, audio_file: '', selectedClipId: null });
+          timelineStore.removeClip('audio-main');
           e.preventDefault();
           return;
         }
-        if (selectedId !== null) {
+        if (activeClipId?.startsWith('sub-') && selectedId !== null) {
           if (e.shiftKey) {
             useSubtitleStore.getState().deleteAndRippleSubtitle(selectedId);
           } else {
             useSubtitleStore.getState().deleteSegment(selectedId);
           }
           e.preventDefault();
+          return;
         }
-        // Also handle new clip model delete
-        const { selectedClipId: tsClipId } = timelineStore;
-        if (tsClipId && !selectedClipId?.startsWith('sub-') && selectedClipId !== 'audio-main') {
-          if (e.shiftKey) {
-            timelineStore.rippleDelete(tsClipId);
+        
+        if (clip) {
+          if (clip.trackId === 'main') {
+            timelineStore.deleteAndCompactTrack(clip.id, 'main');
+          } else if (e.shiftKey) {
+            timelineStore.rippleDelete(clip.id);
           } else {
-            timelineStore.removeClip(tsClipId);
+            timelineStore.removeClip(clip.id);
           }
           e.preventDefault();
         }
@@ -439,7 +889,7 @@ export function Timeline({ filePaths }: TimelineProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentTime, selectedClipId, selectedId, segments]);
+  }, [currentTime, selectedClipId, timelineStore.selectedClipId, selectedId, segments, timelineStore.clips]);
 
   // ─── Zoom handlers ───
   const handleZoomIn = () => updateConfig({ timelineZoom: Math.min(10, timelineZoom + 0.5) });
@@ -467,13 +917,59 @@ export function Timeline({ filePaths }: TimelineProps) {
     const handleAudioAdd = (e: Event) => {
       const { filePath } = (e as CustomEvent).detail;
       if (filePath) {
-        const dur = 200; // Default — sẽ được AudioTrack cập nhật khi load metadata
-        timelineStore.appendClipToTrack('bgm', { type: 'audio', sourceFile: filePath, sourceStart: 0, sourceDuration: dur, timelineDuration: dur });
+        // Remove existing BGM clips first
+        const oldBgm = timelineStore.getTrackClips('bgm');
+        oldBgm.forEach(c => timelineStore.removeClip(c.id));
+        // Create new BGM clip with stable ID
+        const dur = 200; // Placeholder — will be updated by bgm-duration-loaded event
+        timelineStore.addClip({
+          id: 'bgm-main-clip',
+          trackId: 'bgm',
+          type: 'audio',
+          sourceFile: filePath,
+          sourceStart: 0,
+          sourceDuration: dur,
+          timelineStart: 0,
+          timelineDuration: dur,
+        });
+        // Sync config for BGM playback (reset clip duration to 0 = full duration)
+        updateConfig({ audio_enabled: true, audio_file: filePath, audio_clip_duration: 0, audio_timeline_start: 0, audio_clip_start: 0 });
       }
     };
     window.addEventListener('add-audio-to-timeline', handleAudioAdd);
     return () => window.removeEventListener('add-audio-to-timeline', handleAudioAdd);
   }, []);
+
+  // ─── BGM Duration Auto-Sync: listen for audio metadata from VideoPreview ───
+  useEffect(() => {
+    const onBgmDurationLoaded = (e: Event) => {
+      const realDur = (e as CustomEvent).detail?.duration;
+      if (!realDur || !isFinite(realDur) || realDur <= 0) return;
+
+      console.log('[Timeline] BGM duration event received:', realDur.toFixed(1));
+
+      // Find ANY clip on the BGM track (ID may be random UUID or stable)
+      const bgmClips = timelineStore.getTrackClips('bgm');
+      const mainBgm = bgmClips[0]; // First (and usually only) BGM clip
+      if (mainBgm && Math.abs(mainBgm.timelineDuration - realDur) > 0.5) {
+        console.log('[Timeline] BGM clip duration sync:', mainBgm.id, mainBgm.timelineDuration, '→', realDur);
+        timelineStore.updateClip(mainBgm.id, { 
+          timelineDuration: realDur, 
+          sourceDuration: realDur 
+        });
+      }
+
+      // Reset stale config if significantly shorter than real audio
+      const clipDurConfig = config.audio_clip_duration;
+      if (clipDurConfig && clipDurConfig > 0 && clipDurConfig < realDur - 1) {
+        console.log('[Timeline] Resetting stale audio_clip_duration:', clipDurConfig, '→ 0');
+        updateConfig({ audio_clip_duration: 0 });
+      }
+    };
+
+    window.addEventListener('bgm-duration-loaded', onBgmDurationLoaded);
+    return () => window.removeEventListener('bgm-duration-loaded', onBgmDurationLoaded);
+  }, [config.audio_clip_duration]);
 
   // ─── Media Bin Drag-Drop (D-10, D-11) ───
   const handleDrop = (e: React.DragEvent) => {
@@ -482,9 +978,7 @@ export function Timeline({ filePaths }: TimelineProps) {
     if (!data) return;
     try {
       const { filePath, mediaType, duration } = JSON.parse(data);
-      if (mediaType === 'video') {
-        timelineStore.appendClipToTrack('main', { type: 'video', sourceFile: filePath, sourceStart: 0, sourceDuration: duration || 0, timelineDuration: duration || 0 });
-      } else if (mediaType === 'audio') {
+      if (mediaType === 'audio') {
         const dur = duration || 200;
         timelineStore.appendClipToTrack('bgm', { type: 'audio', sourceFile: filePath, sourceStart: 0, sourceDuration: dur, timelineDuration: dur });
         // Sync config cho backward compat (Properties panel)
@@ -512,17 +1006,33 @@ export function Timeline({ filePaths }: TimelineProps) {
     }
   };
 
-  const handleClipDragStart = (clipId: string, _e: React.PointerEvent) => {
+  const handleClipDragStart = (clipId: string, e: React.PointerEvent) => {
     const clip = timelineStore.clips[clipId];
-    if (clip && clip.type !== 'subtitle') {
-      setDraggingClipId(clipId);
+    if (!clip) return;
+    // Main track: locked when subtitles exist (to maintain sync)
+    if (clip.trackId === 'main' && segments.length > 0) return;
+    // Compute offset: where within the clip the user clicked
+    // MUST use containerRef.current (same element as pointermove) for consistent coords
+    const tlbody = containerRef.current;
+    if (tlbody) {
+      const rect = tlbody.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left + tlbody.scrollLeft - TIMELINE_OFFSET_X;
+      const mouseTime = Math.max(0, mouseX / pixelsPerSecond);
+      dragOffsetRef.current = mouseTime - clip.timelineStart;
     }
+    setDraggingClipId(clipId);
   };
 
   const handleClipResizeStart = (clipId: string, side: 'left' | 'right', _e: React.PointerEvent) => {
     const clip = timelineStore.clips[clipId];
-    if (clip && clip.type !== 'subtitle') {
-      setResizingClip({ clipId, side });
+    if (clip) {
+      // Store original bounds so left-resize doesn't drift
+      setResizingClip({
+        clipId,
+        side,
+        origStart: clip.timelineStart,
+        origEnd: clip.timelineStart + clip.timelineDuration,
+      });
     }
   };
 
@@ -531,17 +1041,71 @@ export function Timeline({ filePaths }: TimelineProps) {
     <div className="tl" style={{ flexShrink: 0, height: '100%', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', userSelect: 'none' }}>
       
       <TimelineToolbar
-        onSplit={() => { if (selectedClipId?.startsWith('sub-') && selectedId !== null) useSubtitleStore.getState().splitSegment(selectedId, currentTime); }}
+        onSplit={() => {
+          if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
+            useSubtitleStore.getState().splitSegment(selectedId, currentTime);
+          } else if (selectedClipId === 'vid-main' || selectedClipId?.startsWith('vid-split-')) {
+            // Video split: find main track clip at playhead
+            const mainClips = timelineStore.getTrackClips('main');
+            const clip = mainClips.find(c => currentTime > c.timelineStart && currentTime < c.timelineStart + c.timelineDuration);
+            if (clip) {
+              const splitPoint = currentTime - clip.timelineStart;
+              const leftDur = splitPoint;
+              const rightDur = clip.timelineDuration - splitPoint;
+              timelineStore.updateClip(clip.id, { timelineDuration: leftDur, sourceDuration: leftDur });
+              if (clip.id === 'vid-main-clip') updateConfig({ vid_clip_duration: leftDur });
+              timelineStore.addClip({
+                id: `vid-split-${Date.now()}`, trackId: 'main', type: 'video',
+                sourceFile: clip.sourceFile, sourceStart: clip.sourceStart + splitPoint,
+                sourceDuration: rightDur, timelineStart: currentTime, timelineDuration: rightDur,
+              });
+            }
+          } else if (selectedClipId === 'audio-main' || selectedClipId?.startsWith('bgm-split-')) {
+            // Audio split: find bgm track clip at playhead
+            const bgmClips = timelineStore.getTrackClips('bgm');
+            const clip = bgmClips.find(c => currentTime > c.timelineStart && currentTime < c.timelineStart + c.timelineDuration);
+            if (clip) {
+              const splitPoint = currentTime - clip.timelineStart;
+              const leftDur = splitPoint;
+              const rightDur = clip.timelineDuration - splitPoint;
+              timelineStore.updateClip(clip.id, { timelineDuration: leftDur, sourceDuration: leftDur });
+              if (clip.id === 'bgm-main-clip') updateConfig({ audio_clip_duration: leftDur });
+              timelineStore.addClip({
+                id: `bgm-split-${Date.now()}`, trackId: 'bgm', type: 'audio',
+                sourceFile: clip.sourceFile, sourceStart: clip.sourceStart + splitPoint,
+                sourceDuration: rightDur, timelineStart: currentTime, timelineDuration: rightDur,
+              });
+            }
+          }
+        }}
         onSplitLeft={() => {
           if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
             const seg = segments.find(s => s.id === selectedId);
             if (seg && currentTime > seg.start && currentTime < seg.end) useSubtitleStore.getState().trimSegment(selectedId, currentTime, seg.end);
+          } else if (selectedClipId === 'audio-main') {
+            const { audio_timeline_start, audio_clip_duration } = useProjectStore.getState();
+            const audioEnd = audio_timeline_start + (audio_clip_duration || 200);
+            if (currentTime > audio_timeline_start && currentTime < audioEnd) {
+              const newDur = audioEnd - currentTime;
+              updateConfig({ audio_timeline_start: currentTime, audio_clip_duration: newDur });
+              const bgmClipId = (useTimelineStore.getState().trackClips['bgm'] || [])[0];
+              if (bgmClipId) timelineStore.updateClip(bgmClipId, { timelineStart: currentTime, timelineDuration: newDur });
+            }
           } else { config.splitLeft(currentTime, activeDuration); }
         }}
         onSplitRight={() => {
           if (selectedClipId?.startsWith('sub-') && selectedId !== null) {
             const seg = segments.find(s => s.id === selectedId);
             if (seg && currentTime > seg.start && currentTime < seg.end) useSubtitleStore.getState().trimSegment(selectedId, seg.start, currentTime);
+          } else if (selectedClipId === 'audio-main') {
+            const { audio_timeline_start, audio_clip_duration } = useProjectStore.getState();
+            const audioEnd = audio_timeline_start + (audio_clip_duration || 200);
+            if (currentTime > audio_timeline_start && currentTime < audioEnd) {
+              const newDur = currentTime - audio_timeline_start;
+              updateConfig({ audio_clip_duration: newDur });
+              const bgmClipId = (useTimelineStore.getState().trackClips['bgm'] || [])[0];
+              if (bgmClipId) timelineStore.updateClip(bgmClipId, { timelineDuration: newDur });
+            }
           } else { config.splitRight(currentTime, activeDuration); }
         }}
         onResetDuration={() => updateConfig({ vid_clip_duration: videoDuration })}
@@ -591,8 +1155,81 @@ export function Timeline({ filePaths }: TimelineProps) {
             const pointerX = e.clientX - rect.left + tlbody.scrollLeft;
             const newTime = Math.max(0, (pointerX - TIMELINE_OFFSET_X) / pixelsPerSecond);
             const { time: snappedTime } = getSnapMetadata(newTime);
+
             const video = document.querySelector('video');
-            if (video) video.currentTime = snappedTime + timelineOffset; // Map timeline pos → video time
+            // CapCut-style: remember if playback was active before seek
+            const wasPlaying = (video && !video.paused && !video.ended) || virtualTimeRef.current.active;
+
+            // Stop virtual mode inline (don't dispatch stop-virtual-playhead event)
+            if (virtualTimeRef.current.active) {
+              virtualTimeRef.current.active = false;
+            }
+            virtualCompletedRef.current = false;
+
+            if (video) {
+              // Find which main track clip covers this timeline position
+              const mainClips = timelineStore.getTrackClips('main');
+              const activeClip = mainClips.find(c => 
+                snappedTime >= c.timelineStart && snappedTime < c.timelineStart + c.timelineDuration
+              );
+              const mainTrackEnd = mainClips.length > 0 
+                ? Math.max(...mainClips.map(c => c.timelineStart + c.timelineDuration))
+                : video.duration;
+
+              if (!activeClip || snappedTime >= mainTrackEnd) {
+                // Clicked PAST all video clips → virtual playhead territory
+                if (wasPlaying) {
+                  (window as any).__virtualSeekActive = true;
+                }
+                if (!video.paused) video.pause();
+                window.dispatchEvent(new CustomEvent('force-video-ended'));
+
+                if (wasPlaying) {
+                  pausedVirtualTimeRef.current = null;
+                  virtualTimeRef.current = { active: true, startWall: performance.now(), startTime: snappedTime };
+                  window.dispatchEvent(new CustomEvent('virtual-playhead-started'));
+                  const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+                  if (bgm && bgm.readyState > 0) {
+                    const bgmOffset = snappedTime - (config.audio_timeline_start || 0);
+                    if (bgmOffset >= 0 && bgmOffset < bgm.duration) {
+                      bgm.currentTime = bgmOffset;
+                      bgm.play().catch(e => console.warn('[BGM] seek-resume failed:', e));
+                    }
+                  }
+                  // Flag will be cleared by onPause handler (async)
+                } else {
+                  pausedVirtualTimeRef.current = snappedTime;
+                  const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+                  if (bgm && bgm.readyState > 0) {
+                    if (!bgm.paused) bgm.pause();
+                    const bgmOffset = snappedTime - (config.audio_timeline_start || 0);
+                    if (bgmOffset >= 0 && bgmOffset < bgm.duration) {
+                      bgm.currentTime = bgmOffset;
+                    }
+                  }
+                }
+              } else {
+                // Clicked within a video clip — translate to source time
+                pausedVirtualTimeRef.current = null;
+                const offsetInClip = snappedTime - activeClip.timelineStart;
+                const sourceTime = activeClip.sourceStart + offsetInClip;
+                video.currentTime = Math.max(0, Math.min(sourceTime, video.duration - 0.01));
+                window.dispatchEvent(new CustomEvent('force-video-playing'));
+                const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
+                if (bgm && bgm.readyState > 0) {
+                  const bgmOffset = snappedTime - (config.audio_timeline_start || 0);
+                  if (bgmOffset >= 0 && bgmOffset < bgm.duration) {
+                    bgm.currentTime = bgmOffset;
+                  }
+                }
+                if (wasPlaying && video.paused) {
+                  video.play().catch(() => {});
+                  if (bgm && bgm.readyState > 0 && bgm.paused) {
+                    bgm.play().catch(e => console.warn('[BGM] seek-resume failed:', e));
+                  }
+                }
+              }
+            }
             setCurrentTime(snappedTime);
             if (playheadRef.current) playheadRef.current.style.transform = `translateX(${snappedTime * pixelsPerSecond + TIMELINE_OFFSET_X - tlbody.scrollLeft}px)`;
             updateConfig({ selectedClipId: null });
@@ -620,14 +1257,23 @@ export function Timeline({ filePaths }: TimelineProps) {
               {draggingClipId && timelineStore.clips[draggingClipId]?.type === 'video' && (
                 <div
                   style={{
-                    height: 20,
-                    background: highlightTrackId === '__new_overlay__' ? 'rgba(167, 139, 250, 0.15)' : 'rgba(167, 139, 250, 0.04)',
-                    borderBottom: '1px dashed rgba(167, 139, 250, 0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, color: 'var(--text-muted)', transition: 'background 0.15s ease',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 26,
+                    background: highlightTrackId === '__new_overlay__' ? 'rgba(167, 139, 250, 0.4)' : 'rgba(167, 139, 250, 0.1)',
+                    borderBottom: '1px dashed rgba(167, 139, 250, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 10,
+                    color: '#fff',
+                    fontWeight: 600,
+                    zIndex: 200,
                   }}
                 >
-                  {highlightTrackId === '__new_overlay__' ? '+ Thả để tạo Overlay Track' : ''}
+                  Drop here to create new Overlay Track
                 </div>
               )}
 
@@ -639,7 +1285,6 @@ export function Timeline({ filePaths }: TimelineProps) {
                   <TrackRow
                     key={trackId}
                     track={track}
-                    clips={timelineStore.getTrackClips(trackId)}
                     pixelsPerSecond={pixelsPerSecond}
                     scrollLeft={scrollLeft}
                     viewportWidth={viewportWidth}
@@ -649,45 +1294,12 @@ export function Timeline({ filePaths }: TimelineProps) {
                     onClipSelect={handleClipSelect}
                     onClipDragStart={handleClipDragStart}
                     onClipResizeStart={handleClipResizeStart}
+                    isLocked={segments.length > 0}
                   />
                 );
               })}
 
-              {/* Insert indicator (vạch xanh) */}
-              {insertIndicator && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: insertIndicator.timePosition * pixelsPerSecond + TIMELINE_OFFSET_X - scrollLeft,
-                    top: 26, bottom: 0,
-                    width: 2,
-                    background: '#22c55e',
-                    zIndex: 150,
-                    pointerEvents: 'none',
-                    animation: 'pulse-insert 1s ease-in-out infinite',
-                  }}
-                />
-              )}
-
-              {/* Ghost preview (hình mờ khi đang kéo) */}
-              {ghostState && draggingClipId && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: ghostState.x,
-                    top: ghostState.trackY - 20,
-                    width: ghostState.width,
-                    height: 40,
-                    background: highlightTrackId ? 'var(--accent-subtle)' : 'rgba(239,68,68,0.1)',
-                    opacity: 0.45,
-                    border: `2px dashed ${highlightTrackId ? 'var(--accent)' : '#ef4444'}`,
-                    borderRadius: 6,
-                    pointerEvents: 'none',
-                    zIndex: 200,
-                    transition: 'left 0.03s linear, top 0.03s linear',
-                  }}
-                />
-              )}
+              {/* Removed: Ghost preview + Insert indicator — CapCut moves clips directly */}
 
               {/* Playhead */}
               <div
@@ -696,7 +1308,14 @@ export function Timeline({ filePaths }: TimelineProps) {
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   setIsDraggingPlayhead(true);
-                  AudioMixer.muteAll(true);
+                  // Pause video during drag to prevent snap-back
+                  const v = document.querySelector('video');
+                  if (v && !v.paused && !v.ended) {
+                    wasPlayingBeforeDragRef.current = true;
+                    v.pause();
+                  } else {
+                    wasPlayingBeforeDragRef.current = false;
+                  }
                   AudioMixer.cancelTTS();
                 }}
                 style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 14, marginLeft: -7, zIndex: 100, pointerEvents: 'auto', cursor: 'ew-resize', display: 'flex', justifyContent: 'center', transform: `translateX(${TIMELINE_OFFSET_X - scrollLeft}px)`, transition: isDraggingPlayhead ? 'none' : 'transform 0.05s linear' }}

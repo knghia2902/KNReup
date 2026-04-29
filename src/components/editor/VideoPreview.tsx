@@ -4,7 +4,7 @@ import { VideoControls } from './VideoControls';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { getMediaSrc } from '../../utils/url';
+import { getVideoSrc } from '../../utils/url';
 import { AudioMixer } from '../../lib/audioMixer';
 
 // ─── Draggable Blur Box ──────────────────────────────
@@ -531,8 +531,20 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     if (videoRef.current) {
-      if (videoRef.current.paused) videoRef.current.play();
-      else videoRef.current.pause();
+      if (!videoRef.current.paused && !videoRef.current.ended) {
+        // Currently playing → pause everything
+        videoRef.current.pause();
+        window.dispatchEvent(new CustomEvent('stop-virtual-playhead'));
+        if (bgmRef.current && !bgmRef.current.paused) bgmRef.current.pause();
+      } else {
+        // Paused or ended → delegate ALL play actions to Timeline's centralized handler
+        window.dispatchEvent(new CustomEvent('play-requested'));
+        // Play BGM within user gesture context (browser autoplay policy)
+        const bgm = bgmRef.current;
+        if (bgm && projectConfig.audio_enabled && projectConfig.audio_file && bgm.readyState > 0) {
+          bgm.play().catch(e => console.warn('[BGM] Direct play failed:', e));
+        }
+      }
     }
   };
 
@@ -662,43 +674,32 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
     return () => video.removeEventListener('loadedmetadata', onLoadedMetadata);
   }, [videoSrc]);
 
-  // ─── AudioMixer: Connect video element ──────────────
+  // ─── Video volume: use native control (NOT WebAudio MediaElementSource) ──
+  // createMediaElementSource captures all audio through AudioContext which
+  // requires user gesture to resume — causes permanent silence.
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoSrc) return;
-    AudioMixer.init();
-    AudioMixer.connectVideo(video);
-    AudioMixer.setOriginalVolume(
-      projectConfig.audio_mix_mode === 'mix' ? projectConfig.original_volume : 0
-    );
+    AudioMixer.init(); // Still init for TTS/BGM
+    const targetVol = projectConfig.audio_mix_mode === 'mix' ? projectConfig.original_volume : 0;
+    video.volume = Math.max(0, Math.min(1, targetVol));
   }, [videoSrc]);
 
-  // ─── AudioMixer: Sync original volume ───────────────
+  // ─── Video volume sync (native) ───────────────
   useEffect(() => {
     const targetVol = projectConfig.audio_mix_mode === 'mix' ? projectConfig.original_volume : 0;
-    AudioMixer.setOriginalVolume(targetVol);
-    // GUARANTEED NATIVE FALLBACK
     if (videoRef.current) {
       videoRef.current.volume = Math.max(0, Math.min(1, targetVol));
     }
   }, [projectConfig.original_volume, projectConfig.audio_mix_mode]);
 
-  // ─── AudioMixer: Connect BGM element ──────────────
-  useEffect(() => {
-    if (bgmRef.current) {
-      AudioMixer.connectBGM(bgmRef.current);
-    }
-  }, [projectConfig.audio_file]);
-
-  // ─── AudioMixer: Sync BGM volume ───────────────
+  // ─── BGM volume sync (native — no WebAudio capture) ───────────────
   useEffect(() => {
     const targetVol = projectConfig.audio_enabled ? projectConfig.audio_volume : 0;
-    AudioMixer.setBGMVolume(targetVol);
-    // GUARANTEED NATIVE FALLBACK
     if (bgmRef.current) {
       bgmRef.current.volume = Math.max(0, Math.min(1, targetVol));
     }
-  }, [projectConfig.audio_volume, projectConfig.audio_enabled]);
+  }, [projectConfig.audio_volume, projectConfig.audio_enabled, projectConfig.audio_file]);
 
   // ─── BGM Playback Sync ──────────────────────────────
   useEffect(() => {
@@ -713,16 +714,32 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
         if (!bgm.paused) bgm.pause();
         return;
       }
+
+      // Check if BGM source is actually loaded
+      if (bgm.readyState === 0) {
+        console.warn('[BGM] Audio not loaded yet, readyState=0, src=', bgm.src);
+        return;
+      }
       
+      // When video ended or transitioning to virtual mode, don't interfere with BGM
+      if (video.ended || (window as any).__virtualSeekActive) return;
+
       const bgmOffset = video.currentTime - (projectConfig.audio_timeline_start || 0);
-      const isWithinBgm = bgmOffset >= 0 && (!bgm.duration || bgmOffset < bgm.duration) && video.currentTime <= ((projectConfig.audio_timeline_start || 0) + (projectConfig.audio_clip_duration || bgm.duration || 9999));
+      const bgmDur = bgm.duration && isFinite(bgm.duration) ? bgm.duration : 9999;
+      // audio_clip_duration: 0 means "full duration", use actual bgm duration
+      const effectiveClipDur = (projectConfig.audio_clip_duration && projectConfig.audio_clip_duration > 0) 
+        ? projectConfig.audio_clip_duration 
+        : bgmDur;
+      const clipEnd = (projectConfig.audio_timeline_start || 0) + effectiveClipDur;
+      const isWithinBgm = bgmOffset >= 0 && bgmOffset < bgmDur && video.currentTime <= clipEnd;
       
       if (isWithinBgm) {
         if (Math.abs(bgm.currentTime - bgmOffset) > 0.25) {
           bgm.currentTime = bgmOffset;
         }
         if (!video.paused && bgm.paused) {
-          bgm.play().catch(e => console.warn('[VideoPreview] BGM play failed:', e));
+          console.log('[BGM] Starting playback, offset=', bgmOffset.toFixed(2), 'vol=', bgm.volume);
+          bgm.play().catch(e => console.warn('[BGM] play() failed:', e));
         } else if (video.paused && !bgm.paused) {
           bgm.pause();
         }
@@ -863,38 +880,64 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
   }, []);
 
   // ─── Playback Range Enforcement ─────────────────────
-  // Enforce vid_clip_start + vid_clip_duration boundaries
-  // Handles: play (nhảy về clip start), timeupdate (pause tại end), seeked (clamp khi kéo playhead)
+  // CapCut-style: playhead continues beyond video using virtual mode in Timeline
+  const [videoEnded, setVideoEnded] = useState(false);
+
+  // Listen for forced black screen from Timeline (seek past video end)
+  useEffect(() => {
+    const onForceEnded = () => {
+      console.log('[VideoPreview] Force black screen (seek past video end)');
+      setVideoEnded(true);
+    };
+    const onForcePlaying = () => {
+      console.log('[VideoPreview] Force clear black screen (restart)');
+      setVideoEnded(false);
+    };
+    window.addEventListener('force-video-ended', onForceEnded);
+    window.addEventListener('force-video-playing', onForcePlaying);
+    return () => {
+      window.removeEventListener('force-video-ended', onForceEnded);
+      window.removeEventListener('force-video-playing', onForcePlaying);
+    };
+  }, []);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const clipStart = projectConfig.vid_clip_start || 0;
-    const clipDuration = projectConfig.vid_clip_duration || 0;
-    if (clipDuration <= 0) return;
 
-    const clipEnd = clipStart + clipDuration;
+    // Video reached its natural end → show black screen, let BGM keep playing
+    const onEnded = () => {
+      console.log('[VideoPreview] Video ended → showing black screen');
+      setVideoEnded(true);
+      // Do NOT pause video or BGM here — Timeline's virtual playhead handles continuation
+    };
 
-    // Clamp END: pause khi chạy quá clip end
-    const enforceEnd = () => {
-      if (video.currentTime >= clipEnd - 0.05) {
-        video.pause();
-        video.currentTime = clipEnd - 0.05;
+    // On play or seek → reset ended state
+    const onPlay = () => setVideoEnded(false);
+    const onSeeked = () => {
+      if (video.currentTime < video.duration - 0.1) {
+        setVideoEnded(false);
       }
     };
 
-    // Clamp START: kéo playhead hoặc play trước clip start → nhảy về clip start
+    // Clamp START
     const enforceStart = () => {
       if (clipStart > 0 && video.currentTime < clipStart) {
         video.currentTime = clipStart;
       }
     };
 
-    video.addEventListener('timeupdate', enforceEnd);
+    video.addEventListener('ended', onEnded);
+    video.addEventListener('play', onPlay);
     video.addEventListener('play', enforceStart);
+    video.addEventListener('seeked', onSeeked);
     video.addEventListener('seeked', enforceStart);
     return () => {
-      video.removeEventListener('timeupdate', enforceEnd);
+      video.removeEventListener('ended', onEnded);
+      video.removeEventListener('play', onPlay);
       video.removeEventListener('play', enforceStart);
+      video.removeEventListener('seeked', onSeeked);
       video.removeEventListener('seeked', enforceStart);
     };
   }, [projectConfig.vid_clip_start, projectConfig.vid_clip_duration]);
@@ -914,15 +957,33 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
 
   return (
     <>
-      <div className="pvbody">
+      <div className="pvbody" style={{ position: 'relative' }}>
         <div className="vframe" style={getVframeStyle()}>
           <div className="vinner" style={{ display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}>
             <video ref={videoRef} src={videoSrc} onLoadedMetadata={handleLoadedMetadata} playsInline crossOrigin="anonymous"
+              onEnded={() => { console.log('[VideoPreview] Video ended → showing black screen'); setVideoEnded(true); }}
+              onPlay={() => setVideoEnded(false)}
+              onSeeked={() => { if (videoRef.current && videoRef.current.currentTime < videoRef.current.duration - 0.1) setVideoEnded(false); }}
               style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'contain' }}
             />
-             {projectConfig.audio_enabled && projectConfig.audio_file && (
-                <audio ref={bgmRef} src={getMediaSrc(projectConfig.audio_file) || ''} preload="auto" crossOrigin="anonymous" loop={false} style={{ display: 'none' }} />
-             )}
+            {/* Black screen when video ended but timeline continues (CapCut-style) */}
+            {videoEnded && (
+              <div style={{ gridArea: '1 / 1', width: '100%', height: '100%', background: '#000', zIndex: 15, pointerEvents: 'none' }} />
+            )}
+             {/* BGM audio — always rendered to maintain ref */}
+                <audio ref={bgmRef} data-bgm
+                  src={projectConfig.audio_enabled && projectConfig.audio_file ? (getVideoSrc(projectConfig.audio_file) || '') : ''}
+                  preload="auto" loop={false} style={{ display: 'none' }}
+                  onLoadedMetadata={() => {
+                    const dur = bgmRef.current?.duration;
+                    console.log('[BGM] Loaded, duration=', dur?.toFixed(1), 'readyState=', bgmRef.current?.readyState);
+                    if (dur && isFinite(dur) && dur > 0) {
+                      window.dispatchEvent(new CustomEvent('bgm-duration-loaded', { detail: { duration: dur } }));
+                    }
+                  }}
+                  onCanPlay={() => console.log('[BGM] Can play, readyState=', bgmRef.current?.readyState)}
+                  onError={(e) => console.error('[BGM] Error:', (e.target as HTMLAudioElement).error?.message, 'src=', (e.target as HTMLAudioElement).src?.substring(0, 80))}
+                />
             <canvas ref={canvasRef} width={effectiveDimensions.w || 1920} height={effectiveDimensions.h || 1080}
               style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'auto', zIndex: 10 }}
               onPointerDown={handlePointerDown}

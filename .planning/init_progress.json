@@ -1,0 +1,186 @@
+﻿{
+  "executor_model": "sonnet",
+  "planner_model": "opus",
+  "commit_docs": true,
+  "milestone_version": "v1.0",
+  "milestone_name": "milestone",
+  "phases": [
+    {
+      "number": "04",
+      "name": "multi-engine-advanced-features",
+      "directory": ".planning/phases/04-multi-engine-advanced-features",
+      "status": "complete",
+      "plan_count": 2,
+      "summary_count": 2,
+      "has_research": true
+    },
+    {
+      "number": "05",
+      "name": "output-advanced",
+      "directory": ".planning/phases/05-output-advanced",
+      "status": "complete",
+      "plan_count": 3,
+      "summary_count": 5,
+      "has_research": true
+    },
+    {
+      "number": "06",
+      "name": "multi-track-timeline-premium-ui",
+      "directory": ".planning/phases/06-multi-track-timeline-premium-ui",
+      "status": "complete",
+      "plan_count": 1,
+      "summary_count": 1,
+      "has_research": true
+    },
+    {
+      "number": "06.1",
+      "name": "ocr-subtitle-extraction",
+      "directory": ".planning/phases/06.1-ocr-subtitle-extraction",
+      "status": "complete",
+      "plan_count": 1,
+      "summary_count": 1,
+      "has_research": true
+    },
+    {
+      "number": "07",
+      "name": "video-downloader",
+      "directory": ".planning/phases/07-video-downloader",
+      "status": "complete",
+      "plan_count": 2,
+      "summary_count": 2,
+      "has_research": true
+    },
+    {
+      "number": "07.2",
+      "name": "advanced-timeline-interactions",
+      "directory": ".planning/phases/07.2-advanced-timeline-interactions",
+      "status": "complete",
+      "plan_count": 2,
+      "summary_count": 2,
+      "has_research": false
+    },
+    {
+      "number": "07.1",
+      "name": "refactor-stitch-ui-and-implement-tauri-webview-auth",
+      "directory": null,
+      "status": "not_started",
+      "plan_count": 0,
+      "summary_count": 0,
+      "has_research": false
+    },
+    {
+      "number": "08.0",
+      "name": "editor-upgrade-ai-enhancement",
+      "directory": ".planning/phases/08.0-editor-upgrade-ai-enhancement",
+      "status": "in_progress",
+      "plan_count": 5,
+      "summary_count": 2,
+      "has_research": true
+    },
+    {
+      "number": "08.1",
+      "name": "ui-adjustments",
+      "directory": ".planning/phases/08.1-ui-adjustments",
+      "status": "complete",
+      "plan_count": 1,
+      "summary_count": 1,
+      "has_research": false
+    },
+    {
+      "number": "08.2",
+      "name": "audio-system-refactor",
+      "directory": ".planning/phases/08.2-audio-system-refactor",
+      "status": "in_progress",
+      "plan_count": 2,
+      "summary_count": 1,
+      "has_research": false
+    },
+    {
+      "number": "09",
+      "name": "l-n-k-ho-ch-chi-ti-t-x-y-d-ng-m-t-m-n-h-nh-home-launcher-t-n",
+      "directory": ".planning/phases/09-l-n-k-ho-ch-chi-ti-t-x-y-d-ng-m-t-m-n-h-nh-home-launcher-t-n",
+      "status": "complete",
+      "plan_count": 4,
+      "summary_count": 4,
+      "has_research": true
+    },
+    {
+      "number": "10",
+      "name": "voice-clone-omnivoice-integration",
+      "directory": ".planning/phases/10-voice-clone-omnivoice-integration",
+      "status": "complete",
+      "plan_count": 3,
+      "summary_count": 3,
+      "has_research": false
+    },
+    {
+      "number": "11",
+      "name": "voice-studio-full-features-text-to-speech-audio-history-ui-u",
+      "directory": ".planning/phases/11-voice-studio-full-features-text-to-speech-audio-history-ui-u",
+      "status": "complete",
+      "plan_count": 3,
+      "summary_count": 3,
+      "has_research": true
+    },
+    {
+      "number": "24",
+      "name": "downloader-editor-integration",
+      "directory": ".planning/phases/24-downloader-editor-integration",
+      "status": "complete",
+      "plan_count": 3,
+      "summary_count": 3,
+      "has_research": true
+    },
+    {
+      "number": "25",
+      "name": "download-video-fb-tiktok-bilibili-hybird-tham-kh-o-http-gith",
+      "directory": ".planning/phases/25-download-video-fb-tiktok-bilibili-hybird-tham-kh-o-http-gith",
+      "status": "pending",
+      "plan_count": 0,
+      "summary_count": 0,
+      "has_research": false
+    },
+    {
+      "number": "25",
+      "name": "social-media-crawlers",
+      "directory": ".planning/phases/25-social-media-crawlers",
+      "status": "complete",
+      "plan_count": 3,
+      "summary_count": 3,
+      "has_research": true
+    }
+  ],
+  "phase_count": 16,
+  "completed_count": 12,
+  "in_progress_count": 2,
+  "current_phase": {
+    "number": "08.0",
+    "name": "editor-upgrade-ai-enhancement",
+    "directory": ".planning/phases/08.0-editor-upgrade-ai-enhancement",
+    "status": "in_progress",
+    "plan_count": 5,
+    "summary_count": 2,
+    "has_research": true
+  },
+  "next_phase": {
+    "number": "25",
+    "name": "download-video-fb-tiktok-bilibili-hybird-tham-kh-o-http-gith",
+    "directory": ".planning/phases/25-download-video-fb-tiktok-bilibili-hybird-tham-kh-o-http-gith",
+    "status": "pending",
+    "plan_count": 0,
+    "summary_count": 0,
+    "has_research": false
+  },
+  "paused_at": null,
+  "has_work_in_progress": true,
+  "project_exists": true,
+  "roadmap_exists": true,
+  "state_exists": true,
+  "state_path": ".planning/STATE.md",
+  "roadmap_path": ".planning/ROADMAP.md",
+  "project_path": ".planning/PROJECT.md",
+  "config_path": ".planning/config.json",
+  "project_root": "D:\\Tools\\KNReup",
+  "agents_installed": true,
+  "missing_agents": []
+}

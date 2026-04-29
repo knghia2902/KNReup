@@ -1,16 +1,18 @@
 import { memo } from 'react';
 import { Clip, SubtitleClip } from '../../types/timeline';
-import { VideoTrack } from './VideoTrack';
 import { AudioTrack } from './AudioTrack';
-import { useSubtitleStore } from '../../stores/useSubtitleStore';
+import { useTimelineStore } from '../../stores/useTimelineStore';
 
 interface ClipBlockProps {
-  clip: Clip | SubtitleClip;
+  clipId: string;
   pixelsPerSecond: number;
   scrollLeft: number;
   viewportWidth: number;
+  viewportStartTime: number;
+  viewportEndTime: number;
   isSelected: boolean;
   isMainTrack: boolean;
+  isLocked: boolean;
   onSelect: () => void;
   onDragStart: (e: React.PointerEvent) => void;
   onResizeStart: (side: 'left' | 'right', e: React.PointerEvent) => void;
@@ -21,16 +23,28 @@ function isSubtitleClip(clip: Clip | SubtitleClip): clip is SubtitleClip {
 }
 
 export const ClipBlock = memo(({
-  clip,
+  clipId,
   pixelsPerSecond,
   scrollLeft,
   viewportWidth,
+  viewportStartTime,
+  viewportEndTime,
   isSelected,
   isMainTrack,
+  isLocked,
   onSelect,
   onDragStart,
   onResizeStart,
 }: ClipBlockProps) => {
+  const clip = useTimelineStore(s => s.clips[clipId]);
+
+  if (!clip) return null;
+
+  // Virtualization check
+  const clipEnd = clip.timelineStart + clip.timelineDuration;
+  if (clipEnd <= viewportStartTime || clip.timelineStart >= viewportEndTime) {
+    return null;
+  }
   const leftPx = clip.timelineStart * pixelsPerSecond;
   const widthPx = clip.timelineDuration * pixelsPerSecond;
   const heightOffset = isMainTrack ? 4 : 4;
@@ -57,29 +71,20 @@ export const ClipBlock = memo(({
 
   const renderContent = () => {
     switch (clip.type) {
-      case 'video':
+      case 'video': {
+        const fileName = clip.sourceFile.split(/[/\\]/).pop() || 'Video';
         return (
-          <>
-            <VideoTrack
-              videoPath={clip.sourceFile}
-              videoDuration={clip.sourceDuration || clip.timelineDuration}
-              pixelsPerSecond={pixelsPerSecond}
-              clipStart={clip.sourceStart}
-              scrollLeft={scrollLeft - (clip.timelineStart * pixelsPerSecond)}
-              viewportWidth={viewportWidth}
-            />
-            {/* Embedded audio waveform overlay */}
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.6, pointerEvents: 'none' }}>
-              <AudioTrack
-                url={clip.sourceFile}
-                pixelsPerSecond={pixelsPerSecond}
-                color="var(--success)"
-                scrollLeft={scrollLeft - (clip.timelineStart * pixelsPerSecond)}
-                viewportWidth={viewportWidth}
-              />
-            </div>
-          </>
+          <div style={{
+            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
+            padding: '0 8px', overflow: 'hidden', pointerEvents: 'none',
+            background: 'linear-gradient(90deg, rgba(99,102,241,0.25) 0%, rgba(99,102,241,0.1) 100%)',
+          }}>
+            <span style={{ fontSize: 11, color: '#c7d2fe', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 }}>
+              🎬 {fileName}
+            </span>
+          </div>
         );
+      }
       case 'audio':
         return (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -126,11 +131,12 @@ export const ClipBlock = memo(({
 
   return (
     <div
+      data-clip-id={clipId}
       onPointerDown={(e) => {
         e.stopPropagation();
         onSelect();
-        // Cho subtitle, drag được handle bên trong
-        if (clip.type !== 'subtitle') {
+        // Main track locked when subtitles exist — only resize/trim
+        if (!isLocked) {
           onDragStart(e);
         }
       }}
@@ -144,7 +150,7 @@ export const ClipBlock = memo(({
         borderRadius: clip.type === 'subtitle' ? 4 : 8,
         border: isSelected ? '2px solid #fff' : `1px solid ${borderColor}`,
         overflow: 'hidden',
-        cursor: 'grab',
+        cursor: isLocked ? 'default' : 'grab',
         boxShadow: isSelected ? '0 0 0 1px var(--ac-hover)' : 'none',
         display: 'flex',
         alignItems: 'center',

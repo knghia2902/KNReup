@@ -52,11 +52,6 @@ export function UploadPanel({ onFileSelected, onFileSwitch, onFileRemoved, disab
               key={path} 
               className={`mitem ${isActive ? 'active' : ''}`}
                 onClick={() => onFileSwitch?.(path)}
-                draggable="true"
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('text/plain', JSON.stringify({ filePath: path, mediaType: 'video' }));
-                }}
-                style={{ cursor: 'grab' }}
               >
                 <div className="mthumb">
                 <div className="mthumb-bg">
