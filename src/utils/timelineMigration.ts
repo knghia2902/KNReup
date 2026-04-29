@@ -75,9 +75,6 @@ export function segmentsToSubtitleClips(segments: SubtitleSegmentCompat[]): Subt
   }));
 }
 
-/**
- * Chuyển ngược SubtitleClip[] → SubtitleSegment[] cho AudioMixer compatibility
- */
 export function subtitleClipsToSegments(clips: SubtitleClip[]): SubtitleSegmentCompat[] {
   return clips.map((clip, index) => ({
     id: index,
@@ -89,4 +86,22 @@ export function subtitleClipsToSegments(clips: SubtitleClip[]): SubtitleSegmentC
     tts_status: clip.ttsStatus,
     tts_audio_path: clip.ttsAudioPath,
   }));
+}
+
+/**
+ * Chuyển đổi SubtitleSegment[] → Clip[] trên TTS Track
+ */
+export function segmentsToTTSClips(segments: SubtitleSegmentCompat[]): Clip[] {
+  return segments
+    .filter(seg => seg.tts_audio_path)
+    .map(seg => ({
+      id: `tts-${seg.id}`,
+      trackId: 'tts',
+      type: 'audio',
+      sourceFile: seg.tts_audio_path!,
+      sourceStart: 0,
+      sourceDuration: seg.end - seg.start,
+      timelineStart: seg.start,
+      timelineDuration: seg.end - seg.start,
+    }));
 }

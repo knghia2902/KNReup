@@ -1,0 +1,45 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 576
+PlayResY: 1024
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Be Vietnam Pro,75,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,6,0,5,0,0,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:03.83,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Này mọi người, hôm nay tôi muốn kể một câu
+Dialogue: 0,0:00:00.00,0:00:03.83,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}chuyện về Tom.
+Dialogue: 0,0:00:04.25,0:00:08.01,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Tom là một chàng trai trẻ với một giấc mơ lớn
+Dialogue: 0,0:00:04.25,0:00:08.01,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}nhưng anh ấy có một vấn đề.
+Dialogue: 0,0:00:08.50,0:00:11.59,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Anh ta không có động cơ. Tom muốn học tiếng
+Dialogue: 0,0:00:08.50,0:00:11.59,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}Anh.
+Dialogue: 0,0:00:12.24,0:00:14.82,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,940.7)}Anh ấy muốn nói tốt và đi đến những nơi mới.
+Dialogue: 0,0:00:15.32,0:00:20.80,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Nhưng mỗi ngày anh cảm thấy lười biếng. Ông
+Dialogue: 0,0:00:15.32,0:00:20.80,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}ấy nói, ngày mai con sẽ học
+Dialogue: 0,0:00:20.80,0:00:24.44,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Không bao giờ đến. Một ngày nọ Tom gặp một
+Dialogue: 0,0:00:20.80,0:00:24.44,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}thầy giáo cũ ở
+Dialogue: 0,0:00:24.44,0:00:27.42,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,940.7)}Công viên. Cô giáo hỏi, sao em không
+Dialogue: 0,0:00:27.42,0:00:30.51,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,940.7)}Nghiên cứu? Tom nói, tôi không có động cơ.
+Dialogue: 0,0:00:31.35,0:00:34.88,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Thầy giáo mỉm cười và nói, bạn có biết làm thế
+Dialogue: 0,0:00:31.35,0:00:34.88,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}nào một con chim
+Dialogue: 0,0:00:34.88,0:00:38.96,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,940.7)}Học bay? Tom lắc đầu. Thầy giáo nói,
+Dialogue: 0,0:00:39.75,0:00:43.60,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Một chú chim con nhảy từ trên cây xuống. Nó
+Dialogue: 0,0:00:39.75,0:00:43.60,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}sợ
+Dialogue: 0,0:00:44.03,0:00:48.89,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Nhưng nó cố gắng hết lần này đến lần khác.
+Dialogue: 0,0:00:44.03,0:00:48.89,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}Một ngày nào đó nó bay cao trên bầu trời.
+Dialogue: 0,0:00:49.61,0:00:53.64,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Tom đã nghĩ về điều này. Anh ấy nhận ra động
+Dialogue: 0,0:00:49.61,0:00:53.64,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}cơ là
+Dialogue: 0,0:00:53.64,0:00:57.67,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Sau khi bắt đầu. Ngày hôm sau Tom học 10
+Dialogue: 0,0:00:53.64,0:00:57.67,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}phút.
+Dialogue: 0,0:00:58.25,0:01:03.71,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Rồi 20 phút. Rồi 30 phút. Từng chút từng chút
+Dialogue: 0,0:00:58.25,0:01:03.71,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}một, nó khỏe lại.
+Dialogue: 0,0:01:04.45,0:01:07.12,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Sau vài tháng, ông có thể nói chuyện một cách
+Dialogue: 0,0:01:04.45,0:01:07.12,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}tự tin.
+Dialogue: 0,0:01:08.00,0:01:12.79,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Động lực không phải là ảo thuật. Nó đến sau
+Dialogue: 0,0:01:08.00,0:01:12.79,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}khi chúng tôi đi bước đầu tiên.
+Dialogue: 0,0:01:13.54,0:01:18.07,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,927.0)}Vì vậy, như chim con, chỉ cần bắt đầu. Cảm ơn
+Dialogue: 0,0:01:13.54,0:01:18.07,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,954.3)}vì đã lắng nghe.
+Dialogue: 0,0:01:18.07,0:01:19.62,Default,,0,0,0,,{\an5\fs37\bord1\pos(287.0,940.7)}Hẹn gặp lại.

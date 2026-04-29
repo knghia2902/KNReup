@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 25.1
-- **Status:** PLANNED — awaiting approval
+- **Status:** EXECUTED — all 4 waves completed
 - **Last activity:** 2026-04-29
 
 ## Context

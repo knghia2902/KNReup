@@ -220,21 +220,55 @@ class PipelineRunner:
                 yield {"stage": "transcribe", "progress": 10, "message": f"Transcribing with {model_size}..."}
                 await asyncio.sleep(0.1)
 
-                # Run synchronous transcribe in a separate thread so it doesn't block FastAPI event loop
-                result = await asyncio.to_thread(asr.transcribe, video_path, language=config.source_lang)
+                class TranscribeState:
+                    def __init__(self):
+                        self.progress = 0
+                        self.done = False
+                        self.result = None
+                        self.error = None
+
+                state = TranscribeState()
+
+                def on_progress(p: int):
+                    state.progress = p
+
+                def run_transcribe_sync():
+                    try:
+                        state.result = asr.transcribe(
+                            video_path,
+                            language=config.source_lang,
+                            progress_callback=on_progress
+                        )
+                    except Exception as e:
+                        state.error = e
+                    finally:
+                        state.done = True
+
+                # Start the synchronous transcribe in a background thread
+                transcribe_task = asyncio.create_task(asyncio.to_thread(run_transcribe_sync))
+
+                # Loop to yield progress updates to SSE without blocking FastAPI event loop
+                while not state.done:
+                    # Maps 0-100 progress from Whisper to 10-50 range in the overall pipeline
+                    overall_progress = 10 + int(state.progress * 0.4)
+                    yield {
+                        "stage": "transcribe", 
+                        "progress": overall_progress, 
+                        "message": f"Transcribing... {state.progress}%"
+                    }
+                    await asyncio.sleep(0.5)
+
+                if state.error:
+                    raise state.error
+
+                result = state.result
                 segments = result["segments"]
                 detected_lang = result["language"]
                 duration = result["duration"]
                 
                 # Release Whisper model resources immediately after use
+                asr.unload()
                 del asr
-                gc.collect()
-                try:
-                    import torch
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-                except ImportError:
-                    pass
             else:
                 yield {"stage": "transcribe", "progress": 10, "message": "Skipping audio transcribe (Hardsub OCR Only)..."}
                 await asyncio.sleep(0.1)

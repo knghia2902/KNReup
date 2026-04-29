@@ -100,6 +100,7 @@ interface ProjectStore extends ProjectConfig {
 
   setActiveFile: (path: string | null) => void;
   updateConfig: (partial: Partial<ProjectConfig>) => void;
+  setProjectId: (id: string | null) => void;
   removeFileData: (path: string) => void;
   resetConfig: () => void;
   applyPreset: (preset: Partial<ProjectConfig>) => void;
@@ -227,6 +228,10 @@ export const useProjectStore = create<ProjectStore>()(
           ...cleanTargetConfig
         };
       }),
+
+      setProjectId: (id) => {
+        set({ currentProjectId: id });
+      },
 
       updateConfig: (partial) => set((state) => {
         if (!state.activeFile) return partial;

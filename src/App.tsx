@@ -66,6 +66,10 @@ function App() {
   // Zustand stores
   const projectConfig = useProjectStore();
 
+  useEffect(() => {
+    useProjectStore.getState().setProjectId(projectId);
+  }, [projectId]);
+
   // Project data persistence (auto save/load)
   useProjectPersist(projectId);
 

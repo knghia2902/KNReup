@@ -60,8 +60,8 @@ export const ClipBlock = memo(({
       borderColor = 'var(--accent)';
       break;
     case 'audio':
-      bgColor = 'rgba(34,197,94,0.15)';
-      borderColor = '#22c55e';
+      bgColor = clip.trackId === 'tts' ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)';
+      borderColor = clip.trackId === 'tts' ? '#f59e0b' : '#22c55e';
       break;
     case 'subtitle':
       bgColor = isSelected ? 'var(--ac-hover)' : 'var(--ac)';
@@ -91,7 +91,7 @@ export const ClipBlock = memo(({
             <AudioTrack
               url={clip.sourceFile}
               pixelsPerSecond={pixelsPerSecond}
-              color="var(--accent)"
+              color={borderColor}
               scrollLeft={scrollLeft - (clip.timelineStart * pixelsPerSecond)}
               viewportWidth={viewportWidth}
             />
@@ -100,27 +100,31 @@ export const ClipBlock = memo(({
       case 'subtitle':
         if (isSubtitleClip(clip)) {
           return (
-            <div
-              style={{
-                flex: 1,
-                padding: '0 4px',
-                fontSize: '11px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                color: '#fff',
-                fontWeight: 600,
-                cursor: 'grab',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                onSelect();
-                onDragStart(e);
-              }}
-            >
-              {clip.translatedText || clip.sourceText || '[Trống]'}
-            </div>
+            <>
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: 1,
+                  flex: 1,
+                  padding: '0 4px',
+                  fontSize: '11px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  color: '#fff',
+                  fontWeight: 600,
+                  cursor: 'grab',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  onSelect();
+                  onDragStart(e);
+                }}
+              >
+                {clip.translatedText || clip.sourceText || '[Trống]'}
+              </div>
+            </>
           );
         }
         return null;

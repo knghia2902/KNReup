@@ -14,6 +14,8 @@
  */
 
 import { getMediaSrc } from '../utils/url';
+import { sidecar } from './sidecar';
+import { useProjectStore } from '../stores/useProjectStore';
 
 // ─── Types ──────────────────────────────────────────────
 interface TTSSegment {
@@ -182,7 +184,19 @@ async function loadTTSBuffer(path: string): Promise<AudioBuffer | null> {
   if (cached) return cached;
 
   try {
-    const mediaSrc = getMediaSrc(path);
+    let mediaSrc: string | null = null;
+    const projectId = useProjectStore.getState().currentProjectId;
+    
+    if (path && !path.startsWith('http') && !path.includes('/') && !path.includes('\\')) {
+      if (projectId) {
+         mediaSrc = `${sidecar.getBaseUrl()}/api/projects/${projectId}/audio/${encodeURIComponent(path)}`;
+      } else {
+         mediaSrc = getMediaSrc(path);
+      }
+    } else {
+      mediaSrc = getMediaSrc(path);
+    }
+
     if (!mediaSrc) return null;
 
     const response = await fetch(mediaSrc);

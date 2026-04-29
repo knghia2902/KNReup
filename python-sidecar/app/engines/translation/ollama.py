@@ -1,5 +1,5 @@
 import logging
-import requests
+import httpx
 from app.engines.base import TranslationEngine, TranslationError
 
 logger = logging.getLogger(__name__)
@@ -12,22 +12,23 @@ class OllamaTranslation(TranslationEngine):
         self.url = url.rstrip('/')
         self.preset_model = model
 
-    def _get_model(self) -> str:
+    async def _get_model(self) -> str:
         if self.preset_model:
             return self.preset_model
         try:
-            resp = requests.get(f"{self.url}/api/tags", timeout=5)
-            resp.raise_for_status()
-            models = [m["name"] for m in resp.json().get("models", [])]
-            if not models:
-                raise TranslationError("No downloaded models found in Ollama.")
-            # Prefer gemma4:e4b explicit user request
-            chosen = next((m for m in models if "gemma4:e4b" in m), None)
-            if not chosen:
-                chosen = next((m for m in models if "qwen" in m.lower()), None)
-            if not chosen:
-                chosen = next((m for m in models if "llama" in m.lower()), models[0])
-            return chosen
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{self.url}/api/tags")
+                resp.raise_for_status()
+                models = [m["name"] for m in resp.json().get("models", [])]
+                if not models:
+                    raise TranslationError("No downloaded models found in Ollama.")
+                # Prefer gemma4:e4b explicit user request
+                chosen = next((m for m in models if "gemma" in m.lower()), None)
+                if not chosen:
+                    chosen = next((m for m in models if "qwen" in m.lower()), None)
+                if not chosen:
+                    chosen = next((m for m in models if "llama" in m.lower()), models[0])
+                return chosen
         except Exception as e:
             raise TranslationError(f"Failed to fetch Ollama models: {e}")
 
@@ -39,7 +40,7 @@ class OllamaTranslation(TranslationEngine):
         style: str = "default",
         custom_prompt: str = "",
     ) -> str:
-        model = self._get_model()
+        model = await self._get_model()
         prompt = (
             f"You are a professional translator. Translate the following text from {source_lang} to {target_lang}. "
             f"Return ONLY the translated text without any explanation, markdown or reasoning.\n\n"
@@ -54,15 +55,18 @@ class OllamaTranslation(TranslationEngine):
         }
 
         try:
-            resp = requests.post(f"{self.url}/api/generate", json=payload, timeout=60)
-            resp.raise_for_status()
-            return resp.json().get("response", "").strip()
+            # Increase timeout to 300 seconds to allow for model loading into memory
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                resp = await client.post(f"{self.url}/api/generate", json=payload)
+                resp.raise_for_status()
+                return resp.json().get("response", "").strip()
         except Exception as e:
             raise TranslationError(f"Ollama generation failed: {e}")
 
     async def health_check(self) -> bool:
         try:
-            resp = requests.get(f"{self.url}/api/tags", timeout=5)
-            return resp.status_code == 200
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{self.url}/api/tags")
+                return resp.status_code == 200
         except:
             return False

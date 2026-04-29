@@ -419,7 +419,8 @@ async def tts_batch(req: TTSBatchRequest):
 
             yield f"data: {json.dumps({'stage': 'tts-batch', 'progress': 0, 'message': f'Starting TTS for {total} segments...'})}\n\n"
 
-            sem = asyncio.Semaphore(5)
+            # Reduce concurrency to 1 to prevent GPU Out Of Memory hard crashes on Windows
+            sem = asyncio.Semaphore(1)
 
             async def _synth_one(i: int, seg: dict):
                 async with sem:

@@ -33,23 +33,27 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
   // Play a segment's generated TTS audio
   const playSegmentAudio = useCallback((seg: { id: number; tts_audio_path?: string }) => {
     if (!seg.tts_audio_path) return;
-    const params = new URLSearchParams(window.location.search);
-    const projectId = params.get('projectId') || localStorage.getItem('active_project_id') || 'default';
+    const projectId = useProjectStore.getState().currentProjectId || 'default';
     const port = localStorage.getItem('sidecar_port') || '8008';
     const url = `http://127.0.0.1:${port}/api/projects/${projectId}/audio/${seg.tts_audio_path}`;
     new Audio(url).play();
   }, []);
 
-  // Re-generate TTS for a single segment
   const regenSegmentTTS = useCallback(async (seg: any) => {
-    const params = new URLSearchParams(window.location.search);
-    const projectId = params.get('projectId') || localStorage.getItem('active_project_id') || 'default';
+    const projectId = useProjectStore.getState().currentProjectId || 'default';
     setRegenId(seg.id);
+    
+    // Check if segment has custom voice mapping
+    const segVoiceMap = config.voice_mapping[seg.id] || {};
+    const engineToUse = segVoiceMap.engine || config.tts_engine;
+    const voiceToUse = segVoiceMap.voice || config.voice;
+    const speedToUse = segVoiceMap.speed || config.tts_speed;
+    
     try {
       const result = await generateSegment(projectId, seg, {
-        tts_engine: config.tts_engine,
-        voice: config.voice,
-        speed: config.tts_speed,
+        tts_engine: engineToUse,
+        voice: voiceToUse,
+        speed: speedToUse,
         pitch: config.pitch,
         volume: config.volume,
       });

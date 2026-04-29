@@ -26,6 +26,7 @@ class OmniVoiceTTSEngine(TTSEngine):
         self.profiles_dir.mkdir(parents=True, exist_ok=True)
         self._model = None
         self._cancel_flag = False
+        self._voice_prompts = {}
         # We don't load the model immediately to save memory until requested,
         # but we initialize the structure.
 
@@ -63,11 +64,35 @@ class OmniVoiceTTSEngine(TTSEngine):
             repo_id = "splendor1811/omnivoice-vietnamese"
             
             if hasattr(OmniVoice, "from_pretrained"):
-                self._model = OmniVoice.from_pretrained(repo_id, device_map=self._device)
+                self._model = OmniVoice.from_pretrained(
+                    repo_id, 
+                    device_map=self._device,
+                    dtype=torch.float16 if self._device == "cuda" else torch.float32,
+                )
             else:
                 self._model = OmniVoice()
                 if hasattr(self._model, "to"):
                     self._model.to(self._device)
+                    
+            if self._device == "cuda":
+                import sys
+                torch.set_float32_matmul_precision("high")
+                if sys.platform != "win32":
+                    logger.info("Compiling model for CUDA to optimize performance (this may take a minute on first run)...")
+                    try:
+                        self._model.llm = torch.compile(self._model.llm, mode="reduce-overhead", dynamic=True)
+                        logger.info("Torch compile enabled successfully.")
+                    except Exception as comp_e:
+                        logger.warning(f"Could not compile model: {comp_e}")
+                else:
+                    logger.info("Windows detected. Skipping torch.compile (Triton not natively supported).")
+                    try:
+                        import torch._dynamo
+                        torch._dynamo.config.suppress_errors = True
+                        torch._dynamo.config.disable = True
+                        logger.info("Disabled torch._dynamo completely to prevent implicit inductor compilation on Windows.")
+                    except ImportError:
+                        pass
                 
             logger.info("OmniVoice model loaded successfully.")
         except Exception as e:
@@ -110,11 +135,22 @@ class OmniVoiceTTSEngine(TTSEngine):
                 "text": text,
                 "language": "vi",
                 "speed": speed,
-                "guidance_scale": 2.5,
-                "num_step": 8
+                "guidance_scale": 2.0,
+                "num_step": 8,
+                "asr_model_name": "openai/whisper-tiny"
             }
             if ref_audio:
-                kwargs["ref_audio"] = ref_audio
+                if ref_audio not in self._voice_prompts:
+                    logger.info(f"Caching voice prompt for {ref_audio}...")
+                    # Manually load smaller ASR model first to prevent OOM on 4GB GPUs
+                    if getattr(self._model, "asr_model", None) is None:
+                        logger.info("Pre-loading whisper-tiny for ASR to save VRAM...")
+                        self._model.load_asr_model("openai/whisper-tiny")
+                    
+                    self._voice_prompts[ref_audio] = self._model.create_voice_clone_prompt(
+                        ref_audio=ref_audio,
+                    )
+                kwargs["voice_clone_prompt"] = self._voice_prompts[ref_audio]
             else:
                 kwargs["instruct"] = "female"
             
@@ -184,7 +220,8 @@ class OmniVoiceTTSEngine(TTSEngine):
             text=text,
             voice_description=description,
             region=region,
-            speed=speed
+            speed=speed,
+            asr_model_name="openai/whisper-tiny"
         )
         if isinstance(audio_data, list) and len(audio_data) > 0:
             audio_array = audio_data[0]

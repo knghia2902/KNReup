@@ -18,10 +18,9 @@ export function AudioTab() {
   const generatedCount = useMemo(() => segments.filter((s) => s.tts_status === 'generated').length, [segments]);
   const allGenerated = segments.length > 0 && generatedCount === segments.length;
 
-  // Get projectId from URL or localStorage
+  // Get projectId from store
   const getProjectId = () => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('projectId') || localStorage.getItem('active_project_id') || 'default';
+    return useProjectStore.getState().currentProjectId || 'default';
   };
 
   // Watch SSE progress for per-segment updates

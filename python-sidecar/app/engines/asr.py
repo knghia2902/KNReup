@@ -57,6 +57,21 @@ class WhisperASR:
                 )
         return self._model
 
+    def unload(self):
+        """Giải phóng VRAM bằng cách xoá model và dọn rác."""
+        if self._model is not None:
+            del self._model
+            self._model = None
+            import gc
+            gc.collect()
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except ImportError:
+                pass
+            logger.info("Whisper model unloaded to free VRAM for other processes.")
+
     @classmethod
     def detect_best_model(cls) -> tuple[str, str, str]:
         """Auto-select model dựa trên GPU/VRAM.
@@ -72,10 +87,10 @@ class WhisperASR:
         except Exception as e:
             logger.warning(f"GPU detection failed: {e}")
 
-        # Ưu tiên large-v3 cho GPU, base cho CPU
+        # Ưu tiên small cho GPU, base cho CPU
         if gpu_available:
-            logger.info("GPU identified: Forcing large-v3 on CUDA.")
-            return ("large-v3", "cuda", "int8_float16")
+            logger.info("GPU identified: Forcing small on CUDA.")
+            return ("small", "cuda", "int8_float16")
         
         logger.info("GPU not found: Falling back to base on CPU.")
         return ("base", "cpu", "int8")
@@ -84,15 +99,17 @@ class WhisperASR:
         self,
         audio_path: str,
         language: Optional[str] = None,
-    ) -> list[dict]:
+        progress_callback=None
+    ) -> dict:
         """Transcribe audio/video file.
 
         Args:
             audio_path: Path tới file audio/video
             language: Language code (None = auto-detect)
+            progress_callback: Callback(percent: int) để report tiến trình
 
         Returns:
-            List of segments: [{"start": float, "end": float, "text": str}]
+            Dict chứa segments, language, duration
         """
         model = self._load_model()
 
@@ -129,6 +146,8 @@ class WhisperASR:
                     ],
                 }
             )
+            if progress_callback and duration > 0:
+                progress_callback(min(100, int((seg.end / duration) * 100)))
 
         return {
             "segments": segments,

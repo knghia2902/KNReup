@@ -7,7 +7,7 @@ import { TrackHeader } from './TrackHeader';
 import { TrackRow } from './TrackRow';
 import { AudioMixer } from '../../lib/audioMixer';
 import { getTrackOrder, isOverlayTrack } from '../../types/timeline';
-import { projectToVideoClip, projectToAudioClip, segmentsToSubtitleClips } from '../../utils/timelineMigration';
+import { projectToVideoClip, projectToAudioClip, segmentsToSubtitleClips, segmentsToTTSClips } from '../../utils/timelineMigration';
 import { SubtitleClip, ClipType } from '../../types/timeline';
 
 const TIMELINE_OFFSET_X = 4;
@@ -166,6 +166,10 @@ export function Timeline({ filePaths }: TimelineProps) {
     // Subtitles → SUB Track
     const subClips = segmentsToSubtitleClips(segments);
     clips.push(...subClips);
+
+    // TTS → TTS Track
+    const ttsClips = segmentsToTTSClips(segments);
+    clips.push(...ttsClips);
 
     timelineStore.setClips(clips);
     timelineStore.compactTrack('main');

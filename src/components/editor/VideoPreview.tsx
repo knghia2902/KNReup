@@ -970,9 +970,8 @@ export function VideoPreview({ videoSrc, videoRatio = 'original', isEditingSub =
             {videoEnded && (
               <div style={{ gridArea: '1 / 1', width: '100%', height: '100%', background: '#000', zIndex: 15, pointerEvents: 'none' }} />
             )}
-             {/* BGM audio — always rendered to maintain ref */}
-                <audio ref={bgmRef} data-bgm
-                  src={projectConfig.audio_enabled && projectConfig.audio_file ? (getVideoSrc(projectConfig.audio_file) || '') : ''}
+                 <audio ref={bgmRef} data-bgm
+                  src={projectConfig.audio_enabled && projectConfig.audio_file ? (getVideoSrc(projectConfig.audio_file) || undefined) : undefined}
                   preload="auto" loop={false} style={{ display: 'none' }}
                   onLoadedMetadata={() => {
                     const dur = bgmRef.current?.duration;
