@@ -1,11 +1,13 @@
 /**
  * SmartCropWindow — Standalone AI face-tracking auto-crop tool.
  * Phase 26: Converts 16:9 → 9:16 using YOLOv8 face detection + EMA smoothing.
+ * Session persisted via Zustand store — survives window close/reopen.
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { sidecar } from '../../lib/sidecar';
 import { useSidecar } from '../../hooks/useSidecar';
 import { useTheme } from '../../hooks/useTheme';
+import { useSmartCropStore } from '../../stores/useSmartCropStore';
 import { SmartCropLayout } from './SmartCropLayout';
 import { SmartCropControls } from './SmartCropControls';
 import { Sun, Moon } from '@phosphor-icons/react';
@@ -30,28 +32,45 @@ export function SmartCropWindow() {
   useSidecar();
   const { isDark, toggle } = useTheme();
 
-  // ─── State ─────────────────────────────────────
-  const [inputPath, setInputPath] = useState<string | null>(null);
+  // ─── Persisted State (Zustand) ─────────────────
+  const { session, saveSession, clearSession } = useSmartCropStore();
+
+  // ─── Local State (UI only) ─────────────────────
   const [inputVideoUrl, setInputVideoUrl] = useState<string | null>(null);
-  const [outputPath, setOutputPath] = useState<string | null>(null);
   const [outputVideoUrl, setOutputVideoUrl] = useState<string | null>(null);
-
-  // Controls
-  const [alpha, setAlpha] = useState(0.08);
-  const [deadZone, setDeadZone] = useState(0.03);
-  const [detectEvery, setDetectEvery] = useState(3);
-  const [fallbackCenter, setFallbackCenter] = useState(true);
-
-  // GPU status
   const [gpuStatus, setGpuStatus] = useState<GpuStatusInfo | null>(null);
-
-  // Processing
   const [processing, setProcessing] = useState<ProcessingState>({
     stage: 'idle', progress: 0, message: '', mode: 'GPU',
   });
 
   const inputRef = useRef<HTMLVideoElement>(null);
   const outputRef = useRef<HTMLVideoElement>(null);
+
+  // ─── Restore session on mount ──────────────────
+  useEffect(() => {
+    (async () => {
+      // Restore video URLs from persisted paths
+      if (session.inputPath) {
+        try {
+          const { convertFileSrc } = await import('@tauri-apps/api/core');
+          setInputVideoUrl(convertFileSrc(session.inputPath));
+
+          // If output exists and was previously done, restore it
+          if (session.outputPath && session.lastStage === 'done') {
+            setOutputVideoUrl(convertFileSrc(session.outputPath));
+            setProcessing({
+              stage: 'done',
+              progress: 100,
+              message: session.lastMessage || 'Đã hoàn thành trước đó',
+              mode: session.lastMode || 'GPU',
+            });
+          }
+        } catch {
+          // Not in Tauri — ignore
+        }
+      }
+    })();
+  }, []); // Run once on mount
 
   // ─── GPU Status Check ──────────────────────────
   useEffect(() => {
@@ -75,25 +94,32 @@ export function SmartCropWindow() {
         multiple: false,
       });
       if (selected && typeof selected === 'string') {
-        setInputPath(selected);
         // Convert local path to Tauri asset URL
         const { convertFileSrc } = await import('@tauri-apps/api/core');
         setInputVideoUrl(convertFileSrc(selected));
+
         // Prepare output path
         const ext = selected.lastIndexOf('.');
         const outPath = selected.substring(0, ext) + '_916' + selected.substring(ext);
-        setOutputPath(outPath);
         setOutputVideoUrl(null);
         setProcessing({ stage: 'idle', progress: 0, message: '', mode: 'GPU' });
+
+        // Persist to store
+        saveSession({
+          inputPath: selected,
+          outputPath: outPath,
+          lastStage: 'idle',
+          lastMessage: '',
+        });
       }
     } catch (err) {
       console.error('File picker error:', err);
     }
-  }, []);
+  }, [saveSession]);
 
   // ─── Export / Process ──────────────────────────
   const handleExport = useCallback(async () => {
-    if (!inputPath || !outputPath) return;
+    if (!session.inputPath || !session.outputPath) return;
 
     setProcessing({ stage: 'init', progress: 0, message: 'Đang khởi tạo...', mode: 'GPU' });
 
@@ -103,12 +129,12 @@ export function SmartCropWindow() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          input_path: inputPath,
-          output_path: outputPath,
-          alpha,
-          dead_zone: deadZone,
-          detect_every: detectEvery,
-          fallback_center: fallbackCenter,
+          input_path: session.inputPath,
+          output_path: session.outputPath,
+          alpha: session.alpha,
+          dead_zone: session.deadZone,
+          detect_every: session.detectEvery,
+          fallback_center: session.fallbackCenter,
         }),
       });
 
@@ -137,17 +163,24 @@ export function SmartCropWindow() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              setProcessing({
+              const newState: ProcessingState = {
                 stage: data.stage || 'processing',
                 progress: data.progress ?? 0,
                 message: data.message || '',
                 mode: data.mode || 'GPU',
-              });
+              };
+              setProcessing(newState);
 
               if (data.stage === 'done' && data.output) {
                 // Show output video
                 const { convertFileSrc } = await import('@tauri-apps/api/core');
                 setOutputVideoUrl(convertFileSrc(data.output));
+                // Persist completion
+                saveSession({
+                  lastStage: 'done',
+                  lastMessage: data.message || 'Hoàn thành',
+                  lastMode: data.mode || 'GPU',
+                });
               }
             } catch {
               // Skip malformed JSON
@@ -162,23 +195,27 @@ export function SmartCropWindow() {
         message: err.message || 'Lỗi không xác định',
         mode: 'CPU',
       });
+      saveSession({
+        lastStage: 'error',
+        lastMessage: err.message || 'Lỗi không xác định',
+      });
     }
-  }, [inputPath, outputPath, alpha, deadZone, detectEvery, fallbackCenter]);
+  }, [session, saveSession]);
 
   // ─── Open in Editor ────────────────────────────
   const handleOpenEditor = useCallback(async () => {
-    if (!outputPath) return;
+    if (!session.outputPath) return;
     try {
       const { openEditor } = await import('../../utils/windowManager');
       const { useLauncherStore } = await import('../../stores/useLauncherStore');
 
       const id = `proj-${Date.now()}`;
-      const name = outputPath.split(/[\\/]/).pop()?.replace(/\.\w+$/, '') || 'Smart Crop';
+      const name = session.outputPath.split(/[\\/]/).pop()?.replace(/\.\w+$/, '') || 'Smart Crop';
 
       useLauncherStore.getState().addProject({
         id,
         name,
-        path: outputPath,
+        path: session.outputPath,
         createdAt: Date.now(),
         lastModified: Date.now(),
       });
@@ -195,7 +232,15 @@ export function SmartCropWindow() {
     } catch (err) {
       console.error('Open editor failed:', err);
     }
-  }, [outputPath]);
+  }, [session.outputPath]);
+
+  // ─── New File (clear session) ──────────────────
+  const handleNewFile = useCallback(() => {
+    clearSession();
+    setInputVideoUrl(null);
+    setOutputVideoUrl(null);
+    setProcessing({ stage: 'idle', progress: 0, message: '', mode: 'GPU' });
+  }, [clearSession]);
 
   // ─── Render ────────────────────────────────────
   const isProcessing = processing.stage === 'init' || processing.stage === 'processing';
@@ -212,6 +257,17 @@ export function SmartCropWindow() {
           </span>
         )}
         <div style={{ flex: 1 }} data-tauri-drag-region />
+        {/* New File button — only show when a session exists */}
+        {session.inputPath && (
+          <button
+            className="sc-btn"
+            onClick={handleNewFile}
+            style={{ marginRight: 6, padding: '4px 10px', fontSize: 11 }}
+            title="Chọn file mới"
+          >
+            🔄 Mới
+          </button>
+        )}
         <button className="theme-toggle" onClick={toggle} title={isDark ? 'Light' : 'Dark'}>
           {isDark ? <Sun size={14} weight="bold" /> : <Moon size={14} weight="bold" />}
         </button>
@@ -219,7 +275,7 @@ export function SmartCropWindow() {
 
       <div className="sc-body">
         {/* Hero */}
-        {!inputPath && (
+        {!session.inputPath && (
           <div className="sc-hero sc-animate-in">
             <h1>Smart Crop 9:16</h1>
             <p>AI theo dõi khuôn mặt — tự động crop video 16:9 sang 9:16</p>
@@ -227,7 +283,7 @@ export function SmartCropWindow() {
         )}
 
         {/* Dropzone (chỉ hiện khi chưa chọn file) */}
-        {!inputPath && (
+        {!session.inputPath && (
           <div className="sc-dropzone sc-animate-in" onClick={handleSelectFile}>
             <div className="sc-dropzone-icon">🎬</div>
             <div className="sc-dropzone-text">
@@ -237,7 +293,7 @@ export function SmartCropWindow() {
         )}
 
         {/* Preview */}
-        {inputPath && (
+        {session.inputPath && (
           <SmartCropLayout
             inputVideoUrl={inputVideoUrl}
             outputVideoUrl={outputVideoUrl}
@@ -269,16 +325,16 @@ export function SmartCropWindow() {
         )}
 
         {/* Controls */}
-        {inputPath && (
+        {session.inputPath && (
           <SmartCropControls
-            alpha={alpha}
-            deadZone={deadZone}
-            detectEvery={detectEvery}
-            fallbackCenter={fallbackCenter}
-            onAlphaChange={setAlpha}
-            onDeadZoneChange={setDeadZone}
-            onDetectEveryChange={setDetectEvery}
-            onFallbackCenterChange={setFallbackCenter}
+            alpha={session.alpha}
+            deadZone={session.deadZone}
+            detectEvery={session.detectEvery}
+            fallbackCenter={session.fallbackCenter}
+            onAlphaChange={(v) => saveSession({ alpha: v })}
+            onDeadZoneChange={(v) => saveSession({ deadZone: v })}
+            onDetectEveryChange={(v) => saveSession({ detectEvery: v })}
+            onFallbackCenterChange={(v) => saveSession({ fallbackCenter: v })}
             onExport={handleExport}
             onOpenEditor={handleOpenEditor}
             isProcessing={isProcessing}
