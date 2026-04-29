@@ -33,7 +33,7 @@ export function SmartCropWindow() {
   const { isDark, toggle } = useTheme();
 
   // ─── Persisted State (Zustand) ─────────────────
-  const { session, saveSession, clearSession } = useSmartCropStore();
+  const { session, saveSession, clearSession, getFromHistory, addToHistory } = useSmartCropStore();
 
   // ─── Local State (UI only) ─────────────────────
   const [inputVideoUrl, setInputVideoUrl] = useState<string | null>(null);
@@ -94,28 +94,49 @@ export function SmartCropWindow() {
         multiple: false,
       });
       if (selected && typeof selected === 'string') {
-        // Convert local path to Tauri asset URL
         const { convertFileSrc } = await import('@tauri-apps/api/core');
         setInputVideoUrl(convertFileSrc(selected));
 
         // Prepare output path
         const ext = selected.lastIndexOf('.');
         const outPath = selected.substring(0, ext) + '_916' + selected.substring(ext);
-        setOutputVideoUrl(null);
-        setProcessing({ stage: 'idle', progress: 0, message: '', mode: 'GPU' });
 
-        // Persist to store
-        saveSession({
-          inputPath: selected,
-          outputPath: outPath,
-          lastStage: 'idle',
-          lastMessage: '',
-        });
+        // Check crop history — instant recall if already cropped
+        const cached = getFromHistory(selected);
+        if (cached) {
+          setOutputVideoUrl(convertFileSrc(cached.outputPath));
+          setProcessing({
+            stage: 'done',
+            progress: 100,
+            message: '✨ Đã crop trước đó — hiện kết quả từ cache',
+            mode: cached.mode,
+          });
+          saveSession({
+            inputPath: selected,
+            outputPath: cached.outputPath,
+            alpha: cached.alpha,
+            deadZone: cached.deadZone,
+            detectEvery: cached.detectEvery,
+            fallbackCenter: cached.fallbackCenter,
+            lastStage: 'done',
+            lastMessage: '✨ Đã crop trước đó',
+            lastMode: cached.mode,
+          });
+        } else {
+          setOutputVideoUrl(null);
+          setProcessing({ stage: 'idle', progress: 0, message: '', mode: 'GPU' });
+          saveSession({
+            inputPath: selected,
+            outputPath: outPath,
+            lastStage: 'idle',
+            lastMessage: '',
+          });
+        }
       }
     } catch (err) {
       console.error('File picker error:', err);
     }
-  }, [saveSession]);
+  }, [saveSession, getFromHistory]);
 
   // ─── Export / Process ──────────────────────────
   const handleExport = useCallback(async () => {
@@ -181,6 +202,18 @@ export function SmartCropWindow() {
                   lastMessage: data.message || 'Hoàn thành',
                   lastMode: data.mode || 'GPU',
                 });
+                // Save to crop history for instant recall
+                if (session.inputPath) {
+                  addToHistory(session.inputPath, {
+                    outputPath: data.output,
+                    alpha: session.alpha,
+                    deadZone: session.deadZone,
+                    detectEvery: session.detectEvery,
+                    fallbackCenter: session.fallbackCenter,
+                    mode: data.mode || 'GPU',
+                    timestamp: Date.now(),
+                  });
+                }
               }
             } catch {
               // Skip malformed JSON
