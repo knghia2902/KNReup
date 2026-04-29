@@ -33,7 +33,12 @@ export function SmartCropWindow() {
   const { isDark, toggle } = useTheme();
 
   // ─── Persisted State (Zustand) ─────────────────
-  const { session, saveSession, clearSession, getFromHistory, addToHistory } = useSmartCropStore();
+  const { session, saveSession, clearSession, getFromHistory, addToHistory, history, removeFromHistory, clearHistory } = useSmartCropStore();
+
+  // ─── Derived: sorted history entries ───────────
+  const historyEntries = Object.entries(history)
+    .map(([inputPath, entry]) => ({ inputPath, ...entry }))
+    .sort((a, b) => b.timestamp - a.timestamp);
 
   // ─── Local State (UI only) ─────────────────────
   const [inputVideoUrl, setInputVideoUrl] = useState<string | null>(null);
@@ -275,6 +280,45 @@ export function SmartCropWindow() {
     setProcessing({ stage: 'idle', progress: 0, message: '', mode: 'GPU' });
   }, [clearSession]);
 
+  // ─── Load from history (click history row) ─────
+  const handleLoadFromHistory = useCallback(async (inputPath: string) => {
+    const entry = getFromHistory(inputPath);
+    if (!entry) return;
+    try {
+      const { convertFileSrc } = await import('@tauri-apps/api/core');
+      setInputVideoUrl(convertFileSrc(inputPath));
+      setOutputVideoUrl(convertFileSrc(entry.outputPath));
+      setProcessing({
+        stage: 'done',
+        progress: 100,
+        message: '✨ Đã crop trước đó — hiện kết quả từ cache',
+        mode: entry.mode,
+      });
+      saveSession({
+        inputPath,
+        outputPath: entry.outputPath,
+        alpha: entry.alpha,
+        deadZone: entry.deadZone,
+        detectEvery: entry.detectEvery,
+        fallbackCenter: entry.fallbackCenter,
+        lastStage: 'done',
+        lastMessage: '✨ Đã crop trước đó',
+        lastMode: entry.mode,
+      });
+    } catch {
+      // Not in Tauri
+    }
+  }, [getFromHistory, saveSession]);
+
+  // ─── Delete history entry ──────────────────────
+  const [deleteHistoryPath, setDeleteHistoryPath] = useState<string | null>(null);
+  const handleConfirmDeleteHistory = useCallback(() => {
+    if (deleteHistoryPath) {
+      removeFromHistory(deleteHistoryPath);
+      setDeleteHistoryPath(null);
+    }
+  }, [deleteHistoryPath, removeFromHistory]);
+
   // ─── Render ────────────────────────────────────
   const isProcessing = processing.stage === 'init' || processing.stage === 'processing';
   const hasOutput = processing.stage === 'done' && !!outputVideoUrl;
@@ -321,6 +365,58 @@ export function SmartCropWindow() {
             <div className="sc-dropzone-icon">🎬</div>
             <div className="sc-dropzone-text">
               Kéo thả video vào đây hoặc <strong>nhấn để chọn file</strong>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Crop History (idle screen only) ─── */}
+        {!session.inputPath && historyEntries.length > 0 && (
+          <div className="sc-history sc-animate-in">
+            <div className="sc-history-header">
+              <h3>📋 Lịch sử Crop</h3>
+              <button className="sc-btn" style={{ padding: '3px 10px', fontSize: 10 }} onClick={clearHistory}>
+                Xóa tất cả
+              </button>
+            </div>
+            <div className="sc-history-table">
+              <div className="sc-history-head">
+                <div>Video gốc</div>
+                <div>Thời gian</div>
+                <div>Mode</div>
+                <div>Thao tác</div>
+              </div>
+              {historyEntries.map((entry) => {
+                const fileName = entry.inputPath.split(/[\\/]/).pop() || entry.inputPath;
+                const timeStr = new Date(entry.timestamp).toLocaleString('vi-VN', {
+                  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                });
+                return (
+                  <div
+                    key={entry.inputPath}
+                    className="sc-history-row"
+                    onClick={() => handleLoadFromHistory(entry.inputPath)}
+                    title={`Click để mở lại: ${entry.inputPath}`}
+                  >
+                    <div className="sc-history-cell name">🎬 {fileName}</div>
+                    <div className="sc-history-cell">{timeStr}</div>
+                    <div className="sc-history-cell">
+                      <span className={`sc-gpu-badge ${entry.mode === 'GPU' ? 'gpu' : 'cpu'}`}>
+                        {entry.mode}
+                      </span>
+                    </div>
+                    <div className="sc-history-cell" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="sc-btn"
+                        style={{ padding: '3px 8px', fontSize: 10 }}
+                        onClick={() => setDeleteHistoryPath(entry.inputPath)}
+                        title="Xóa khỏi lịch sử"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -375,6 +471,23 @@ export function SmartCropWindow() {
           />
         )}
       </div>
+
+      {/* ─── Delete History Confirmation Modal ─── */}
+      {deleteHistoryPath && (
+        <div className="sc-modal-overlay">
+          <div className="sc-modal-content">
+            <h3>Xóa khỏi lịch sử?</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 16px' }}>
+              File: <strong>{deleteHistoryPath.split(/[\\/]/).pop()}</strong><br />
+              Chỉ xóa khỏi lịch sử, không xóa file thực.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="sc-btn" onClick={() => setDeleteHistoryPath(null)}>Hủy</button>
+              <button className="sc-btn" style={{ background: '#dc2626', color: '#fff', borderColor: '#dc2626' }} onClick={handleConfirmDeleteHistory}>Xóa</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
