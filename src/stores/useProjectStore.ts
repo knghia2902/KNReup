@@ -194,22 +194,32 @@ export const useProjectStore = create<ProjectStore>()(
       custom_voice_profiles: [],
 
       setActiveFile: (path) => set((state) => {
-        if (state.activeFile === path) return {};
+        // Luôn luôn force wipe state về default để tránh rác (ghost state)
+        // kể cả khi path không đổi (ví dụ mount app lần đầu)
+        const targetConfig = path && state.fileConfigs[path] ? state.fileConfigs[path] : {};
         
-        const targetConfig = path && state.fileConfigs[path] ? state.fileConfigs[path] : { ...DEFAULT_CONFIG };
+        const newState = { ...DEFAULT_CONFIG };
         // Giữ nguyên API Key của người dùng không bị đè bởi Default
-        delete targetConfig.gemini_api_key;
-        delete targetConfig.deepl_api_key;
-        delete targetConfig.deepseek_api_key;
-        delete targetConfig.openai_api_key;
-        delete targetConfig.openai_base_url;
-        delete targetConfig.openai_model;
-        delete targetConfig.ollama_url;
-        delete targetConfig.ollama_model;
+        const globalKeys: (keyof ProjectConfig)[] = [
+          'gemini_api_key', 'deepl_api_key', 'deepseek_api_key',
+          'openai_api_key', 'openai_base_url', 'openai_model',
+          'ollama_url', 'ollama_model', 'elevenlabs_api_key'
+        ];
+        
+        globalKeys.forEach(k => {
+          (newState as any)[k] = state[k];
+        });
+
+        // Xóa các key global khỏi targetConfig để chắc chắn project ko vô tình overwrite API keys
+        const cleanTargetConfig = { ...targetConfig };
+        globalKeys.forEach(k => {
+          delete cleanTargetConfig[k];
+        });
 
         return {
+          ...newState,
           activeFile: path,
-          ...targetConfig
+          ...cleanTargetConfig
         };
       }),
 

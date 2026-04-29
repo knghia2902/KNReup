@@ -279,3 +279,26 @@ class OmniVoiceTTSEngine(TTSEngine):
             with open(history_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         return []
+
+    def delete_history(self, history_id: str) -> bool:
+        history_file = self.profiles_dir.parent / "history" / "tts_history.json"
+        if not history_file.exists():
+            return False
+        with open(history_file, "r", encoding="utf-8") as f:
+            history = json.load(f)
+        
+        updated_history = []
+        deleted = False
+        for record in history:
+            if record.get("id") == history_id:
+                audio_path = self.profiles_dir.parent / "history" / record.get("audio_path", "")
+                if audio_path.exists():
+                    audio_path.unlink()
+                deleted = True
+            else:
+                updated_history.append(record)
+                
+        if deleted:
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(updated_history, f, indent=2, ensure_ascii=False)
+        return deleted

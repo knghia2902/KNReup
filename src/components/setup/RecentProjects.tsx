@@ -1,12 +1,8 @@
-/**
- * RecentProjects — Grid display of recent project cards with thumbnails
- * Phase 09, Plan 02
- */
 import { useState, useRef, useEffect } from 'react';
 import { useLauncherStore, type ProjectMetadata } from '../../stores/useLauncherStore';
 import { openEditor, openDownloaderForProject } from '../../utils/windowManager';
 import { sidecar } from '../../lib/sidecar';
-import { Folder, Clock, Trash, DownloadSimple, PencilSimple } from '@phosphor-icons/react';
+import { Folder, Clock, Trash, DownloadSimple, PencilSimple, WarningCircle } from '@phosphor-icons/react';
 
 function formatDate(timestamp: number): string {
   const d = new Date(timestamp);
@@ -23,8 +19,7 @@ function formatDate(timestamp: number): string {
   return d.toLocaleDateString('vi-VN');
 }
 
-function ProjectCard({ project }: { project: ProjectMetadata }) {
-  const removeProject = useLauncherStore((s) => s.removeProject);
+function ProjectCard({ project, onRequestDelete }: { project: ProjectMetadata, onRequestDelete: (p: ProjectMetadata) => void }) {
   const updateProject = useLauncherStore((s) => s.updateProject);
   
   const [isEditing, setIsEditing] = useState(false);
@@ -43,22 +38,9 @@ function ProjectCard({ project }: { project: ProjectMetadata }) {
     await openEditor(project.id);
   };
 
-  const handleRemove = async (e: React.MouseEvent) => {
+  const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}" không?\n\nCẢNH BÁO: Toàn bộ thư mục chứa file đã tải về và file dự án sẽ bị xóa vĩnh viễn khỏi máy!`)) {
-      try {
-        await sidecar.fetch('/api/system/project', {
-          method: 'DELETE',
-          body: JSON.stringify({
-            project_name: project.name,
-            project_path: project.path || ''
-          })
-        });
-      } catch (err) {
-        console.error("Lỗi xóa thư mục dự án", err);
-      }
-      removeProject(project.id);
-    }
+    onRequestDelete(project);
   };
 
   const handleDownload = async (e: React.MouseEvent) => {
@@ -167,6 +149,10 @@ function ProjectCard({ project }: { project: ProjectMetadata }) {
 
 export function RecentProjects({ searchQuery = '' }: { searchQuery?: string }) {
   const recentProjects = useLauncherStore((s) => s.recentProjects);
+  const removeProject = useLauncherStore((s) => s.removeProject);
+  
+  const [projectToDelete, setProjectToDelete] = useState<ProjectMetadata | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filtered = searchQuery.trim()
     ? recentProjects.filter((p) =>
@@ -174,6 +160,26 @@ export function RecentProjects({ searchQuery = '' }: { searchQuery?: string }) {
         p.path.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : recentProjects;
+
+  const handleConfirmDelete = async () => {
+    if (!projectToDelete) return;
+    setIsDeleting(true);
+    try {
+      await sidecar.fetch('/api/system/project', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          project_name: projectToDelete.name,
+          project_path: projectToDelete.path || ''
+        })
+      });
+    } catch (err) {
+      console.error("Lỗi xóa thư mục dự án", err);
+    } finally {
+      removeProject(projectToDelete.id);
+      setIsDeleting(false);
+      setProjectToDelete(null);
+    }
+  };
 
   if (recentProjects.length === 0) {
     return (
@@ -183,19 +189,57 @@ export function RecentProjects({ searchQuery = '' }: { searchQuery?: string }) {
     );
   }
 
-  if (filtered.length === 0) {
-    return (
-      <div className="launcher-empty">
-        <p>Không tìm thấy dự án phù hợp.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="launcher-projects-grid">
-      {filtered.map((project) => (
-        <ProjectCard key={project.id} project={project} />
-      ))}
-    </div>
+    <>
+      {filtered.length === 0 ? (
+        <div className="launcher-empty">
+          <p>Không tìm thấy dự án phù hợp.</p>
+        </div>
+      ) : (
+        <div className="launcher-projects-grid">
+          {filtered.map((project) => (
+            <ProjectCard key={project.id} project={project} onRequestDelete={setProjectToDelete} />
+          ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {projectToDelete && (
+        <div className="delete-modal-overlay" onClick={() => !isDeleting && setProjectToDelete(null)}>
+          <div className="delete-modal-card" onClick={e => e.stopPropagation()}>
+            <div className="delete-modal-header">
+              <div className="delete-modal-icon">
+                <WarningCircle size={28} weight="fill" />
+              </div>
+              <h3 className="delete-modal-title">Xóa dự án</h3>
+            </div>
+            <div className="delete-modal-body">
+              <p>
+                Bạn có chắc chắn muốn xóa dự án <strong>"{projectToDelete.name}"</strong> không?
+              </p>
+              <div className="delete-modal-warning">
+                <strong>CẢNH BÁO:</strong> Toàn bộ thư mục chứa file đã tải về và file dự án sẽ bị xóa vĩnh viễn khỏi máy! Thao tác này không thể hoàn tác.
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button 
+                className="delete-modal-btn cancel" 
+                onClick={() => setProjectToDelete(null)}
+                disabled={isDeleting}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                className="delete-modal-btn confirm" 
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

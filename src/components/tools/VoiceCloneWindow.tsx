@@ -38,6 +38,12 @@ export function VoiceCloneWindow() {
   const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
   const [playingProfile, setPlayingProfile] = useState<string | null>(null);
 
+  // History State
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [playingHistory, setPlayingHistory] = useState<string | null>(null);
+  const [deleteHistoryDialog, setDeleteHistoryDialog] = useState<string | null>(null);
+
   // ── TTS State ──
   const [ttsVoice, setTtsVoice] = useState('');
   const [ttsText, setTtsText] = useState('');
@@ -58,16 +64,34 @@ export function VoiceCloneWindow() {
     }
   }, []);
 
-  // Load profiles on mount + on focus
+  const loadHistory = useCallback(async () => {
+    setIsLoadingHistory(true);
+    try {
+      const res = await sidecar.fetch<{ history: any[] }>('/api/tts/profiles/history');
+      setHistory(res.history || []);
+    } catch (e: any) {
+      console.error('Failed to load history:', e);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
+  // Load data on mount + on focus
   useEffect(() => {
-    if (connected) loadProfiles();
-  }, [connected, loadProfiles]);
+    if (connected) {
+      loadProfiles();
+      loadHistory();
+    }
+  }, [connected, loadProfiles, loadHistory]);
 
   useEffect(() => {
-    const handleFocus = () => loadProfiles();
+    const handleFocus = () => {
+      loadProfiles();
+      loadHistory();
+    };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [loadProfiles]);
+  }, [loadProfiles, loadHistory]);
 
   const handleDeleteProfile = async () => {
     if (!deleteDialog) return;
@@ -77,6 +101,17 @@ export function VoiceCloneWindow() {
       loadProfiles();
     } catch (e: any) {
       console.error('Failed to delete profile:', e);
+    }
+  };
+
+  const handleDeleteHistory = async () => {
+    if (!deleteHistoryDialog) return;
+    try {
+      await sidecar.fetch(`/api/tts/profiles/history/${deleteHistoryDialog}`, { method: 'DELETE' });
+      setDeleteHistoryDialog(null);
+      loadHistory();
+    } catch (e: any) {
+      console.error('Failed to delete history:', e);
     }
   };
 
@@ -90,8 +125,34 @@ export function VoiceCloneWindow() {
     }
     const url = `${sidecar.getBaseUrl()}/api/tts/profiles/${name}/audio`;
     audioRef.current.src = url;
-    audioRef.current.onended = () => setPlayingProfile(null);
-    audioRef.current.play().then(() => setPlayingProfile(name)).catch(() => setPlayingProfile(null));
+    audioRef.current.onended = () => {
+      setPlayingProfile(null);
+      setPlayingHistory(null);
+    };
+    audioRef.current.play().then(() => {
+      setPlayingProfile(name);
+      setPlayingHistory(null);
+    }).catch(() => setPlayingProfile(null));
+  };
+
+  const playHistory = (filename: string) => {
+    if (!audioRef.current) return;
+    if (playingHistory === filename) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setPlayingHistory(null);
+      return;
+    }
+    const url = `${sidecar.getBaseUrl()}/api/tts/profiles/history/${filename}`;
+    audioRef.current.src = url;
+    audioRef.current.onended = () => {
+      setPlayingProfile(null);
+      setPlayingHistory(null);
+    };
+    audioRef.current.play().then(() => {
+      setPlayingHistory(filename);
+      setPlayingProfile(null);
+    }).catch(() => setPlayingHistory(null));
   };
 
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -153,6 +214,7 @@ export function VoiceCloneWindow() {
       });
       if (res.history_record) {
         setTtsResultAction(res.history_record);
+        loadHistory(); // Reload history after generating
       }
     } catch (e: any) {
       console.error('Failed to generate TTS:', e);
@@ -335,52 +397,113 @@ export function VoiceCloneWindow() {
             )}
           </div>
 
-          {/* ── RIGHT PANEL: Profiles table (always visible) ── */}
+          {/* ── RIGHT PANEL: Contextual Content ── */}
           <div className="vs-profiles-panel">
-            <div className="vs-recent-header">
-              <h2>Voice Profiles</h2>
-              <button className="vs-view-all" onClick={loadProfiles}>Refresh</button>
-            </div>
-
-            {isLoadingProfiles ? (
-              <div className="vs-empty">
-                <Spinner />
-                <p>Đang tải profiles...</p>
-              </div>
-            ) : profiles.length === 0 ? (
-              <div className="vs-empty">
-                <div className="vs-empty-icon">🎤</div>
-                <h3>Chưa có giọng nào</h3>
-                <p>Clone hoặc thiết kế giọng mới để bắt đầu sử dụng trong Editor.</p>
-              </div>
-            ) : (
-              <div className="vs-profile-table">
-                <div className="vs-pt-head">
-                  <div>Profile</div>
-                  <div>Type</div>
-                  <div>Date</div>
-                  <div>Actions</div>
+            {activeTab !== 'tts' ? (
+              <>
+                <div className="vs-recent-header">
+                  <h2>Voice Profiles</h2>
+                  <button className="vs-view-all" onClick={loadProfiles}>Refresh</button>
                 </div>
-                {profiles.map((p) => (
-                  <div key={p.name} className="vs-pt-row">
-                    <div className="vs-pt-cell name">🎤 {p.name}</div>
-                    <div className="vs-pt-cell center">
-                      <span className="vs-pt-type-badge">{p.type || 'cloned'}</span>
-                    </div>
-                    <div className="vs-pt-cell center">
-                      {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
-                    </div>
-                    <div className="vs-pt-cell center">
-                      <button className="vs-pt-btn" onClick={() => playProfile(p.name)} title={playingProfile === p.name ? 'Dừng' : 'Nghe thử'}>
-                        {playingProfile === p.name ? <Stop size={16} weight="fill" /> : <Play size={16} weight="fill" />}
-                      </button>
-                      <button className="vs-pt-btn" onClick={() => setDeleteDialog(p.name)} title="Xóa profile">
-                        <Trash size={16} weight="bold" />
-                      </button>
-                    </div>
+
+                {isLoadingProfiles ? (
+                  <div className="vs-empty">
+                    <Spinner />
+                    <p>Đang tải profiles...</p>
                   </div>
-                ))}
-              </div>
+                ) : profiles.length === 0 ? (
+                  <div className="vs-empty">
+                    <div className="vs-empty-icon">🎤</div>
+                    <h3>Chưa có giọng nào</h3>
+                    <p>Clone hoặc thiết kế giọng mới để bắt đầu sử dụng trong Editor.</p>
+                  </div>
+                ) : (
+                  <div className="vs-profile-table">
+                    <div className="vs-pt-head">
+                      <div>Profile</div>
+                      <div>Type</div>
+                      <div>Date</div>
+                      <div>Actions</div>
+                    </div>
+                    {profiles.map((p) => (
+                      <div key={p.name} className="vs-pt-row">
+                        <div className="vs-pt-cell name" title={p.name}>🎤 {p.name}</div>
+                        <div className="vs-pt-cell">
+                          <span className="vs-pt-type-badge">{p.type || 'cloned'}</span>
+                        </div>
+                        <div className="vs-pt-cell">
+                          {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
+                        </div>
+                        <div className="vs-pt-cell" style={{ gap: '8px' }}>
+                          <button className="vs-pt-btn" onClick={() => playProfile(p.name)} title={playingProfile === p.name ? 'Dừng' : 'Nghe thử'}>
+                            {playingProfile === p.name ? <Stop size={16} weight="fill" /> : <Play size={16} weight="fill" />}
+                          </button>
+                          <button className="vs-pt-btn" onClick={() => setDeleteDialog(p.name)} title="Xóa profile">
+                            <Trash size={16} weight="bold" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="vs-recent-header">
+                  <h2>Lịch sử tạo âm thanh</h2>
+                  <button className="vs-view-all" onClick={loadHistory}>Refresh</button>
+                </div>
+
+                {isLoadingHistory ? (
+                  <div className="vs-empty" style={{ flex: 1 }}>
+                    <Spinner />
+                  </div>
+                ) : history.length === 0 ? (
+                  <div className="vs-empty" style={{ flex: 1, padding: '1.5rem' }}>
+                    <p>Chưa có lịch sử tạo âm thanh.</p>
+                  </div>
+                ) : (
+                  <div className="vs-profile-table" style={{ flex: 1, overflowY: 'auto' }}>
+                    <div className="vs-pt-head" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 140px' }}>
+                      <div>Nội dung</div>
+                      <div>Profile</div>
+                      <div>Time</div>
+                      <div>Actions</div>
+                    </div>
+                    {[...history].reverse().map((h) => (
+                      <div key={h.id} className="vs-pt-row" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 140px' }}>
+                        <div className="vs-pt-cell name" title={h.text} style={{ cursor: 'help' }}>
+                          {h.text}
+                        </div>
+                        <div className="vs-pt-cell" title={h.profile}>
+                          <span className="vs-pt-type-badge">{h.profile}</span>
+                        </div>
+                        <div className="vs-pt-cell">
+                          {h.created_at ? new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </div>
+                        <div className="vs-pt-cell" style={{ gap: '8px' }}>
+                          <button className="vs-pt-btn" onClick={() => playHistory(h.audio_path)} title={playingHistory === h.audio_path ? 'Dừng' : 'Nghe lại'}>
+                            {playingHistory === h.audio_path ? <Stop size={16} weight="fill" /> : <Play size={16} weight="fill" />}
+                          </button>
+                          <a 
+                            href={`${sidecar.getBaseUrl()}/api/tts/profiles/history/${h.audio_path}`} 
+                            download 
+                            target="_blank"
+                            className="vs-pt-btn" 
+                            title="Tải file gốc"
+                            style={{ textDecoration: 'none', color: 'inherit' }}
+                          >
+                            <DownloadSimple size={16} weight="bold" />
+                          </a>
+                          <button className="vs-pt-btn" onClick={() => setDeleteHistoryDialog(h.id)} title="Xóa lịch sử">
+                            <Trash size={16} weight="bold" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -399,6 +522,23 @@ export function VoiceCloneWindow() {
             <div className="vs-modal-actions">
               <button className="vs-modal-btn secondary" onClick={() => setDeleteDialog(null)}>Hủy</button>
               <button className="vs-modal-btn danger" onClick={handleDeleteProfile}>Xóa</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete History Confirmation Modal ── */}
+      {deleteHistoryDialog && (
+        <div className="vs-modal-overlay">
+          <div className="vs-modal-content">
+            <h2>Xóa Lịch Sử</h2>
+            <p>
+              Bạn có chắc chắn muốn xóa bản thu âm này?<br />
+              File âm thanh liên quan cũng sẽ bị xóa vĩnh viễn.
+            </p>
+            <div className="vs-modal-actions">
+              <button className="vs-modal-btn secondary" onClick={() => setDeleteHistoryDialog(null)}>Hủy</button>
+              <button className="vs-modal-btn danger" onClick={handleDeleteHistory}>Xóa</button>
             </div>
           </div>
         </div>

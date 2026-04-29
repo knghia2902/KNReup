@@ -1,6 +1,5 @@
 import os
 import re
-import math
 import tempfile
 import shutil
 from pathlib import Path
@@ -72,6 +71,13 @@ async def preview_voice(req: PreviewRequest):
 @router.get("/history")
 async def list_history():
     return {"history": engine.get_history()}
+
+@router.delete("/history/{history_id}")
+async def delete_history(history_id: str):
+    success = engine.delete_history(history_id)
+    if not success:
+        raise HTTPException(404, "History record not found")
+    return {"success": True, "deleted": history_id}
 
 @router.get("/history/{filename}")
 async def get_history_audio(filename: str):

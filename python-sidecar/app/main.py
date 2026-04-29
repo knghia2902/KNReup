@@ -28,7 +28,7 @@ os.environ["OPENBLAS_NUM_THREADS"] = "8"
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import health, system, pipeline, subtitles, proxy, voice_studio
+from app.routes import health, system, pipeline, subtitles, proxy
 from app.routes.downloader import router as downloader_router
 
 app = FastAPI(title="KNReup Sidecar")
@@ -62,7 +62,6 @@ app.include_router(pipeline.router, prefix="/api")
 app.include_router(subtitles.router, prefix="/api")
 app.include_router(proxy.router, prefix="/api")
 
-app.include_router(voice_studio.router, prefix="/api/voice-studio", tags=["voice-studio"])
 from app.routes import tts_profiles
 app.include_router(tts_profiles.router, prefix="/api")
 app.include_router(downloader_router, prefix="/api")

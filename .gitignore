@@ -64,9 +64,5 @@ uploads/
 .agents/
 .agent/
 
-# Knreup-app temp (đã copy)
-# D:\Tools\knreup-app/
-
-# Images gốc (đã copy vào .planning/references/)
-"Sơ đồ tổng quan.png"
-"logic ẩn hiện theo từng state.png"
+# Plans & references
+.planning/

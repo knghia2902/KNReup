@@ -60,9 +60,18 @@ function App() {
     return target ? getVideoSrc(target) : null;
   });
   const [assetCategory, setAssetCategory] = useState<AssetCategory>('media');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Zustand stores
   const projectConfig = useProjectStore();
+
+  // Sync initial file state to stores on mount to clear any ghost state from previous sessions
+  useEffect(() => {
+    useSubtitleStore.getState().setActiveFile(activeFile);
+    useProjectStore.getState().setActiveFile(activeFile);
+    setIsInitialized(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFileSelected = useCallback(
     async (selectedPath: string) => {
@@ -361,6 +370,8 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  if (!isInitialized) return null;
 
   return (
     <>

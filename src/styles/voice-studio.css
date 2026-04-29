@@ -496,13 +496,24 @@ select.vs-input option {
   box-shadow: var(--vs-shadow);
 }
 
-.vs-pt-head {
+.vs-pt-head,
+.vs-pt-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 96px;
   gap: 16px;
   padding: 1rem 1.5rem;
-  background: var(--vs-bg);
+  align-items: center;
+  text-align: center;
   border-bottom: 1px solid var(--vs-border);
+}
+
+.vs-pt-head > div:first-child,
+.vs-pt-row > div:first-child {
+  text-align: left;
+}
+
+.vs-pt-head {
+  background: var(--vs-bg);
   font-size: 0.7rem;
   font-weight: 800;
   color: var(--vs-steel);
@@ -511,12 +522,6 @@ select.vs-input option {
 }
 
 .vs-pt-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
-  gap: 16px;
-  padding: 1rem 1.5rem;
-  align-items: center;
-  border-bottom: 1px solid var(--vs-border);
   transition: all 0.3s var(--spring-smooth);
 }
 
@@ -535,15 +540,18 @@ select.vs-input option {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vs-pt-cell:first-child {
+  justify-content: flex-start;
 }
 
 .vs-pt-cell.name {
   font-weight: 600;
   color: var(--vs-text);
-}
-
-.vs-pt-cell.center {
-  text-align: center;
 }
 
 .vs-pt-type-badge {
@@ -574,7 +582,6 @@ select.vs-input option {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.2);
-  transform: translateY(-2px);
 }
 
 /* ── Empty state (matching dl-empty-placeholder) ── */

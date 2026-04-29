@@ -22,8 +22,10 @@ import '../../styles/design-system.css';
 import '../../styles/launcher.css';
 
 import { useTheme } from '../../hooks/useTheme';
+import { useSidecar } from '../../hooks/useSidecar';
 
 export function HomeLauncher() {
+  useSidecar();
   const { isDark, toggle } = useTheme();
   const projectCount = useLauncherStore((s) => s.recentProjects.length);
   const [searchQuery, setSearchQuery] = useState('');

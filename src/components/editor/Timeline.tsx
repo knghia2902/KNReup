@@ -329,11 +329,24 @@ export function Timeline({ filePaths }: TimelineProps) {
         }
       } else if (video && !video.ended && video.paused) {
         // No stored position, video paused within range — simple resume
-        // Enforce clip boundaries
-        const firstClip = timelineStore.getTrackClips('main')[0];
-        if (firstClip && video.currentTime < firstClip.sourceStart) {
-          video.currentTime = firstClip.sourceStart;
+        // Make sure native video is strictly aligned with our current timeline playhead (lastTime)
+        const mainClips = timelineStore.getTrackClips('main');
+        const activeClip = mainClips.find(c => lastTime >= c.timelineStart && lastTime < c.timelineStart + c.timelineDuration);
+        
+        if (activeClip) {
+          const offsetInClip = lastTime - activeClip.timelineStart;
+          const sourceTime = activeClip.sourceStart + Math.max(0, offsetInClip);
+          // If video drifted or user dragged playhead without setting currentTime properly, snap it now
+          if (Math.abs(video.currentTime - sourceTime) > 0.1) {
+            video.currentTime = sourceTime;
+          }
+        } else if (mainClips.length > 0) {
+           // Fallback to first clip if playhead is before everything
+           if (lastTime < mainClips[0].timelineStart) {
+             video.currentTime = mainClips[0].sourceStart;
+           }
         }
+        
         console.log('[Timeline] Simple resume from', video.currentTime.toFixed(2));
         video.play();
         setVideoEnded_force(false);
@@ -536,8 +549,19 @@ export function Timeline({ filePaths }: TimelineProps) {
             }
           } else {
             pausedVirtualTimeRef.current = null;
-            const clampedT = Math.min(t + timelineOffset, video.duration - 0.01);
-            video.currentTime = Math.max(0, clampedT);
+            const mainClips = timelineStore.getTrackClips('main');
+            const activeClip = mainClips.find(c => t >= c.timelineStart && t < c.timelineStart + c.timelineDuration);
+            
+            if (activeClip) {
+              const offsetInClip = t - activeClip.timelineStart;
+              const sourceTime = activeClip.sourceStart + offsetInClip;
+              video.currentTime = Math.max(0, Math.min(sourceTime, video.duration - 0.01));
+            } else {
+              // Fallback if out of bounds (should not normally happen with magnetic track)
+              const clampedT = Math.min(t + timelineOffset, video.duration - 0.01);
+              video.currentTime = Math.max(0, clampedT);
+            }
+            
             // Sync BGM to dragged position
             const bgm = document.querySelector('audio[data-bgm]') as HTMLAudioElement | null;
             if (bgm && bgm.readyState > 0) {
@@ -739,12 +763,13 @@ export function Timeline({ filePaths }: TimelineProps) {
       const video = document.querySelector('video');
       if (lastDraggedTimeRef.current !== null && video) {
         const draggedTime = lastDraggedTimeRef.current;
-        const draggedVideoTime = draggedTime + timelineOffset;
+        const mainClips = timelineStore.getTrackClips('main');
+        const mainTrackEnd = mainClips.length > 0 ? Math.max(...mainClips.map(c => c.timelineStart + c.timelineDuration)) : 0;
 
         if (wasPlayingBeforeDragRef.current) {
-          if (draggedVideoTime <= video.duration) {
-            // Dragged within video range → seek + resume video play
-            video.currentTime = Math.max(0, Math.min(draggedVideoTime, video.duration - 0.01));
+          if (draggedTime < mainTrackEnd) {
+            // Dragged within video range → resume video play
+            // Note: video.currentTime is already set correctly by handlePointerMove
             video.play().catch(() => {});
             window.dispatchEvent(new CustomEvent('force-video-playing'));
           } else {
@@ -762,12 +787,8 @@ export function Timeline({ filePaths }: TimelineProps) {
               }
             }
           }
-        } else {
-          // Was paused → just ensure video.currentTime matches (don't auto-play)
-          if (draggedVideoTime <= video.duration) {
-            video.currentTime = Math.max(0, Math.min(draggedVideoTime, video.duration - 0.01));
-          }
         }
+        // If it was paused, we do nothing because handlePointerMove already set the correct video.currentTime
       }
       lastDraggedTimeRef.current = null;
       wasPlayingBeforeDragRef.current = false;
@@ -859,12 +880,6 @@ export function Timeline({ filePaths }: TimelineProps) {
         e.preventDefault();
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (activeClipId === 'audio-main') {
-          updateConfig({ audio_enabled: false, audio_file: '', selectedClipId: null });
-          timelineStore.removeClip('audio-main');
-          e.preventDefault();
-          return;
-        }
         if (activeClipId?.startsWith('sub-') && selectedId !== null) {
           if (e.shiftKey) {
             useSubtitleStore.getState().deleteAndRippleSubtitle(selectedId);
@@ -882,6 +897,14 @@ export function Timeline({ filePaths }: TimelineProps) {
             timelineStore.rippleDelete(clip.id);
           } else {
             timelineStore.removeClip(clip.id);
+          }
+          
+          // If BGM track is now empty, clear it from config so it doesn't auto-respawn on reload
+          if (clip.trackId === 'bgm') {
+            const remainingBgm = timelineStore.getTrackClips('bgm');
+            if (remainingBgm.length === 0) {
+              updateConfig({ audio_enabled: false, audio_file: '' });
+            }
           }
           e.preventDefault();
         }
@@ -1108,10 +1131,22 @@ export function Timeline({ filePaths }: TimelineProps) {
             }
           } else { config.splitRight(currentTime, activeDuration); }
         }}
-        onResetDuration={() => updateConfig({ vid_clip_duration: videoDuration })}
         onDelete={() => {
-          if (selectedClipId === 'audio-main') updateConfig({ audio_enabled: false, audio_file: '', selectedClipId: null });
-          else if (selectedId !== null) useSubtitleStore.getState().deleteSegment(selectedId);
+          const clip = selectedClipId ? timelineStore.clips[selectedClipId] : null;
+          if (clip) {
+            if (clip.trackId === 'main') timelineStore.deleteAndCompactTrack(clip.id, 'main');
+            else timelineStore.removeClip(clip.id);
+            
+            // Clear BGM config if track is now empty
+            if (clip.trackId === 'bgm') {
+              const remainingBgm = timelineStore.getTrackClips('bgm');
+              if (remainingBgm.length === 0) {
+                updateConfig({ audio_enabled: false, audio_file: '' });
+              }
+            }
+          } else if (selectedId !== null) {
+            useSubtitleStore.getState().deleteSegment(selectedId);
+          }
         }}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
@@ -1119,8 +1154,8 @@ export function Timeline({ filePaths }: TimelineProps) {
         zoom={timelineZoom}
         minZoom={minZoom}
         onZoomChange={(z) => updateConfig({ timelineZoom: z })}
-        canSplit={!!selectedClipId}
-        canDelete={selectedClipId === 'audio-main' || selectedId !== null}
+        canSplit={!!selectedClipId || selectedId !== null}
+        canDelete={!!selectedClipId || selectedId !== null}
         canResetDuration={!!videoDuration}
       />
 
