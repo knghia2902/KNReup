@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-04-27T08:42:42.131Z"
-last_activity: 2026-04-27
+status: Phase 25.1 shipped — Release v1.2.2
+last_updated: "2026-04-29T13:05:20.810Z"
+last_activity: 2026-04-29
 progress:
-  total_phases: 17
+  total_phases: 18
   completed_phases: 13
   total_plans: 41
-  completed_plans: 36
-  percent: 88
+  completed_plans: 37
+  percent: 90
 ---
 
 # STATE.md — KNReup Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 25.1
-- **Status:** EXECUTED — all 4 waves completed
+- **Status:** Phase 25.1 shipped — Release v1.2.2
 - **Last activity:** 2026-04-29
 
 ## Context
