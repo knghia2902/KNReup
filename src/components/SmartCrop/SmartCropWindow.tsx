@@ -184,6 +184,14 @@ export function SmartCropWindow() {
       });
 
       await openEditor(id);
+
+      // Close Smart Crop window after opening Editor
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        await getCurrentWindow().close();
+      } catch {
+        // ignore if not in Tauri
+      }
     } catch (err) {
       console.error('Open editor failed:', err);
     }
