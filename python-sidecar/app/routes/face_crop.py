@@ -180,7 +180,7 @@ async def gpu_status():
         try:
             import torch
             gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "Unknown NVIDIA GPU"
-            vram_total = torch.cuda.get_device_properties(0).total_mem / (1024**3) if torch.cuda.is_available() else 0
+            vram_total = torch.cuda.get_device_properties(0).total_memory / (1024**3) if torch.cuda.is_available() else 0
             return {"available": True, "mode": "GPU", "device": gpu_name, "vram_gb": round(vram_total, 1)}
         except ImportError:
             return {"available": True, "mode": "GPU", "device": "NVIDIA GPU (torch not available for details)"}
