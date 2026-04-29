@@ -32,6 +32,11 @@ export interface PipelineConfig {
   audio_clip_duration?: number;
   audio_timeline_start?: number;
   ducking_strength?: number;
+  // TTS Persistence
+  dubbed_audio_path?: string;
+  speed?: number;
+  duration?: number;
+  voice_mapping?: Record<string, any>;
 }
 
 export interface PipelineProgress {
@@ -41,6 +46,14 @@ export interface PipelineProgress {
   output_path?: string;
   segments?: any[];
   duration?: number;
+  // TTS batch extras
+  segment_result?: {
+    seg_id: number;
+    audio_path: string;
+    filename: string;
+  };
+  dubbed_audio_path?: string;
+  audio_files?: any[];
 }
 
 export function usePipeline() {
@@ -174,12 +187,74 @@ export function usePipeline() {
     }
   }, [abortController]);
 
+  const generateVoice = useCallback(
+    (
+      projectId: string,
+      segments: any[],
+      config: PipelineConfig,
+      onSegmentDone?: (segId: number, audioPath: string, filename: string) => void,
+    ) => {
+      const promise = runStream('/api/pipeline/tts-batch', {
+        project_id: projectId,
+        segments,
+        tts_engine: config.tts_engine || 'omnivoice',
+        voice: config.voice || 'vi-VN-HoaiMyNeural',
+        speed: config.speed ?? config.rate ?? 1.0,
+        pitch: config.pitch ?? 0.5,
+        volume: config.volume ?? 1.0,
+        voice_mapping: config.voice_mapping || {},
+        duration: config.duration ?? 0,
+        api_key: config.api_key || '',
+      });
+
+      // Hook into progress to trigger per-segment callbacks
+      if (onSegmentDone) {
+        const checkInterval = setInterval(() => {
+          // onSegmentDone is called via SSE parsing in runStream
+          // This is handled in the caller by watching progress.segment_result
+        }, 100);
+        promise.finally(() => clearInterval(checkInterval));
+      }
+
+      return promise;
+    },
+    [runStream],
+  );
+
+  const generateSegment = useCallback(
+    async (projectId: string, segment: any, config: PipelineConfig) => {
+      const port = localStorage.getItem('sidecar_port') || '8008';
+      const res = await fetch(`http://127.0.0.1:${port}/api/pipeline/tts-segment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          segment,
+          tts_engine: config.tts_engine || 'omnivoice',
+          voice: config.voice || 'vi-VN-HoaiMyNeural',
+          speed: config.speed ?? config.rate ?? 1.0,
+          pitch: config.pitch ?? 0.5,
+          volume: config.volume ?? 1.0,
+          api_key: config.api_key || '',
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(errorData.detail || 'TTS segment failed');
+      }
+      return res.json();
+    },
+    [],
+  );
+
   return {
     processing,
     progress,
     error,
     analyzeVideo,
     renderVideo,
+    generateVoice,
+    generateSegment,
     cancelPipeline,
     resetPipeline,
   };

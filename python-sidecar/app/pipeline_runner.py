@@ -398,8 +398,14 @@ class PipelineRunner:
         segments: list[dict],
         duration: float,
         target_path: Optional[str] = None,
+        dubbed_audio_path: Optional[str] = None,
     ) -> AsyncGenerator[dict, None]:
-        """Chạy Render: TTS -> Merge -> return output_path."""
+        """Chạy Render: TTS -> Merge -> return output_path.
+        
+        Args:
+            dubbed_audio_path: Path to pre-generated dubbed audio. 
+                               If provided and file exists, skip TTS stage entirely.
+        """
         if target_path:
             output_path = target_path
         else:
@@ -411,8 +417,11 @@ class PipelineRunner:
 
         try:
             # ── Stage 3: TTS ──
-            dubbed_audio_path = None
-            if config.dubbing_enabled:
+            # Check for pre-generated dubbed audio (from "Generate Voice" workflow)
+            if dubbed_audio_path and os.path.isfile(dubbed_audio_path):
+                yield {"stage": "tts", "progress": 75, "message": "Using pre-generated dubbed audio (skipping TTS)"}
+            elif config.dubbing_enabled:
+                dubbed_audio_path = None
                 yield {"stage": "tts", "progress": 50, "message": f"Generating speech with {config.tts_engine}..."}
 
                 from app.routes.pipeline import get_tts_engine
@@ -476,6 +485,8 @@ class PipelineRunner:
                 # Clean up TTS engine
                 del tts
                 gc.collect()
+            else:
+                dubbed_audio_path = None
 
             yield {"stage": "tts", "progress": 75, "message": "Speech generation complete"}
 

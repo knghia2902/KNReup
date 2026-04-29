@@ -24,6 +24,7 @@ import { SettingsTab } from './components/properties/SettingsTab';
 import { useProjectStore } from './stores/useProjectStore';
 import { useSubtitleStore } from './stores/useSubtitleStore';
 import { useLauncherStore } from './stores/useLauncherStore';
+import { useProjectPersist } from './hooks/useProjectPersist';
 import './styles/design-system.css';
 
 function App() {
@@ -64,6 +65,9 @@ function App() {
 
   // Zustand stores
   const projectConfig = useProjectStore();
+
+  // Project data persistence (auto save/load)
+  useProjectPersist(projectId);
 
   // Sync initial file state to stores on mount to clear any ghost state from previous sessions
   useEffect(() => {

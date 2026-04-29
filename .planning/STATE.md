@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 08.4 — Advanced Timeline Drag-Drop
+**Current focus:** Phase 25.1 — Tách TTS Batch & Persist Data theo Project
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
-- **Phase:** 09
-- **Status:** Ready to plan
-- **Last activity:** 2026-04-27
+- **Phase:** 25.1
+- **Status:** PLANNED — awaiting approval
+- **Last activity:** 2026-04-29
 
 ## Context
 
@@ -75,6 +75,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 23 added: Fix bugs and refine UI
 - Phase 25 added: download video fb, tiktok, bilibili, hybird... Tham khảo http://github.com/Evil0ctal/Douyin_TikTok_Download_API/tree/main/crawlers
 - Phase 08.3 inserted after Phase 08.2: Tạo ra một Phase riêng biệt tiếp theo chỉ để đập đi xây lại cấu trúc Timeline thành Main Track (URGENT)
+- Phase 25.1 inserted after Phase 25: Tách TTS Batch và Persist Data theo Project — Tách bước TTS ra khỏi Render, lưu Sub + Voice data theo project (URGENT)
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
@@ -109,6 +110,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 19 | Favorite Voice Profiles | 📝 Not Started |
 | 20 | Voice Studio Quick Wins | 📝 Not Started |
 | 25 | Social Media Crawlers | ✅ Complete |
+| 25.1 | Tách TTS Batch & Persist Data theo Project | 📝 Not Started |
 
 ---
 *Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*

@@ -317,11 +317,14 @@ async def render_pipeline(req: RenderRequest):
 
     pipeline_config = PipelineConfig(**cfg)
 
+    # Extract pre-generated dubbed audio path from config (if user ran "Generate Voice")
+    pre_dubbed_path = cfg.get("dubbed_audio_path", None)
+
     async def event_stream():
         runner = PipelineRunner()
         pr._active_runner = runner  # Store for cancel
         try:
-            async for event in runner.run_render(req.video_path, pipeline_config, req.segments, req.duration, target_path=req.output_path):
+            async for event in runner.run_render(req.video_path, pipeline_config, req.segments, req.duration, target_path=req.output_path, dubbed_audio_path=pre_dubbed_path):
                 yield f"data: {json.dumps(event)}\n\n"
         finally:
             pr._active_runner = None
@@ -367,4 +370,182 @@ async def process_simple(req: ProcessRequest):
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
         raise HTTPException(500, f"Pipeline failed: {str(e)}")
+
+
+# ─── TTS Batch (SSE) ─────────────────────────────────────
+class TTSBatchRequest(BaseModel):
+    project_id: str
+    segments: list[dict]
+    tts_engine: str = "omnivoice"
+    voice: str = "vi-VN-HoaiMyNeural"
+    speed: float = 1.0
+    pitch: float = 0.5
+    volume: float = 1.0
+    voice_mapping: dict = {}
+    duration: float = 0
+    api_key: str = ""
+
+
+class TTSSegmentRequest(BaseModel):
+    project_id: str
+    segment: dict
+    tts_engine: str = "omnivoice"
+    voice: str = "vi-VN-HoaiMyNeural"
+    speed: float = 1.0
+    pitch: float = 0.5
+    volume: float = 1.0
+    api_key: str = ""
+
+
+@router.post("/tts-batch")
+async def tts_batch(req: TTSBatchRequest):
+    """TTS batch — generate voice cho tất cả segments, stream SSE progress."""
+    import json
+    import gc
+    from pathlib import Path
+
+    DATA_DIR = Path(__file__).parent.parent.parent / "data" / "projects"
+    project_dir = DATA_DIR / req.project_id
+    tts_dir = project_dir / "tts"
+    tts_dir.mkdir(parents=True, exist_ok=True)
+
+    async def event_stream():
+        tts = None
+        try:
+            tts = get_tts_engine(req.tts_engine, req.api_key)
+            total = len(req.segments)
+            audio_files = []
+            completed = 0
+
+            yield f"data: {json.dumps({'stage': 'tts-batch', 'progress': 0, 'message': f'Starting TTS for {total} segments...'})}\n\n"
+
+            sem = asyncio.Semaphore(5)
+
+            async def _synth_one(i: int, seg: dict):
+                async with sem:
+                    seg_id = seg.get("id", i)
+                    audio_path = tts_dir / f"seg_{int(seg_id):04d}.mp3"
+                    text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
+
+                    if not text.strip():
+                        return None
+
+                    # Determine voice — per-segment voice_mapping or default
+                    voice = req.voice_mapping.get(str(seg_id), req.voice)
+
+                    await tts.synthesize(
+                        text=text,
+                        voice=voice,
+                        output_path=str(audio_path),
+                        rate=req.speed,
+                        volume=req.volume,
+                        pitch=req.pitch,
+                    )
+                    return {
+                        "seg_id": seg_id,
+                        "audio_path": str(audio_path),
+                        "filename": audio_path.name,
+                        "start": seg.get("start", 0),
+                        "end": seg.get("end", 0),
+                    }
+
+            tasks = [asyncio.ensure_future(_synth_one(i, seg)) for i, seg in enumerate(req.segments)]
+
+            for coro in asyncio.as_completed(tasks):
+                res = await coro
+                completed += 1
+                progress = int(completed / total * 90)
+
+                if res:
+                    audio_files.append(res)
+                    yield f"data: {json.dumps({'stage': 'tts-batch', 'progress': progress, 'message': f'Segment {completed}/{total} done', 'segment_result': res})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'stage': 'tts-batch', 'progress': progress, 'message': f'Segment {completed}/{total} skipped (empty)'})}\n\n"
+
+            # Merge into dubbed_audio.wav
+            dubbed_path = None
+            if audio_files:
+                audio_files.sort(key=lambda x: x["start"])
+                from app.pipeline_runner import PipelineRunner
+                runner = PipelineRunner()
+                merge_input = [{"path": af["audio_path"], "start": af["start"], "end": af["end"]} for af in audio_files]
+                dubbed_path_str = str(tts_dir / "dubbed_audio.wav")
+                try:
+                    await runner._merge_tts_audio(merge_input, dubbed_path_str, req.duration, req.speed, req.pitch)
+                    dubbed_path = dubbed_path_str
+                except Exception as me:
+                    logger.error(f"TTS merge failed: {me}")
+
+            # Save project.json update with TTS paths
+            project_json = project_dir / "project.json"
+            if project_json.exists():
+                proj_data = json.loads(project_json.read_text(encoding="utf-8"))
+            else:
+                proj_data = {}
+            proj_data["tts_generated_at"] = __import__("time").time()
+            if dubbed_path:
+                proj_data["dubbed_audio_path"] = dubbed_path
+            project_json.write_text(json.dumps(proj_data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            yield f"data: {json.dumps({'stage': 'done', 'progress': 100, 'message': f'TTS complete: {len(audio_files)}/{total} segments', 'dubbed_audio_path': dubbed_path or '', 'audio_files': audio_files})}\n\n"
+
+        except Exception as e:
+            logger.error(f"TTS batch failed: {e}")
+            yield f"data: {json.dumps({'stage': 'error', 'progress': -1, 'message': str(e)})}\n\n"
+        finally:
+            if tts:
+                del tts
+            gc.collect()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@router.post("/tts-segment")
+async def tts_segment(req: TTSSegmentRequest):
+    """TTS single segment — generate voice cho 1 segment, trả kết quả JSON."""
+    import gc
+    from pathlib import Path
+
+    DATA_DIR = Path(__file__).parent.parent.parent / "data" / "projects"
+    tts_dir = DATA_DIR / req.project_id / "tts"
+    tts_dir.mkdir(parents=True, exist_ok=True)
+
+    tts = None
+    try:
+        tts = get_tts_engine(req.tts_engine, req.api_key)
+        seg = req.segment
+        seg_id = seg.get("id", 0)
+        audio_path = tts_dir / f"seg_{int(seg_id):04d}.mp3"
+        text = seg.get("translated_text", seg.get("translated", seg.get("source_text", seg.get("text", ""))))
+
+        if not text.strip():
+            return {"status": "skipped", "reason": "empty text"}
+
+        await tts.synthesize(
+            text=text,
+            voice=req.voice,
+            output_path=str(audio_path),
+            rate=req.speed,
+            volume=req.volume,
+            pitch=req.pitch,
+        )
+
+        return {
+            "status": "ok",
+            "seg_id": seg_id,
+            "audio_path": str(audio_path),
+            "filename": audio_path.name,
+        }
+
+    except Exception as e:
+        logger.error(f"TTS segment failed: {e}")
+        raise HTTPException(500, f"TTS segment failed: {str(e)}")
+    finally:
+        if tts:
+            del tts
+        gc.collect()
 

@@ -279,6 +279,26 @@ Plans:
 
 ---
 
+### Phase 25.1: Tách TTS Batch & Persist Data theo Project (INSERTED)
+
+**Goal:** Tách bước TTS ra khỏi Render pipeline thành bước riêng "Generate Voice" (manual). Persist subtitles + TTS audio + voice config theo project — chỉ mất khi xóa project.
+**Requirements**: TTS-BATCH-01, PERSIST-01, PERSIST-02
+**Depends on:** Phase 25
+
+- **Backend**: API mới `POST /pipeline/tts-batch` (SSE), `POST/GET/DELETE /projects/{id}` cho persistence
+- **Pipeline Runner**: Tách `run_render()` → `run_tts_batch()` + `run_render(dubbed_audio_path)`
+- **Project Storage**: `data/projects/{project_id}/tts/` lưu per-segment audio + dubbed_audio.wav
+- **Frontend**: Nút "Generate All Voice" ở AudioTab (manual), per-segment ▶️/🔄 ở TextTab
+- **Persistence**: Auto-save/load subtitles + TTS paths khi open/close project
+- **Backward Compatible**: Export không Generate Voice → TTS inline như cũ
+
+**UAT**: Analyze → Generate Voice → nghe thử → sửa 1 segment → re-TTS → Export → tắt app → mở lại → data vẫn còn → xóa project → data bị xóa.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 25.1 to break down)
+
 ## Phase 10: Voice Clone - OmniVoice Integration
 > **Mục tiêu**: Tích hợp Voice Clone sử dụng model OmniVoice, mở dưới dạng standalone popup từ Home Launcher với thiết kế tương tự Downloader.
 > **Requirements**: M3-VS-01, M3-VS-02, M3-VS-03, M3-VS-04, M3-VS-05, M3-VS-06

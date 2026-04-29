@@ -63,7 +63,9 @@ app.include_router(subtitles.router, prefix="/api")
 app.include_router(proxy.router, prefix="/api")
 
 from app.routes import tts_profiles
+from app.routes import projects
 app.include_router(tts_profiles.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
 app.include_router(downloader_router, prefix="/api")
 
 def find_free_port():

@@ -5,9 +5,10 @@ import { ColorPickerControl } from '../controls/ColorPickerControl';
 import { ChipGroup } from '../controls/ChipGroup';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
-import { useEffect, useRef, useState } from 'react';
+import { usePipeline } from '../../hooks/usePipeline';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { sidecar } from '../../lib/sidecar';
-import { Translate, TextT, Eyedropper, ListBullets } from '@phosphor-icons/react';
+import { Translate, TextT, Eyedropper, ListBullets, Play, ArrowClockwise } from '@phosphor-icons/react';
 
 function formatTc(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -24,8 +25,46 @@ interface TextTabProps {
 export function TextTab({ onAnalyze, processing }: TextTabProps) {
   const config = useProjectStore();
   const { segments, updateSegment } = useSubtitleStore();
+  const { generateSegment } = usePipeline();
   const listRef = useRef<HTMLDivElement>(null);
   const [clonedVoices, setClonedVoices] = useState<Array<{name: string, id: string, type: string}>>([]);
+  const [regenId, setRegenId] = useState<number | null>(null);
+
+  // Play a segment's generated TTS audio
+  const playSegmentAudio = useCallback((seg: { id: number; tts_audio_path?: string }) => {
+    if (!seg.tts_audio_path) return;
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get('projectId') || localStorage.getItem('active_project_id') || 'default';
+    const port = localStorage.getItem('sidecar_port') || '8008';
+    const url = `http://127.0.0.1:${port}/api/projects/${projectId}/audio/${seg.tts_audio_path}`;
+    new Audio(url).play();
+  }, []);
+
+  // Re-generate TTS for a single segment
+  const regenSegmentTTS = useCallback(async (seg: any) => {
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get('projectId') || localStorage.getItem('active_project_id') || 'default';
+    setRegenId(seg.id);
+    try {
+      const result = await generateSegment(projectId, seg, {
+        tts_engine: config.tts_engine,
+        voice: config.voice,
+        speed: config.tts_speed,
+        pitch: config.pitch,
+        volume: config.volume,
+      });
+      if (result?.status === 'ok') {
+        updateSegment(seg.id, {
+          tts_status: 'generated',
+          tts_audio_path: result.filename,
+        });
+      }
+    } catch (err) {
+      console.error('Re-gen TTS failed:', err);
+    } finally {
+      setRegenId(null);
+    }
+  }, [config, generateSegment, updateSegment]);
 
   useEffect(() => {
     const loadVoices = () => {
@@ -208,6 +247,35 @@ export function TextTab({ onAnalyze, processing }: TextTabProps) {
                         {formatTc(seg.start)} → {formatTc(seg.end)}
                       </span>
                       {seg.tts_audio_path && <span style={{ fontSize: '8px', color: 'var(--accent)' }}>TTS</span>}
+                      {/* Play + Re-TTS buttons */}
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        {seg.tts_audio_path && seg.tts_status === 'generated' && (
+                          <button
+                            title="Play generated audio"
+                            onClick={() => playSegmentAudio(seg)}
+                            style={{
+                              background: 'transparent', border: 'none', cursor: 'pointer',
+                              color: 'var(--accent)', padding: '0 2px', display: 'flex'
+                            }}
+                          >
+                            <Play size={12} weight="fill" />
+                          </button>
+                        )}
+                        {config.dubbing_enabled && (
+                          <button
+                            title="Re-generate TTS for this segment"
+                            disabled={regenId === seg.id}
+                            onClick={() => regenSegmentTTS(seg)}
+                            style={{
+                              background: 'transparent', border: 'none', cursor: regenId === seg.id ? 'wait' : 'pointer',
+                              color: regenId === seg.id ? 'var(--text-disabled)' : 'var(--text-muted)',
+                              padding: '0 2px', display: 'flex', opacity: regenId === seg.id ? 0.5 : 1,
+                            }}
+                          >
+                            <ArrowClockwise size={12} weight="bold" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <textarea
                       data-seg-id={seg.id}

@@ -1,13 +1,67 @@
 import { ToggleControl } from '../controls/ToggleControl';
 import { SliderControl } from '../controls/SliderControl';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { SpeakerHigh, Waveform, SpeakerLow, ArrowSquareOut, MusicNotes } from '@phosphor-icons/react';
-import { useEffect } from 'react';
+import { useSubtitleStore } from '../../stores/useSubtitleStore';
+import { usePipeline } from '../../hooks/usePipeline';
+import { SpeakerHigh, Waveform, SpeakerLow, ArrowSquareOut, MusicNotes, Microphone } from '@phosphor-icons/react';
+import { useEffect, useMemo, useRef } from 'react';
 import { sidecar } from '../../lib/sidecar';
 import { AudioMixer } from '../../lib/audioMixer';
 
 export function AudioTab() {
   const config = useProjectStore();
+  const segments = useSubtitleStore((s) => s.segments);
+  const updateSegment = useSubtitleStore((s) => s.updateSegment);
+  const { generateVoice, processing: ttsProcessing, progress: ttsProgress } = usePipeline();
+
+  // Compute TTS stats
+  const generatedCount = useMemo(() => segments.filter((s) => s.tts_status === 'generated').length, [segments]);
+  const allGenerated = segments.length > 0 && generatedCount === segments.length;
+
+  // Get projectId from URL or localStorage
+  const getProjectId = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('projectId') || localStorage.getItem('active_project_id') || 'default';
+  };
+
+  // Watch SSE progress for per-segment updates
+  const lastSegResultRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ttsProgress?.segment_result) return;
+    const sr = ttsProgress.segment_result;
+    const key = `${sr.seg_id}_${sr.filename}`;
+    if (key === lastSegResultRef.current) return;
+    lastSegResultRef.current = key;
+    updateSegment(sr.seg_id, {
+      tts_status: 'generated',
+      tts_audio_path: sr.filename,
+    });
+  }, [ttsProgress, updateSegment]);
+
+  // Handle Generate All Voice
+  const handleGenerateAll = async () => {
+    const projectId = getProjectId();
+    try {
+      const result = await generateVoice(projectId, segments, {
+        tts_engine: config.tts_engine,
+        voice: config.voice,
+        speed: config.tts_speed,
+        pitch: config.pitch,
+        volume: config.volume,
+        duration: 0,
+      });
+
+      // Update dubbed_audio_path when batch is done
+      if (result?.dubbed_audio_path) {
+        useProjectStore.getState().updateConfig({
+          dubbed_audio_path: result.dubbed_audio_path,
+          tts_generated_at: Date.now(),
+        });
+      }
+    } catch (err) {
+      console.error('Generate Voice failed:', err);
+    }
+  };
 
   // Sync store volumes → AudioMixer GainNodes
   useEffect(() => {
@@ -229,6 +283,75 @@ export function AudioTab() {
           </div>
         )}
       </div>
+
+      {/* SECTION: GENERATE VOICE */}
+      {config.dubbing_enabled && segments.length > 0 && (
+        <div className="ps" style={{ background: 'var(--bg-secondary)', paddingBottom: '16px' }}>
+          <div className="pshd">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Microphone size={16} weight="bold" />
+              <span>Generate Voice</span>
+            </div>
+          </div>
+
+          <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Progress Bar */}
+            {ttsProcessing && ttsProgress && ttsProgress.stage === 'tts-batch' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{ttsProgress.message}</div>
+                <div style={{
+                  width: '100%', height: '4px', background: 'var(--border-subtle)',
+                  borderRadius: '2px', overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${ttsProgress.progress}%`, height: '100%',
+                    background: 'var(--accent)', transition: 'width 0.3s ease',
+                    borderRadius: '2px'
+                  }} />
+                </div>
+              </div>
+            )}
+
+            {/* Status */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              fontSize: '11px', color: 'var(--text-secondary)'
+            }}>
+              <span>
+                {allGenerated ? '✓ All segments ready' : `${generatedCount}/${segments.length} segments generated`}
+              </span>
+              {config.dubbed_audio_path && (
+                <span style={{ fontSize: '9px', color: 'var(--accent)' }}>Pre-generated ✓</span>
+              )}
+            </div>
+
+            {/* Generate Button */}
+            <button
+              className="btn"
+              disabled={ttsProcessing}
+              onClick={handleGenerateAll}
+              style={{
+                width: '100%', height: '32px', display: 'flex',
+                justifyContent: 'center', alignItems: 'center', gap: '6px',
+                background: ttsProcessing ? 'var(--bg-surface)' : allGenerated ? 'var(--bg-surface)' : 'var(--accent)',
+                color: ttsProcessing ? 'var(--text-muted)' : allGenerated ? 'var(--accent)' : '#fff',
+                border: allGenerated ? '1px solid var(--accent)' : 'none',
+                borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                cursor: ttsProcessing ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {ttsProcessing ? (
+                <>⏳ Generating...</>
+              ) : allGenerated ? (
+                <>🔄 Re-generate All</>
+              ) : (
+                <>🎙️ Generate All Voice</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SECTION: BACKGROUND MUSIC */}
       <div className="ps" style={{ background: 'var(--bg-secondary)', paddingBottom: '16px' }}>

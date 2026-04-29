@@ -42,6 +42,9 @@ export interface ProjectConfig {
   volume: number;
   pitch: number;
   original_volume: number;
+  // TTS Persistence
+  dubbed_audio_path: string;
+  tts_generated_at: number;
   // Output
   container: 'mp4' | 'mkv';
   codec: 'h264' | 'h265' | 'h264_nvenc' | 'hevc_nvenc' | 'vp9';
@@ -142,6 +145,8 @@ const DEFAULT_CONFIG: ProjectConfig = {
   volume: 1.0,
   pitch: 1.0,
   original_volume: 0.1,
+  dubbed_audio_path: '',
+  tts_generated_at: 0,
   container: 'mp4',
   codec: 'h264_nvenc',
   crf: 23,

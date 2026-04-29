@@ -165,6 +165,7 @@ export function RecentProjects({ searchQuery = '' }: { searchQuery?: string }) {
     if (!projectToDelete) return;
     setIsDeleting(true);
     try {
+      // Delete system project folder + .kn file
       await sidecar.fetch('/api/system/project', {
         method: 'DELETE',
         body: JSON.stringify({
@@ -172,6 +173,13 @@ export function RecentProjects({ searchQuery = '' }: { searchQuery?: string }) {
           project_path: projectToDelete.path || ''
         })
       });
+
+      // Also delete project TTS persist data
+      try {
+        await sidecar.fetch(`/api/projects/${projectToDelete.id}`, { method: 'DELETE' });
+      } catch (e) {
+        console.warn('TTS data cleanup failed (non-critical):', e);
+      }
     } catch (err) {
       console.error("Lỗi xóa thư mục dự án", err);
     } finally {
