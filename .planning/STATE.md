@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 25.1 shipped — Release v1.2.2
-last_updated: "2026-04-29T13:05:20.810Z"
+status: executing
+last_updated: "2026-04-30T03:14:18.316Z"
 last_activity: 2026-04-29
 progress:
-  total_phases: 18
-  completed_phases: 13
-  total_plans: 41
-  completed_plans: 37
-  percent: 90
+  total_phases: 20
+  completed_phases: 14
+  total_plans: 44
+  completed_plans: 40
+  percent: 91
 ---
 
 # STATE.md — KNReup Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 25.1 — Tách TTS Batch & Persist Data theo Project
+**Current focus:** Phase 26 — tich-hop-cong-cu-trackingface-auto-crop-9-16-vao-quy-trinh-x
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 25.1
-- **Status:** Phase 25.1 shipped — Release v1.2.2
+- **Status:** Executing Phase 26
 - **Last activity:** 2026-04-29
 
 ## Context
@@ -76,6 +76,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 25 added: download video fb, tiktok, bilibili, hybird... Tham khảo http://github.com/Evil0ctal/Douyin_TikTok_Download_API/tree/main/crawlers
 - Phase 08.3 inserted after Phase 08.2: Tạo ra một Phase riêng biệt tiếp theo chỉ để đập đi xây lại cấu trúc Timeline thành Main Track (URGENT)
 - Phase 25.1 inserted after Phase 25: Tách TTS Batch và Persist Data theo Project — Tách bước TTS ra khỏi Render, lưu Sub + Voice data theo project (URGENT)
+- Phase 26 added: Tích hợp công cụ TrackingFace auto crop 9:16 vào quy trình xử lý video
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
