@@ -61,7 +61,10 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
       {/* Before — 16:9 panel */}
       <div className="sc-preview-panel before">
         <div className="sc-preview-header">
-          <span className="sc-preview-label">Position the Crop</span>
+          <div className="sc-preview-label">
+            <span className="sc-preview-label-title">Position the Crop</span>
+            <span className="sc-preview-label-subtitle">Click or drag to position. Drag edges to resize.</span>
+          </div>
           <div className="sc-layout-toolbar">
             <button className={cropLayout === 'vertical' ? 'active' : ''} onClick={() => setCropLayout('vertical')}>Vertical</button>
             <button className={cropLayout === 'split' ? 'active' : ''} onClick={() => setCropLayout('split')}>Split</button>
@@ -99,7 +102,9 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
       {/* After — 9:16 panel */}
       <div className="sc-preview-panel after">
         <div className="sc-preview-header">
-          <span className="sc-preview-label">Preview (9:16)</span>
+          <div className="sc-preview-label">
+            <span className="sc-preview-label-title">Preview (9:16)</span>
+          </div>
         </div>
         {outputVideoUrl ? (
           <video
