@@ -72,25 +72,58 @@ export const CropTimeline: FC<CropTimelineProps> = ({
   const totalFrames = trackingData.frames.length || 1;
   const progressPercent = (currentTime / duration) * 100;
 
+  // Generate time markers every 5 seconds
+  const markers = [];
+  const maxTime = duration || 1;
+  const step = Math.max(1, Math.ceil(maxTime / 10)); // ~10 markers total
+  for (let t = 0; t <= maxTime; t += step) {
+    markers.push(t);
+  }
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="sc-crop-timeline-container">
-      <div className="sc-crop-timeline-label">Tracking Timeline</div>
+      {/* Controls row (optional, can be expanded later) */}
+      <div className="sc-crop-timeline-header">
+        <span className="sc-crop-timeline-time">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </span>
+        <span className="sc-crop-timeline-hint">Double-click marker to remove</span>
+      </div>
+
       <div 
         ref={containerRef}
         className="sc-crop-timeline-track"
         onClick={handleTimelineClick}
       >
+        {/* Progress Fill */}
         <div 
           className="sc-crop-timeline-progress" 
           style={{ width: `${progressPercent}%` }} 
         />
         
-        {/* Render AI markers implicitly? No, just render manual keyframes */}
+        {/* Time Markers Ruler */}
+        <div className="sc-crop-timeline-ruler">
+          {markers.map(t => {
+            const percent = (t / maxTime) * 100;
+            return (
+              <div key={`marker-${t}`} className="sc-timeline-tick" style={{ left: `${percent}%` }}>
+                <div className="sc-timeline-tick-mark" />
+                <span className="sc-timeline-tick-label">{formatTime(t)}</span>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Manual Keyframes */}
         {keyframes.map((kf) => {
-          // Time of keyframe
           const time = kf.frame_idx / trackingData.fps;
           const leftPercent = (time / duration) * 100;
-          
           return (
             <div
               key={kf.frame_idx}
@@ -98,19 +131,19 @@ export const CropTimeline: FC<CropTimelineProps> = ({
               style={{ left: `${leftPercent}%` }}
               onClick={(e) => handleKeyframeClick(e, kf.frame_idx)}
               onDoubleClick={(e) => handleKeyframeDoubleClick(e, kf.frame_idx)}
-              title={`Frame ${kf.frame_idx} (Click to seek, Double-click to delete)`}
+              title={`Frame ${kf.frame_idx}`}
             />
           );
         })}
 
-        {/* Playhead handle */}
+        {/* Playhead */}
         <div 
           className="sc-crop-timeline-playhead"
           style={{ left: `${progressPercent}%` }}
-        />
-      </div>
-      <div className="sc-crop-timeline-hint">
-        Double-click a keyframe to remove
+        >
+          <div className="sc-playhead-line" />
+          <div className="sc-playhead-head" />
+        </div>
       </div>
     </div>
   );
