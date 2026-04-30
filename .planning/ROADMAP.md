@@ -307,6 +307,16 @@ Plans:
 
 **UAT**: Chọn video → Analyze → xem tracking path → chỉnh 1 keyframe → Render → output đúng vị trí đã chỉnh → đóng/mở lại → tracking data vẫn còn → Re-render với settings khác → output mới.
 
+### Phase 27: Arbitrary Resizable Crop Boxes and Custom Split Frames
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 26
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 27 to break down)
+
 ---
 
 ### Phase 25.1: Tách TTS Batch & Persist Data theo Project (INSERTED)

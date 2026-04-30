@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/process")
 
+@router.get("/smart-crop/tracking")
+async def get_tracking_data(path: str):
+    from fastapi.responses import FileResponse
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Tracking file not found")
+    return FileResponse(path, media_type="application/json")
 
 # ─── Models ───────────────────────────────────────────────
 class SmartCropRequest(BaseModel):

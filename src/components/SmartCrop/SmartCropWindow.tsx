@@ -205,7 +205,7 @@ export function SmartCropWindow() {
               if (data.stage === 'done' && data.output) {
                 // Show output video
                 const { convertFileSrc } = await import('@tauri-apps/api/core');
-                setOutputVideoUrl(convertFileSrc(data.output));
+                setOutputVideoUrl(convertFileSrc(data.output) + `?cb=${Date.now()}`);
                 // Persist completion
                 saveSession({
                   lastStage: 'done',
@@ -366,7 +366,7 @@ export function SmartCropWindow() {
 
               if (data.stage === 'done' && data.output) {
                 const { convertFileSrc } = await import('@tauri-apps/api/core');
-                setOutputVideoUrl(convertFileSrc(data.output));
+                setOutputVideoUrl(convertFileSrc(data.output) + `?cb=${Date.now()}`);
                 saveSession({
                   lastStage: 'done',
                   lastMessage: 'Render hoàn thành',
@@ -389,9 +389,12 @@ export function SmartCropWindow() {
     if (session.manualStage === 'review' && session.trackingJsonPath) {
       (async () => {
         try {
-          const { readTextFile } = await import('@tauri-apps/plugin-fs');
-          const text = await readTextFile(session.trackingJsonPath!);
-          setTrackingData(JSON.parse(text));
+          const baseUrl = sidecar.getBaseUrl();
+          const encodedPath = encodeURIComponent(session.trackingJsonPath!);
+          const response = await fetch(`${baseUrl}/api/process/smart-crop/tracking?path=${encodedPath}`);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          setTrackingData(data);
         } catch (err) {
           console.error('Failed to load tracking data:', err);
         }

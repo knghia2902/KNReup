@@ -157,8 +157,7 @@
   box-shadow: var(--sc-shadow);
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
 }
 
 .sc-preview-panel.before {
@@ -720,19 +719,15 @@
 
 /* ─── Layout Toolbar ────────────────────────────────────── */
 .sc-preview-header {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  z-index: 15;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  pointer-events: none; /* Let clicks pass through empty areas */
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .sc-preview-label {
-  position: static;
   display: flex;
   flex-direction: column;
   background: none;
