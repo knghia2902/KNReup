@@ -567,6 +567,46 @@
   margin-bottom: 12px;
 }
 
+.sc-playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sc-playback-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sc-playback-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.sc-playback-btn.play {
+  background: rgba(34, 211, 238, 0.15);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: #22d3ee;
+}
+
+.sc-playback-btn.play:hover {
+  background: rgba(34, 211, 238, 0.25);
+}
+
+.sc-crop-timeline-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .sc-crop-timeline-time {
   font-family: var(--font-mono);
   font-size: 11px;

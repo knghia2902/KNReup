@@ -2,7 +2,7 @@
  * SmartCropLayout — Main layout with Before/After preview panels.
  * Before panel wraps video + CropOverlay for manual review mode.
  */
-import { type FC, type RefObject } from 'react';
+import { type FC, type RefObject, useEffect } from 'react';
 import { CropOverlay, type Keyframe } from './CropOverlay';
 import { CropTimeline } from './CropTimeline';
 import { CropLivePreview } from './CropLivePreview';
@@ -30,7 +30,30 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
   onKeyframeDelete,
   showOverlay,
 }) => {
+  // Sync output video with input video
+  useEffect(() => {
+    const input = inputRef.current;
+    const output = outputRef.current;
+    if (!input || !output) return;
+
+    const handlePlay = () => output.play().catch(() => {});
+    const handlePause = () => output.pause();
+    const handleSeek = () => { output.currentTime = input.currentTime; };
+
+    input.addEventListener('play', handlePlay);
+    input.addEventListener('pause', handlePause);
+    input.addEventListener('seeked', handleSeek);
+    input.addEventListener('seeking', handleSeek);
+    
+    return () => {
+      input.removeEventListener('play', handlePlay);
+      input.removeEventListener('pause', handlePause);
+      input.removeEventListener('seeked', handleSeek);
+      input.removeEventListener('seeking', handleSeek);
+    };
+  }, [inputRef, outputRef, outputVideoUrl]);
   return (
+    <>
     <div className="sc-preview-grid sc-animate-in">
       {/* Before — 16:9 panel */}
       <div className="sc-preview-panel before">
@@ -41,7 +64,6 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
               <video
                 ref={inputRef}
                 src={inputVideoUrl}
-                controls
                 muted
                 playsInline
               />
@@ -54,15 +76,6 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
                 enabled={showOverlay}
               />
             </div>
-            {showOverlay && (
-              <CropTimeline
-                videoRef={inputRef}
-                trackingData={trackingData}
-                keyframes={keyframes}
-                onKeyframeDelete={onKeyframeDelete}
-                enabled={showOverlay}
-              />
-            )}
           </div>
         ) : (
           <div className="sc-preview-empty">Chưa có video gốc</div>
@@ -76,7 +89,6 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
           <video
             ref={outputRef}
             src={outputVideoUrl}
-            controls
             muted
             playsInline
           />
@@ -92,5 +104,16 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
         )}
       </div>
     </div>
+    {/* Full-width Timeline below the grid */}
+    {inputVideoUrl && (
+      <CropTimeline
+        videoRef={inputRef}
+        trackingData={trackingData}
+        keyframes={keyframes}
+        onKeyframeDelete={onKeyframeDelete}
+        enabled={showOverlay}
+      />
+    )}
+    </>
   );
 };
