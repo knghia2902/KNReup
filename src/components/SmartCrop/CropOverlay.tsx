@@ -94,7 +94,10 @@ export const CropOverlay: FC<CropOverlayProps> = ({
     if (!canvas || !video || !trackingData || !enabled) return;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      animFrameRef.current = requestAnimationFrame(draw);
+      return;
+    }
 
     // Match canvas to video display size
     const rect = video.getBoundingClientRect();
@@ -107,7 +110,11 @@ export const CropOverlay: FC<CropOverlayProps> = ({
     currentFrameRef.current = frameIdx;
 
     const frame = trackingData.frames[frameIdx];
-    if (!frame) return;
+    if (!frame) {
+      // Keep loop alive even if frame is out of bounds (e.g. video ended)
+      animFrameRef.current = requestAnimationFrame(draw);
+      return;
+    }
 
     const cx = getCxForFrame(frameIdx);
     const cy = frame.cy;
