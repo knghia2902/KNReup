@@ -717,3 +717,44 @@
   transform: translateX(-50%) scale(1.3);
   background: #fbbf24;
 }
+
+/* ─── Layout Toolbar ────────────────────────────────────── */
+.sc-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.sc-layout-toolbar {
+  display: flex;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.sc-layout-toolbar button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: capitalize;
+}
+
+.sc-layout-toolbar button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sc-layout-toolbar button.active {
+  background: #22d3ee;
+  color: #000;
+  font-weight: 600;
+}
