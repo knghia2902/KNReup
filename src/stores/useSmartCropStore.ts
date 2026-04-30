@@ -31,6 +31,12 @@ export interface SmartCropSession {
   lastMessage: string;
   lastMode: string;
   timestamp: number;
+  // Manual crop mode fields
+  mode: 'auto' | 'manual';
+  manualStage: 'idle' | 'analyzing' | 'review' | 'rendering' | 'done';
+  trackingJsonPath: string | null;
+  outWidth: number;
+  outHeight: number;
 }
 
 interface SmartCropState {
@@ -49,6 +55,11 @@ interface SmartCropState {
   removeFromHistory: (inputPath: string) => void;
   /** Clear all history */
   clearHistory: () => void;
+
+  /** Mode toggle */
+  setMode: (mode: 'auto' | 'manual') => void;
+  /** Manual stage machine */
+  setManualStage: (stage: SmartCropSession['manualStage']) => void;
 }
 
 const DEFAULT_SESSION: SmartCropSession = {
@@ -62,6 +73,11 @@ const DEFAULT_SESSION: SmartCropSession = {
   lastMessage: '',
   lastMode: 'GPU',
   timestamp: 0,
+  mode: 'auto',
+  manualStage: 'idle',
+  trackingJsonPath: null,
+  outWidth: 1080,
+  outHeight: 1920,
 };
 
 export const useSmartCropStore = create<SmartCropState>()(
@@ -107,6 +123,16 @@ export const useSmartCropStore = create<SmartCropState>()(
         }),
 
       clearHistory: () => set({ history: {} }),
+
+      setMode: (mode) =>
+        set((state) => ({
+          session: { ...state.session, mode, manualStage: 'idle', timestamp: Date.now() },
+        })),
+
+      setManualStage: (stage) =>
+        set((state) => ({
+          session: { ...state.session, manualStage: stage, timestamp: Date.now() },
+        })),
     }),
     { name: 'knreup-smart-crop' }
   )

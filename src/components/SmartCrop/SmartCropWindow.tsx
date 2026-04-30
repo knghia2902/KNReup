@@ -10,6 +10,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useSmartCropStore } from '../../stores/useSmartCropStore';
 import { SmartCropLayout } from './SmartCropLayout';
 import { SmartCropControls } from './SmartCropControls';
+import type { Keyframe } from './CropOverlay';
 import { Sun, Moon } from '@phosphor-icons/react';
 import '../../styles/design-system.css';
 import '../../styles/smart-crop.css';
@@ -33,7 +34,7 @@ export function SmartCropWindow() {
   const { isDark, toggle } = useTheme();
 
   // ─── Persisted State (Zustand) ─────────────────
-  const { session, saveSession, clearSession, getFromHistory, addToHistory, history, removeFromHistory, clearHistory } = useSmartCropStore();
+  const { session, saveSession, clearSession, getFromHistory, addToHistory, history, removeFromHistory, clearHistory, setMode, setManualStage } = useSmartCropStore();
 
   // ─── Derived: sorted history entries ───────────
   const historyEntries = Object.entries(history)
@@ -50,6 +51,10 @@ export function SmartCropWindow() {
 
   const inputRef = useRef<HTMLVideoElement>(null);
   const outputRef = useRef<HTMLVideoElement>(null);
+
+  // ─── Manual crop state ─────────────────────────
+  const [trackingData, setTrackingData] = useState<any>(null);
+  const [keyframes, setKeyframes] = useState<Keyframe[]>([]);
 
   // ─── Restore session on mount ──────────────────
   useEffect(() => {
@@ -240,6 +245,172 @@ export function SmartCropWindow() {
     }
   }, [session, saveSession]);
 
+  // ─── Manual: Analyze ───────────────────────────
+  const handleAnalyze = useCallback(async () => {
+    if (!session.inputPath) return;
+    setManualStage('analyzing');
+    setProcessing({ stage: 'init', progress: 0, message: 'Đang phân tích video...', mode: 'GPU' });
+
+    try {
+      const baseUrl = sidecar.getBaseUrl();
+      const response = await fetch(`${baseUrl}/api/process/smart-crop/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input_path: session.inputPath,
+          alpha: session.alpha,
+          dead_zone: session.deadZone,
+          detect_every: session.detectEvery,
+          fallback_center: session.fallbackCenter,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(err.detail || `HTTP ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) throw new Error('No response body');
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              setProcessing({
+                stage: data.stage || 'processing',
+                progress: data.progress ?? 0,
+                message: data.message || '',
+                mode: data.mode || 'GPU',
+              });
+
+              if (data.stage === 'done' && data.tracking_json_path) {
+                saveSession({
+                  trackingJsonPath: data.tracking_json_path,
+                  lastStage: 'done',
+                  lastMessage: 'Analyze hoàn thành',
+                  lastMode: data.mode || 'GPU',
+                });
+                setManualStage('review');
+                setProcessing({ stage: 'idle', progress: 0, message: '', mode: data.mode || 'GPU' });
+              }
+            } catch { /* skip malformed */ }
+          }
+        }
+      }
+    } catch (err: any) {
+      setProcessing({ stage: 'error', progress: -1, message: err.message || 'Analyze lỗi', mode: 'CPU' });
+      setManualStage('idle');
+    }
+  }, [session, saveSession, setManualStage]);
+
+  // ─── Manual: Render ────────────────────────────
+  const handleRender = useCallback(async () => {
+    if (!session.inputPath || !session.outputPath || !session.trackingJsonPath) return;
+    setManualStage('rendering');
+    setProcessing({ stage: 'init', progress: 0, message: 'Đang render video...', mode: 'GPU' });
+
+    try {
+      const baseUrl = sidecar.getBaseUrl();
+      const response = await fetch(`${baseUrl}/api/process/smart-crop/render`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input_path: session.inputPath,
+          output_path: session.outputPath,
+          tracking_json_path: session.trackingJsonPath,
+          keyframes: keyframes,
+          out_width: session.outWidth,
+          out_height: session.outHeight,
+          encode_crf: 18,
+          encode_preset: 'fast',
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(err.detail || `HTTP ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) throw new Error('No response body');
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              setProcessing({
+                stage: data.stage || 'processing',
+                progress: data.progress ?? 0,
+                message: data.message || '',
+                mode: data.mode || 'GPU',
+              });
+
+              if (data.stage === 'done' && data.output) {
+                const { convertFileSrc } = await import('@tauri-apps/api/core');
+                setOutputVideoUrl(convertFileSrc(data.output));
+                saveSession({
+                  lastStage: 'done',
+                  lastMessage: 'Render hoàn thành',
+                  lastMode: data.mode || 'GPU',
+                });
+                setManualStage('done');
+              }
+            } catch { /* skip */ }
+          }
+        }
+      }
+    } catch (err: any) {
+      setProcessing({ stage: 'error', progress: -1, message: err.message || 'Render lỗi', mode: 'CPU' });
+      setManualStage('review');
+    }
+  }, [session, keyframes, saveSession, setManualStage]);
+
+  // ─── Load tracking data on review stage ────────
+  useEffect(() => {
+    if (session.manualStage === 'review' && session.trackingJsonPath) {
+      (async () => {
+        try {
+          const { readTextFile } = await import('@tauri-apps/plugin-fs');
+          const text = await readTextFile(session.trackingJsonPath!);
+          setTrackingData(JSON.parse(text));
+        } catch (err) {
+          console.error('Failed to load tracking data:', err);
+        }
+      })();
+    }
+  }, [session.manualStage, session.trackingJsonPath]);
+
+  // ─── Keyframe handlers ─────────────────────────
+  const handleKeyframeAdd = useCallback((kf: Keyframe) => {
+    setKeyframes(prev => {
+      const filtered = prev.filter(k => k.frame_idx !== kf.frame_idx);
+      return [...filtered, kf].sort((a, b) => a.frame_idx - b.frame_idx);
+    });
+  }, []);
+
+  const handleKeyframeDelete = useCallback((frameIdx: number) => {
+    setKeyframes(prev => prev.filter(k => k.frame_idx !== frameIdx));
+  }, []);
+
   // ─── Open in Editor ────────────────────────────
   const handleOpenEditor = useCallback(async () => {
     if (!session.outputPath) return;
@@ -334,6 +505,25 @@ export function SmartCropWindow() {
           </span>
         )}
         <div style={{ flex: 1 }} data-tauri-drag-region />
+        {/* Mode Toggle */}
+        {session.inputPath && (
+          <div className="sc-mode-toggle">
+            <button
+              className={`sc-mode-btn ${session.mode === 'auto' ? 'active' : ''}`}
+              onClick={() => setMode('auto')}
+              disabled={isProcessing}
+            >
+              Auto
+            </button>
+            <button
+              className={`sc-mode-btn ${session.mode === 'manual' ? 'active' : ''}`}
+              onClick={() => setMode('manual')}
+              disabled={isProcessing}
+            >
+              Manual
+            </button>
+          </div>
+        )}
         {/* New File button — only show when a session exists */}
         {session.inputPath && (
           <button
@@ -428,6 +618,11 @@ export function SmartCropWindow() {
             outputVideoUrl={outputVideoUrl}
             inputRef={inputRef}
             outputRef={outputRef}
+            trackingData={trackingData}
+            keyframes={keyframes}
+            onKeyframeAdd={handleKeyframeAdd}
+            onKeyframeDelete={handleKeyframeDelete}
+            showOverlay={session.mode === 'manual' && session.manualStage === 'review'}
           />
         )}
 
@@ -468,6 +663,14 @@ export function SmartCropWindow() {
             onOpenEditor={handleOpenEditor}
             isProcessing={isProcessing}
             hasOutput={hasOutput}
+            mode={session.mode}
+            manualStage={session.manualStage}
+            onAnalyze={handleAnalyze}
+            onRender={handleRender}
+            onReanalyze={() => setManualStage('idle')}
+            outWidth={session.outWidth}
+            outHeight={session.outHeight}
+            onResolutionChange={(w, h) => saveSession({ outWidth: w, outHeight: h })}
           />
         )}
       </div>

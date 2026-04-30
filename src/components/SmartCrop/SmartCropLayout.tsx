@@ -1,13 +1,20 @@
 /**
  * SmartCropLayout — Main layout with Before/After preview panels.
+ * Before panel wraps video + CropOverlay for manual review mode.
  */
 import { type FC, type RefObject } from 'react';
+import { CropOverlay, type Keyframe } from './CropOverlay';
 
 interface SmartCropLayoutProps {
   inputVideoUrl: string | null;
   outputVideoUrl: string | null;
   inputRef: RefObject<HTMLVideoElement | null>;
   outputRef: RefObject<HTMLVideoElement | null>;
+  trackingData: any | null;
+  keyframes: Keyframe[];
+  onKeyframeAdd: (kf: Keyframe) => void;
+  onKeyframeDelete: (frameIdx: number) => void;
+  showOverlay: boolean;
 }
 
 export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
@@ -15,6 +22,11 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
   outputVideoUrl,
   inputRef,
   outputRef,
+  trackingData,
+  keyframes,
+  onKeyframeAdd,
+  onKeyframeDelete,
+  showOverlay,
 }) => {
   return (
     <div className="sc-preview-grid sc-animate-in">
@@ -22,13 +34,23 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
       <div className="sc-preview-panel before">
         <span className="sc-preview-label">16:9 · Gốc</span>
         {inputVideoUrl ? (
-          <video
-            ref={inputRef}
-            src={inputVideoUrl}
-            controls
-            muted
-            playsInline
-          />
+          <div className="sc-video-overlay-container">
+            <video
+              ref={inputRef}
+              src={inputVideoUrl}
+              controls
+              muted
+              playsInline
+            />
+            <CropOverlay
+              videoRef={inputRef}
+              trackingData={trackingData}
+              keyframes={keyframes}
+              onKeyframeAdd={onKeyframeAdd}
+              onKeyframeDelete={onKeyframeDelete}
+              enabled={showOverlay}
+            />
+          </div>
         ) : (
           <div className="sc-preview-empty">Chưa có video gốc</div>
         )}

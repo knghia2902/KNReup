@@ -1,5 +1,6 @@
 /**
  * SmartCropControls — Sliders & action buttons for Smart Crop.
+ * Supports Auto mode (Export) and Manual mode (Analyze → Review → Render).
  */
 import { type FC } from 'react';
 
@@ -17,6 +18,15 @@ interface SmartCropControlsProps {
   isProcessing: boolean;
   hasOutput: boolean;
   disabled?: boolean;
+  // Manual mode props
+  mode: 'auto' | 'manual';
+  manualStage: 'idle' | 'analyzing' | 'review' | 'rendering' | 'done';
+  onAnalyze: () => void;
+  onRender: () => void;
+  onReanalyze: () => void;
+  outWidth: number;
+  outHeight: number;
+  onResolutionChange: (w: number, h: number) => void;
 }
 
 export const SmartCropControls: FC<SmartCropControlsProps> = ({
@@ -24,6 +34,8 @@ export const SmartCropControls: FC<SmartCropControlsProps> = ({
   onAlphaChange, onDeadZoneChange, onDetectEveryChange, onFallbackCenterChange,
   onExport, onOpenEditor,
   isProcessing, hasOutput, disabled,
+  mode, manualStage, onAnalyze, onRender, onReanalyze,
+  outWidth, outHeight, onResolutionChange,
 }) => {
   return (
     <div className="sc-controls sc-animate-in">
@@ -80,20 +92,72 @@ export const SmartCropControls: FC<SmartCropControlsProps> = ({
         Fix giữa nếu mất mặt
       </label>
 
-      {/* Action Buttons */}
-      <div className="sc-actions">
-        <button
-          className="sc-btn primary"
-          onClick={onExport}
-          disabled={disabled || isProcessing}
-        >
-          💾 Export 9:16
-        </button>
+      {/* Resolution dropdown — Manual mode review/done only */}
+      {mode === 'manual' && (manualStage === 'review' || manualStage === 'done') && (
+        <div className="sc-control-group">
+          <span className="sc-control-label">Output Resolution</span>
+          <select
+            className="sc-select"
+            value={`${outWidth}x${outHeight}`}
+            onChange={(e) => {
+              const [w, h] = e.target.value.split('x').map(Number);
+              onResolutionChange(w, h);
+            }}
+            disabled={isProcessing}
+          >
+            <option value="1080x1920">1080×1920 (Full HD)</option>
+            <option value="720x1280">720×1280 (HD)</option>
+          </select>
+        </div>
+      )}
 
-        {hasOutput && (
-          <button className="sc-btn" onClick={onOpenEditor}>
-            → Mở trong Editor
-          </button>
+      {/* Action Buttons — mode-aware */}
+      <div className="sc-actions">
+        {mode === 'auto' ? (
+          <>
+            <button className="sc-btn primary" onClick={onExport} disabled={disabled || isProcessing}>
+              💾 Export 9:16
+            </button>
+            {hasOutput && (
+              <button className="sc-btn" onClick={onOpenEditor}>→ Mở trong Editor</button>
+            )}
+          </>
+        ) : (
+          <>
+            {(manualStage === 'idle') && (
+              <button className="sc-btn primary" onClick={onAnalyze} disabled={disabled || isProcessing}>
+                🔍 Analyze
+              </button>
+            )}
+            {manualStage === 'analyzing' && (
+              <button className="sc-btn primary" disabled>
+                ⏳ Đang phân tích...
+              </button>
+            )}
+            {manualStage === 'review' && (
+              <>
+                <button className="sc-btn" onClick={onReanalyze} disabled={isProcessing}>
+                  🔄 Re-analyze
+                </button>
+                <button className="sc-btn primary" onClick={onRender} disabled={disabled || isProcessing}>
+                  ⬇ Render
+                </button>
+              </>
+            )}
+            {manualStage === 'rendering' && (
+              <button className="sc-btn primary" disabled>
+                ⏳ Đang render...
+              </button>
+            )}
+            {manualStage === 'done' && (
+              <>
+                <button className="sc-btn" onClick={onRender} disabled={isProcessing}>
+                  🔄 Re-render
+                </button>
+                <button className="sc-btn" onClick={onOpenEditor}>→ Mở trong Editor</button>
+              </>
+            )}
+          </>
         )}
       </div>
     </div>
