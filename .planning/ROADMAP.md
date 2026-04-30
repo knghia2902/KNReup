@@ -277,6 +277,36 @@ Plans:
 **Status**: ✅ Complete (2026-04-25)
 
 
+### Phase 26: Tich hop cong cu TrackingFace auto crop 9:16 vao quy trinh xu ly video
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 25
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 26-01-PLAN.md — Backend Integration (TrackingFace API)
+- [x] 26-02-PLAN.md — Frontend Smart Crop UI
+- [x] 26-03-PLAN.md — Client-Server Integration & Export Flow
+
+---
+
+### Phase 26.1: Manual Crop Mode — Tách pipeline Analyze → Review → Render (INSERTED)
+
+**Goal:** Thêm chế độ Manual Crop cho Smart Crop tool. Tách pipeline hiện tại thành 3 bước: (1) Analyze — AI chạy tracking xuất JSON data, (2) Review — user xem/chỉnh tracking path trên visual timeline, (3) Render — áp tracking data đã chỉnh lên video xuất output. Cho phép re-render mà không cần chạy lại AI.
+
+**Requirements**:
+- MANUAL-01: Backend tách `process()` → `analyze()` (xuất tracking_data.json) + `render()` (đọc JSON → crop)
+- MANUAL-02: API mới `POST /smart-crop/analyze` (SSE) + `POST /smart-crop/render` (SSE)
+- MANUAL-03: Frontend tracking path visualizer — hiện đường đi crop center trên video
+- MANUAL-04: Keyframe editor — user kéo/chỉnh crop position tại các điểm
+- MANUAL-05: Scene cut detection — tự detect hoặc user đánh dấu cắt cảnh
+
+**Depends on:** Phase 26
+**Plans:** 0 plans
+
+**UAT**: Chọn video → Analyze → xem tracking path → chỉnh 1 keyframe → Render → output đúng vị trí đã chỉnh → đóng/mở lại → tracking data vẫn còn → Re-render với settings khác → output mới.
+
 ---
 
 ### Phase 25.1: Tách TTS Batch & Persist Data theo Project (INSERTED)
