@@ -28,6 +28,7 @@ interface CropOverlayProps {
   onKeyframeAdd: (kf: Keyframe) => void;
   onKeyframeDelete: (frameIdx: number) => void;
   enabled: boolean;
+  cropLayout?: string;
 }
 
 export const CropOverlay: FC<CropOverlayProps> = ({
@@ -37,6 +38,7 @@ export const CropOverlay: FC<CropOverlayProps> = ({
   onKeyframeAdd,
   onKeyframeDelete,
   enabled,
+  cropLayout = 'vertical',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
@@ -123,34 +125,67 @@ export const CropOverlay: FC<CropOverlayProps> = ({
     const scaleX = canvas.width / trackingData.frame_width;
     const scaleY = canvas.height / trackingData.frame_height;
 
-    // Crop rectangle position
-    const rectX = (cx - trackingData.crop_width / 2) * scaleX;
-    const rectY = (cy - trackingData.crop_height / 2) * scaleY;
-    const rectW = trackingData.crop_width * scaleX;
-    const rectH = trackingData.crop_height * scaleY;
-
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Dim outside crop area
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.clearRect(rectX, rectY, rectW, rectH);
 
-    // Crop border
     const isKf = keyframes.some(k => k.frame_idx === frameIdx);
-    ctx.strokeStyle = isKf ? '#f59e0b' : '#22d3ee';
     ctx.lineWidth = 2;
     ctx.setLineDash(isKf ? [] : [6, 3]);
-    ctx.strokeRect(rectX, rectY, rectW, rectH);
-    ctx.setLineDash([]);
 
-    // Keyframe indicator
-    if (isKf) {
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = '11px Inter, sans-serif';
-      ctx.fillText('◆ Keyframe', rectX + 6, rectY + 16);
+    if (cropLayout === 'split') {
+      // Top Box
+      const topH = trackingData.crop_height / 2;
+      const topRectX = (cx - trackingData.crop_width / 2) * scaleX;
+      // Let Top box cy be at top 1/4 of frame roughly or just top
+      // Wait, if we just center them vertically:
+      // Top box
+      const topCy = trackingData.frame_height * 0.3; 
+      const topRectY = (topCy - topH / 2) * scaleY;
+      const rectW = trackingData.crop_width * scaleX;
+      const rectH = topH * scaleY;
+
+      ctx.clearRect(topRectX, topRectY, rectW, rectH);
+      ctx.strokeStyle = '#22d3ee';
+      ctx.strokeRect(topRectX, topRectY, rectW, rectH);
+      
+      // Bottom Box
+      const botCy = trackingData.frame_height * 0.7;
+      // We'll use the same cx for both boxes for now
+      const botRectY = (botCy - topH / 2) * scaleY;
+      ctx.clearRect(topRectX, botRectY, rectW, rectH);
+      ctx.strokeStyle = '#a855f7'; // Purple for bottom box like screenshot
+      ctx.strokeRect(topRectX, botRectY, rectW, rectH);
+
+      // Labels
+      ctx.fillStyle = '#22d3ee';
+      ctx.font = '10px Inter';
+      ctx.fillText('Top', topRectX + 4, topRectY + 12);
+
+      ctx.fillStyle = '#a855f7';
+      ctx.fillText('Bottom', topRectX + 4, botRectY + 12);
+    } else {
+      // Normal Vertical Mode
+      const rectX = (cx - trackingData.crop_width / 2) * scaleX;
+      const rectY = (cy - trackingData.crop_height / 2) * scaleY;
+      const rectW = trackingData.crop_width * scaleX;
+      const rectH = trackingData.crop_height * scaleY;
+
+      ctx.clearRect(rectX, rectY, rectW, rectH);
+      ctx.strokeStyle = isKf ? '#f59e0b' : '#22d3ee';
+      ctx.strokeRect(rectX, rectY, rectW, rectH);
+      
+      if (isKf) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillText('◆ Keyframe', rectX + 6, rectY + 16);
+      }
     }
+
+    ctx.setLineDash([]);
 
     // Frame info
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
@@ -158,7 +193,7 @@ export const CropOverlay: FC<CropOverlayProps> = ({
     ctx.fillText(`Frame ${frameIdx}`, 8, canvas.height - 8);
 
     animFrameRef.current = requestAnimationFrame(draw);
-  }, [videoRef, trackingData, keyframes, enabled, getFrameIdx, getCxForFrame]);
+  }, [videoRef, trackingData, keyframes, enabled, cropLayout, getFrameIdx, getCxForFrame]);
 
   // Start/stop animation loop
   useEffect(() => {

@@ -6,6 +6,7 @@ interface CropLivePreviewProps {
   trackingData: any | null;
   keyframes: Keyframe[];
   enabled: boolean;
+  cropLayout?: string;
 }
 
 export const CropLivePreview: FC<CropLivePreviewProps> = ({
@@ -13,6 +14,7 @@ export const CropLivePreview: FC<CropLivePreviewProps> = ({
   trackingData,
   keyframes,
   enabled,
+  cropLayout = 'vertical',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
@@ -77,25 +79,52 @@ export const CropLivePreview: FC<CropLivePreviewProps> = ({
     const cx = getCxForFrame(frameIdx);
     const cy = frame.cy;
 
-    // Calculate source cropping rectangle
-    const sx = cx - trackingData.crop_width / 2;
-    const sy = cy - trackingData.crop_height / 2;
-    const sw = trackingData.crop_width;
-    const sh = trackingData.crop_height;
+    if (cropLayout === 'split') {
+      const topH = trackingData.crop_height / 2;
+      const topCy = trackingData.frame_height * 0.3;
+      const botCy = trackingData.frame_height * 0.7;
 
-    // Draw the cropped portion of the video to the canvas
-    try {
-      ctx.drawImage(
-        video,
-        sx, sy, sw, sh,               // Source rect
-        0, 0, canvas.width, canvas.height // Destination rect
-      );
-    } catch (e) {
-      // Ignored - video might not be ready
+      const sxTop = cx - trackingData.crop_width / 2;
+      const syTop = topCy - topH / 2;
+      const sxBot = cx - trackingData.crop_width / 2;
+      const syBot = botCy - topH / 2;
+      const sw = trackingData.crop_width;
+      const sh = topH;
+
+      try {
+        ctx.drawImage(
+          video,
+          sxTop, syTop, sw, sh,
+          0, 0, canvas.width, canvas.height / 2
+        );
+        ctx.drawImage(
+          video,
+          sxBot, syBot, sw, sh,
+          0, canvas.height / 2, canvas.width, canvas.height / 2
+        );
+      } catch (e) {}
+
+      // Draw a divider line
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, canvas.height / 2 - 2, canvas.width, 4);
+
+    } else {
+      const sx = cx - trackingData.crop_width / 2;
+      const sy = cy - trackingData.crop_height / 2;
+      const sw = trackingData.crop_width;
+      const sh = trackingData.crop_height;
+
+      try {
+        ctx.drawImage(
+          video,
+          sx, sy, sw, sh,
+          0, 0, canvas.width, canvas.height
+        );
+      } catch (e) {}
     }
 
     animFrameRef.current = requestAnimationFrame(draw);
-  }, [videoRef, trackingData, keyframes, enabled, getCxForFrame]);
+  }, [videoRef, trackingData, keyframes, enabled, cropLayout, getCxForFrame]);
 
   useEffect(() => {
     if (enabled && trackingData) {

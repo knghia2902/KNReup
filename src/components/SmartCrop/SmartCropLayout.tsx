@@ -2,7 +2,7 @@
  * SmartCropLayout — Main layout with Before/After preview panels.
  * Before panel wraps video + CropOverlay for manual review mode.
  */
-import { type FC, type RefObject, useEffect } from 'react';
+import { type FC, type RefObject, useEffect, useState } from 'react';
 import { CropOverlay, type Keyframe } from './CropOverlay';
 import { CropTimeline } from './CropTimeline';
 import { CropLivePreview } from './CropLivePreview';
@@ -30,6 +30,8 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
   onKeyframeDelete,
   showOverlay,
 }) => {
+  const [cropLayout, setCropLayout] = useState<'vertical' | 'split' | 'spotlight' | 'centered' | 'horizontal'>('vertical');
+
   // Sync output video with input video
   useEffect(() => {
     const input = inputRef.current;
@@ -52,12 +54,23 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
       input.removeEventListener('seeking', handleSeek);
     };
   }, [inputRef, outputRef, outputVideoUrl]);
+
   return (
     <>
     <div className="sc-preview-grid sc-animate-in">
       {/* Before — 16:9 panel */}
       <div className="sc-preview-panel before">
-        <span className="sc-preview-label">16:9 · Gốc</span>
+        <div className="sc-preview-header">
+          <span className="sc-preview-label">Position the Crop</span>
+          <div className="sc-layout-toolbar">
+            <button className={cropLayout === 'vertical' ? 'active' : ''} onClick={() => setCropLayout('vertical')}>Vertical</button>
+            <button className={cropLayout === 'split' ? 'active' : ''} onClick={() => setCropLayout('split')}>Split</button>
+            <button className={cropLayout === 'spotlight' ? 'active' : ''} onClick={() => setCropLayout('spotlight')}>Spotlight</button>
+            <button className={cropLayout === 'centered' ? 'active' : ''} onClick={() => setCropLayout('centered')}>Centered</button>
+            <button className={cropLayout === 'horizontal' ? 'active' : ''} onClick={() => setCropLayout('horizontal')}>Horizontal</button>
+          </div>
+        </div>
+        
         {inputVideoUrl ? (
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
             <div className="sc-video-overlay-container" style={{ flex: 1, minHeight: 0 }}>
@@ -74,6 +87,7 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
                 onKeyframeAdd={onKeyframeAdd}
                 onKeyframeDelete={onKeyframeDelete}
                 enabled={showOverlay}
+                cropLayout={cropLayout}
               />
             </div>
           </div>
@@ -84,7 +98,9 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
 
       {/* After — 9:16 panel */}
       <div className="sc-preview-panel after">
-        <span className="sc-preview-label">9:16 · Live / KQ</span>
+        <div className="sc-preview-header">
+          <span className="sc-preview-label">Preview (9:16)</span>
+        </div>
         {outputVideoUrl ? (
           <video
             ref={outputRef}
@@ -98,6 +114,7 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
             trackingData={trackingData}
             keyframes={keyframes}
             enabled={true}
+            cropLayout={cropLayout}
           />
         ) : (
           <div className="sc-preview-empty">Đang chờ xử lý...</div>
