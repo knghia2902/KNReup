@@ -549,3 +549,75 @@
   outline: 1px solid var(--sc-accent);
   border-color: var(--sc-accent);
 }
+/* --- Crop Timeline -------------------------------------- */
+.sc-crop-timeline-container {
+  width: 100%;
+  margin-top: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--r6, 6px);
+  padding: 8px 12px;
+  border: 1px solid var(--sc-border);
+}
+
+.sc-crop-timeline-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.sc-crop-timeline-track {
+  position: relative;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.sc-crop-timeline-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(34, 211, 238, 0.15); /* cyan with low opacity */
+  pointer-events: none;
+}
+
+.sc-crop-timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #22d3ee;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.sc-crop-timeline-keyframe {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: #f59e0b; /* amber for manual keyframe */
+  border: 1px solid #fff;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.1s;
+}
+
+.sc-crop-timeline-keyframe:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.3);
+  background: #ffb84d;
+}
+
+.sc-crop-timeline-hint {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
+  text-align: right;
+}

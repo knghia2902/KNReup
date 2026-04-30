@@ -4,6 +4,7 @@
  */
 import { type FC, type RefObject } from 'react';
 import { CropOverlay, type Keyframe } from './CropOverlay';
+import { CropTimeline } from './CropTimeline';
 
 interface SmartCropLayoutProps {
   inputVideoUrl: string | null;
@@ -34,22 +35,33 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
       <div className="sc-preview-panel before">
         <span className="sc-preview-label">16:9 · Gốc</span>
         {inputVideoUrl ? (
-          <div className="sc-video-overlay-container">
-            <video
-              ref={inputRef}
-              src={inputVideoUrl}
-              controls
-              muted
-              playsInline
-            />
-            <CropOverlay
-              videoRef={inputRef}
-              trackingData={trackingData}
-              keyframes={keyframes}
-              onKeyframeAdd={onKeyframeAdd}
-              onKeyframeDelete={onKeyframeDelete}
-              enabled={showOverlay}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+            <div className="sc-video-overlay-container" style={{ flex: 1, minHeight: 0 }}>
+              <video
+                ref={inputRef}
+                src={inputVideoUrl}
+                controls
+                muted
+                playsInline
+              />
+              <CropOverlay
+                videoRef={inputRef}
+                trackingData={trackingData}
+                keyframes={keyframes}
+                onKeyframeAdd={onKeyframeAdd}
+                onKeyframeDelete={onKeyframeDelete}
+                enabled={showOverlay}
+              />
+            </div>
+            {showOverlay && (
+              <CropTimeline
+                videoRef={inputRef}
+                trackingData={trackingData}
+                keyframes={keyframes}
+                onKeyframeDelete={onKeyframeDelete}
+                enabled={showOverlay}
+              />
+            )}
           </div>
         ) : (
           <div className="sc-preview-empty">Chưa có video gốc</div>
