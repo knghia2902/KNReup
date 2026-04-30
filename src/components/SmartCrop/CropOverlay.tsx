@@ -224,15 +224,29 @@ export const CropOverlay: FC<CropOverlayProps> = ({
   if (!enabled || !trackingData) return null;
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="sc-crop-overlay"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onDoubleClick={handleDoubleClick}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="sc-crop-overlay"
+        style={{ pointerEvents: 'none' }}
+      />
+      <div
+        className="sc-crop-interaction-layer"
+        onMouseDown={handleMouseDown as any}
+        onMouseMove={handleMouseMove as any}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: 'calc(100% - 60px)',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          zIndex: 11
+        }}
+      />
+    </>
   );
 };
