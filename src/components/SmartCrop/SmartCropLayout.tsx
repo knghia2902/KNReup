@@ -5,6 +5,7 @@
 import { type FC, type RefObject } from 'react';
 import { CropOverlay, type Keyframe } from './CropOverlay';
 import { CropTimeline } from './CropTimeline';
+import { CropLivePreview } from './CropLivePreview';
 
 interface SmartCropLayoutProps {
   inputVideoUrl: string | null;
@@ -70,7 +71,7 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
 
       {/* After — 9:16 panel */}
       <div className="sc-preview-panel after">
-        <span className="sc-preview-label">9:16 · Đã crop</span>
+        <span className="sc-preview-label">9:16 · Live / KQ</span>
         {outputVideoUrl ? (
           <video
             ref={outputRef}
@@ -78,6 +79,13 @@ export const SmartCropLayout: FC<SmartCropLayoutProps> = ({
             controls
             muted
             playsInline
+          />
+        ) : showOverlay ? (
+          <CropLivePreview 
+            videoRef={inputRef}
+            trackingData={trackingData}
+            keyframes={keyframes}
+            enabled={true}
           />
         ) : (
           <div className="sc-preview-empty">Đang chờ xử lý...</div>
