@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Any, Union, Literal
+from typing import List, Optional, Any, Union, Literal, Annotated
 from pydantic import BaseModel, Field
 
 # ── Template data shapes (discriminated by template field) ───────────────

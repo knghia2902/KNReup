@@ -51,8 +51,7 @@ class FrameRenderer:
             await page.wait_for_load_state("networkidle")
 
             # Inject scene data
-            scene_data_json = json.dumps(scene)
-            await page.evaluate(f"window.renderScene({scene_data_json});")
+            await page.evaluate("scene => window.renderScene(scene)", scene)
             
             # Take screenshots frame by frame
             for i in range(total_frames):

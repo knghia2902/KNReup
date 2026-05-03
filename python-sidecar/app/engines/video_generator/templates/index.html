@@ -184,13 +184,18 @@
 <script>
     // Hàm này sẽ được Playwright gọi để render scene
     window.renderScene = function(sceneData) {
+        // Reset GSAP to avoid timeline accumulation across scenes
+        gsap.globalTimeline.clear();
+        gsap.globalTimeline.time(0);
+        
         const container = document.getElementById('container');
         container.innerHTML = ''; // Clear old content
         
         const tpl = sceneData.templateData;
         const timeline = gsap.timeline();
+        const templateName = (tpl.template || '').toLowerCase();
 
-        if (tpl.template === 'hook') {
+        if (templateName === 'hook') {
             const h1 = document.createElement('div');
             h1.className = 'hook-headline';
             h1.textContent = tpl.headline;
@@ -206,7 +211,7 @@
                 timeline.to(sub, {opacity: 1, duration: 0.8}, "-=0.4");
             }
 
-        } else if (tpl.template === 'stat-hero') {
+        } else if (templateName === 'stat-hero') {
             const val = document.createElement('div');
             val.className = 'stat-value';
             val.textContent = tpl.value;
@@ -221,7 +226,7 @@
             timeline.to(val, {opacity: 1, scale: 1, duration: 1, ease: "elastic.out(1, 0.5)"});
             timeline.to(lbl, {opacity: 1, duration: 0.5}, "-=0.5");
 
-        } else if (tpl.template === 'feature-list') {
+        } else if (templateName === 'feature-list') {
             const title = document.createElement('div');
             title.className = 'feature-title';
             title.textContent = tpl.title;
@@ -238,7 +243,7 @@
                 });
             }
 
-        } else if (tpl.template === 'comparison') {
+        } else if (templateName === 'comparison') {
             const wrapper = document.createElement('div');
             wrapper.className = 'comparison-wrapper';
 
@@ -258,7 +263,7 @@
             timeline.from(left, {y: 100, opacity: 0, duration: 0.8, ease: "back.out(1.7)"}, "-=0.2");
             timeline.from(right, {y: 100, opacity: 0, duration: 0.8, ease: "back.out(1.7)"}, "-=0.6");
 
-        } else if (tpl.template === 'callout') {
+        } else if (templateName === 'callout') {
             const box = document.createElement('div');
             box.className = 'callout-box';
 
@@ -278,7 +283,7 @@
 
             timeline.to(box, {opacity: 1, y: 0, duration: 1, ease: "power4.out"});
 
-        } else if (tpl.template === 'outro') {
+        } else if (templateName === 'outro') {
             const cta = document.createElement('div');
             cta.className = 'outro-cta';
             cta.textContent = tpl.ctaTop;
