@@ -1,0 +1,72 @@
+{
+  "title": "Elon Musk cảnh báo AI: Liệu nó có trở thành 'kẻ hủy diệt'?",
+  "topic": "Tranh chấp pháp lý giữa Elon Musk và OpenAI về định hướng phát triển AI và nguy cơ AI mất kiểm soát.",
+  "scenes": [
+    {
+      "type": "hook",
+      "title": "Lời cảnh báo gây sốc từ Elon Musk",
+      "content": "Trong phiên tòa liên quan đến OpenAI, Elon Musk đã nhiều lần nhắc đến kịch bản tồi tệ nhất: AI tiêu diệt toàn bộ nhân loại. Lời cảnh báo này đã khiến cả tòa án phải ngắt lời!",
+      "voiceText": "Elon Musk, CEO của Tesla và SpaceX, đã nhiều lần cảnh báo về kịch bản AI trở thành 'kẻ hủy diệt'. Ông cho rằng, tình huống tệ nhất có thể xảy ra chính là AI tiêu diệt tất cả chúng ta.",
+      "duration": 10.0,
+      "animationStyle": "fast_cut_dramatic",
+      "extraData": {
+        "visual_focus": "Hình ảnh Elon Musk tại tòa án, kèm hiệu ứng cảnh báo đỏ."
+      }
+    },
+    {
+      "type": "body",
+      "title": "Tranh chấp pháp lý: OpenAI vs Musk",
+      "content": "Vụ kiện bắt nguồn từ mâu thuẫn định hướng phát triển. Musk từng là đồng sáng lập OpenAI, nhưng sau khi rời đi, ông chỉ trích công ty chuyển sang mô hình 'vì lợi nhuận' và liên kết chặt chẽ với Microsoft.",
+      "voiceText": "Vụ kiện này là cuộc đối đầu pháp lý lớn nhất của ngành AI. Musk cáo buộc OpenAI phản bội sứ mệnh phi lợi nhuận ban đầu, khi công ty chuyển hướng sang mô hình thương mại vì lợi nhuận.",
+      "duration": 12.0,
+      "animationStyle": "narrative_flow",
+      "extraData": {
+        "visual_focus": "Timeline/Sơ đồ minh họa sự chuyển đổi từ phi lợi nhuận sang thương mại."
+      }
+    },
+    {
+      "type": "body",
+      "title": "Các bên liên quan và bằng chứng",
+      "content": "Trong phiên tòa, các bằng chứng được đưa ra bao gồm: tài trợ 38 triệu USD từ Musk cho OpenAI, và các ghi chép cá nhân của Chủ tịch OpenAI. Musk cũng khẳng định xAI của mình là công ty AI nhỏ nhất.",
+      "voiceText": "Tại tòa, nhiều bằng chứng đã được đưa ra. Ngoài việc Musk khẳng định xAI nhỏ hơn nhiều so với OpenAI, các tài liệu nội bộ cũng được xem xét, hé lộ những mâu thuẫn sâu sắc về định hướng phát triển.",
+      "duration": 10.0,
+      "animationStyle": "document_reveal",
+      "extraData": {
+        "visual_focus": "Hiển thị các tài liệu, con số (38 triệu USD), và so sánh quy mô các công ty AI."
+      }
+    },
+    {
+      "type": "comparison",
+      "title": "AI: Công cụ hay Kẻ chủ nô?",
+      "content": "Đây là câu hỏi lớn nhất: Liệu AI có phải là công cụ phục vụ con người, hay con người sẽ trở thành nô lệ của nó? Các nhà khoa học đang phải cân bằng giữa lợi nhuận và trách nhiệm xã hội.",
+      "voiceText": "Cuộc tranh luận đặt ra câu hỏi cốt lõi: AI sẽ là công cụ giúp con người phát triển, hay nó sẽ trở thành thế lực vượt tầm kiểm soát? Đây là thách thức lớn nhất của nhân loại.",
+      "duration": 8.0,
+      "animationStyle": "dichotomy_visual",
+      "extraData": {
+        "visual_focus": "Chia đôi màn hình: Một bên là 'Công cụ' (Human-centric), một bên là 'Mối đe dọa' (AI-centric)."
+      }
+    },
+    {
+      "type": "highlight",
+      "title": "Tầm quan trọng của cuộc chiến AI",
+      "content": "Vụ kiện này không chỉ là cuộc chiến quyền kiểm soát OpenAI, mà còn là cuộc tranh chấp định hình tương lai của toàn bộ lĩnh vực Trí tuệ Nhân tạo toàn cầu.",
+      "voiceText": "Phiên tòa này được đánh giá là một trong những vụ kiện quan trọng nhất lịch sử AI, có khả năng tái định hình toàn bộ ngành công nghiệp và định hướng phát triển công nghệ thế giới.",
+      "duration": 7.0,
+      "animationStyle": "impact_zoom",
+      "extraData": {
+        "visual_focus": "Bản đồ thế giới/Hình ảnh các nhà lãnh đạo công nghệ (Musk, Altman, Microsoft)."
+      }
+    },
+    {
+      "type": "cta",
+      "title": "Theo dõi những diễn biến tiếp theo!",
+      "content": "Bạn nghĩ sao về lời cảnh báo của Elon Musk? Liệu AI có thực sự là mối đe dọa? Hãy bình luận và chia sẻ ý kiến của bạn!",
+      "voiceText": "Bạn nghĩ sao về tương lai của AI? Liệu nó sẽ là nguồn lực vô tận hay là mối nguy hiểm? Hãy theo dõi chúng tôi để cập nhật những diễn biến mới nhất!",
+      "duration": 6.0,
+      "animationStyle": "call_to_action",
+      "extraData": {
+        "visual_focus": "Màn hình kêu gọi hành động (Like, Share, Follow)."
+      }
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "title": "Elon Musk cảnh báo: AI có thể trở thành 'kẻ hủy diệt'?",
+  "topic": "Tranh chấp pháp lý giữa Elon Musk và OpenAI, cùng những cảnh báo về rủi ro của Trí tuệ Nhân tạo (AI).",
+  "scenes": [
+    {
+      "type": "hook",
+      "title": "Lời cảnh báo gây sốc từ Elon Musk",
+      "content": "Trong một vụ kiện pháp lý lớn, tỷ phú Elon Musk đã nhiều lần nhắc đến kịch bản AI có thể trở thành 'kẻ hủy diệt'. Ông đã thẳng thắn cảnh báo về viễn cảnh này trước tòa án Mỹ.",
+      "voiceText": "Trong một vụ kiện pháp lý lớn, tỷ phú Elon Musk đã nhiều lần nhắc đến kịch bản AI có thể trở thành 'kẻ hủy diệt'. Ông đã thẳng thắn cảnh báo về viễn cảnh này trước tòa án Mỹ.",
+      "duration": 7.0,
+      "animationStyle": "Fast cuts, dramatic music, text overlay of key quotes.",
+      "extraData": {}
+    },
+    {
+      "type": "body",
+      "title": "Cuộc đối đầu tại tòa án",
+      "content": "Tại tòa án liên bang California, Musk đã đối đầu trực tiếp với CEO Sam Altman và OpenAI. Vụ kiện bắt nguồn từ mâu thuẫn về định hướng phát triển của AI: giữa sứ mệnh phi lợi nhuận và mô hình thương mại hóa.",
+      "voiceText": "Tại tòa án liên bang California, Musk đã đối đầu trực tiếp với CEO Sam Altman và OpenAI. Vụ kiện bắt nguồn từ mâu thuẫn về định hướng phát triển của AI: giữa sứ mệnh phi lợi nhuận và mô hình thương mại hóa.",
+      "duration": 8.0,
+      "animationStyle": "Courtroom setting footage, dramatic tension build-up.",
+      "extraData": {}
+    },
+    {
+      "type": "body",
+      "title": "Cảnh báo 'Kẻ hủy diệt'",
+      "content": "Khi được hỏi về việc 'xây dựng đội quân robot', Musk khẳng định không sản xuất vũ khí, nhưng ông vẫn đưa ra nhận định: 'Tình huống tệ nhất có thể là AI tiêu diệt tất cả chúng ta.'",
+      "voiceText": "Khi được hỏi về việc 'xây dựng đội quân robot', Musk khẳng định không sản xuất vũ khí, nhưng ông vẫn đưa ra nhận định: 'Tình huống tệ nhất có thể là AI tiêu diệt tất cả chúng ta.'",
+      "duration": 6.5,
+      "animationStyle": "Visuals of sci-fi robots/Terminator style, dramatic zoom on Musk's face.",
+      "extraData": {}
+    },
+    {
+      "type": "stats",
+      "title": "Các bên liên quan và cáo buộc",
+      "content": "Musk cáo buộc OpenAI và Microsoft đã phản bội sứ mệnh phi lợi nhuận ban đầu. Ông cũng chỉ ra sự khác biệt về quy mô giữa xAI và các đối thủ lớn như OpenAI hay Google.",
+      "voiceText": "Musk cáo buộc OpenAI và Microsoft đã phản bội sứ mệnh phi lợi nhuận ban đầu. Ông cũng chỉ ra sự khác biệt về quy mô giữa xAI và các đối thủ lớn như OpenAI hay Google.",
+      "duration": 7.0,
+      "animationStyle": "Infographic style, comparison graphics (xAI vs OpenAI vs Google).",
+      "extraData": {}
+    },
+    {
+      "type": "listicle",
+      "title": "Điểm nóng của vụ kiện",
+      "content": "Vụ kiện không chỉ là tranh chấp quyền kiểm soát, mà còn xoay quanh những tài liệu nội bộ, cáo buộc về sự 'thiếu đạo đức' trong chuyển đổi mô hình kinh doanh của OpenAI.",
+      "voiceText": "Vụ kiện không chỉ là tranh chấp quyền kiểm soát, mà còn xoay quanh những tài liệu nội bộ, cáo buộc về sự 'thiếu đạo đức' trong chuyển đổi mô hình kinh doanh của OpenAI.",
+      "duration": 6.0,
+      "animationStyle": "Fast-paced montage of documents, legal symbols, and key figures.",
+      "extraData": {}
+    },
+    {
+      "type": "body",
+      "title": "Bài học về AI",
+      "content": "Tranh chấp này đặt ra câu hỏi lớn: Làm thế nào để cân bằng giữa lợi nhuận thương mại và trách nhiệm xã hội khi phát triển AI? Đây là vấn đề toàn nhân loại cần quan tâm.",
+      "voiceText": "Tranh chấp này đặt ra câu hỏi lớn: Làm thế nào để cân bằng giữa lợi nhuận thương mại và trách nhiệm xã hội khi phát triển AI? Đây là vấn đề toàn nhân loại cần quan tâm.",
+      "duration": 7.5,
+      "animationStyle": "Thought-provoking visuals, slow camera movement, serious tone.",
+      "extraData": {}
+    },
+    {
+      "type": "cta",
+      "title": "Bạn nghĩ gì về tương lai AI?",
+      "content": "Bạn nghĩ sao về những cảnh báo của Elon Musk? Liệu AI có thực sự là mối đe dọa, hay nó sẽ là công cụ phát triển vĩ đại? Hãy chia sẻ ý kiến của bạn!",
+      "voiceText": "Bạn nghĩ sao về những cảnh báo của Elon Musk? Liệu AI có thực sự là mối đe dọa, hay nó sẽ là công cụ phát triển vĩ đại? Hãy chia sẻ ý kiến của bạn!",
+      "duration": 5.0,
+      "animationStyle": "Text overlay with questions, encouraging comments.",
+      "extraData": {}
+    }
+  ]
+}

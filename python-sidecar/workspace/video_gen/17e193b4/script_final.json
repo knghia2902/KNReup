@@ -1,0 +1,72 @@
+{
+  "title": "Elon Musk cảnh báo AI: Liệu nó có trở thành 'kẻ hủy diệt'?",
+  "topic": "Tranh chấp pháp lý giữa Elon Musk và OpenAI về tương lai của Trí tuệ Nhân tạo (AI).",
+  "scenes": [
+    {
+      "type": "hook",
+      "title": "Lời cảnh báo gây chấn động từ Elon Musk",
+      "content": "Trong một phiên tòa quan trọng, Elon Musk đã không ngần ngại đưa ra lời cảnh báo khiến cả khán phòng phải lắng nghe: AI có thể trở thành 'kẻ hủy diệt'!",
+      "voiceText": "Elon Musk, CEO của Tesla và SpaceX, đã nhiều lần cảnh báo về kịch bản AI có thể trở thành 'kẻ hủy diệt'.",
+      "duration": 8,
+      "animationStyle": "Fast cuts, dramatic zoom",
+      "extraData": {
+        "visual_elements": "Hình ảnh Elon Musk tại tòa án, kèm theo hiệu ứng cảnh báo đỏ."
+      }
+    },
+    {
+      "type": "body",
+      "title": "Nguyên nhân mâu thuẫn: Từ phi lợi nhuận đến thương mại hóa",
+      "content": "Mâu thuẫn bắt nguồn từ định hướng phát triển của OpenAI. Musk và các đồng sáng lập ban đầu đặt mục tiêu xây dựng AI vì lợi ích chung của nhân loại – một tổ chức phi lợi nhuận. Nhưng sau đó, OpenAI lại chuyển sang mô hình thương mại hóa, hợp tác chặt chẽ với Microsoft.",
+      "voiceText": "Vụ kiện bắt nguồn từ mâu thuẫn định hướng: ban đầu là mục tiêu phi lợi nhuận, nhưng sau đó OpenAI lại chuyển sang mô hình thương mại hóa, gây ra tranh chấp lớn.",
+      "duration": 10,
+      "animationStyle": "Timeline/Contrast (Trước vs Sau)",
+      "extraData": {
+        "visual_elements": "Biểu đồ so sánh (Phi lợi nhuận vs Lợi nhuận), hình ảnh OpenAI và Microsoft."
+      }
+    },
+    {
+      "type": "body",
+      "title": "Cuộc đối đầu pháp lý: Musk kiện OpenAI",
+      "content": "Musk đệ đơn kiện, cáo buộc OpenAI và Sam Altman đã phản bội sứ mệnh ban đầu. Ông khẳng định xAI của mình là công ty AI nhỏ nhất, nhưng vẫn có động thái củng cố mạnh mẽ.",
+      "voiceText": "Musk đã kiện OpenAI, cáo buộc họ phản bội sứ mệnh. Ông khẳng định xAI của mình tuy nhỏ nhưng đang có những động thái củng cố mạnh mẽ.",
+      "duration": 8,
+      "animationStyle": "News report style, fast text overlays",
+      "extraData": {
+        "visual_elements": "Hình ảnh tài liệu pháp lý, logo xAI, và các công ty AI lớn khác."
+      }
+    },
+    {
+      "type": "comparison",
+      "title": "Ai là người lớn nhất? OpenAI vs xAI",
+      "content": "Trong phiên tòa, Musk đã so sánh quy mô của xAI với các đối thủ. Ông xếp Anthropic là lớn nhất, tiếp theo là OpenAI và Google. Đây là một cuộc đối đầu không chỉ về tiền bạc, mà còn về tầm nhìn tương lai của AI.",
+      "voiceText": "Musk đã so sánh quy mô giữa các công ty AI. Ông cho rằng Anthropic là lớn nhất, tiếp theo là OpenAI và Google. Cuộc đối đầu này đặt ra câu hỏi lớn về tương lai AI.",
+      "duration": 7,
+      "animationStyle": "Infographic comparison (Bar chart)",
+      "extraData": {
+        "visual_elements": "Biểu đồ so sánh quy mô các công ty AI (Anthropic, OpenAI, Google, xAI)."
+      }
+    },
+    {
+      "type": "body",
+      "title": "Hệ quả và Tầm quan trọng",
+      "content": "Vụ kiện này được đánh giá là một trong những tranh chấp pháp lý quan trọng nhất của ngành AI. Nó không chỉ quyết định quyền kiểm soát OpenAI, mà còn đặt ra câu hỏi lớn về sự cân bằng giữa lợi nhuận và trách nhiệm xã hội trong phát triển AI.",
+      "voiceText": "Đây là một trong những tranh chấp pháp lý quan trọng nhất của ngành AI. Nó không chỉ quyết định quyền kiểm soát, mà còn đặt ra câu hỏi lớn về sự cân bằng giữa lợi nhuận và trách nhiệm xã hội.",
+      "duration": 9,
+      "animationStyle": "Serious, cinematic tone",
+      "extraData": {
+        "visual_elements": "Hình ảnh các nhà lãnh đạo công nghệ (Altman, Nadella, Musk) trong bối cảnh công nghệ cao."
+      }
+    },
+    {
+      "type": "cta",
+      "title": "Bạn nghĩ sao về tương lai của AI?",
+      "content": "Cảnh báo của Elon Musk là lời nhắc nhở đáng lưu tâm. Liệu AI sẽ là công cụ phục vụ nhân loại, hay chúng ta sẽ trở thành nô lệ của nó? Hãy cùng theo dõi và đưa ra ý kiến của bạn!",
+      "voiceText": "Cảnh báo của Elon Musk rất đáng lưu tâm. Bạn nghĩ AI sẽ là công cụ phục vụ hay là mối đe dọa? Hãy chia sẻ ý kiến của bạn dưới phần bình luận!",
+      "duration": 6,
+      "animationStyle": "Dynamic, engaging, call to action graphics",
+      "extraData": {
+        "visual_elements": "Màn hình kêu gọi hành động (Like, Share, Comment), logo kênh."
+      }
+    }
+  ]
+}

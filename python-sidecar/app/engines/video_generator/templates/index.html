@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Template</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Lora:ital,wght@0,400..700;1,400..700&family=Manrope:wght@200..800&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1080px;
+            height: 1920px;
+            overflow: hidden;
+            position: relative;
+            background-color: #0f172a;
+            color: #ffffff;
+            font-family: 'Manrope', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 80px;
+            box-sizing: border-box;
+        }
+
+        /* Template: hook */
+        .hook-headline {
+            font-family: 'Anton', sans-serif;
+            font-size: 140px;
+            line-height: 1.1;
+            text-align: center;
+            text-transform: uppercase;
+            text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+
+        .hook-subhead {
+            font-family: 'Lora', serif;
+            font-size: 60px;
+            font-style: italic;
+            text-align: center;
+            color: #fbbf24;
+            opacity: 0;
+        }
+
+        /* Template: stat-hero */
+        .stat-value {
+            font-family: 'Anton', sans-serif;
+            font-size: 250px;
+            color: #38bdf8;
+            text-align: center;
+            opacity: 0;
+            transform: scale(0.5);
+        }
+
+        .stat-label {
+            font-size: 70px;
+            font-weight: 800;
+            text-align: center;
+            margin-top: -20px;
+            opacity: 0;
+        }
+
+        /* Template: feature-list */
+        .feature-title {
+            font-size: 90px;
+            font-weight: 800;
+            margin-bottom: 80px;
+            align-self: flex-start;
+            color: #a78bfa;
+            opacity: 0;
+        }
+
+        .feature-item {
+            font-size: 65px;
+            font-weight: 600;
+            margin-bottom: 40px;
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+
+        .feature-item::before {
+            content: "✦";
+            color: #f472b6;
+        }
+
+        /* Template: comparison */
+        .comparison-wrapper {
+            display: flex;
+            width: 100%;
+            height: 600px;
+            gap: 40px;
+            opacity: 0;
+        }
+        
+        .comparison-side {
+            flex: 1;
+            border-radius: 40px;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 4px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-side.cyan { border-color: #22d3ee; box-shadow: 0 0 80px rgba(34, 211, 238, 0.2); }
+        .comparison-side.purple { border-color: #c084fc; box-shadow: 0 0 80px rgba(192, 132, 252, 0.2); }
+
+        .comp-label { font-size: 50px; color: #94a3b8; margin-bottom: 20px; }
+        .comp-value { font-size: 100px; font-weight: 800; }
+
+        /* Template: callout */
+        .callout-box {
+            background: linear-gradient(135deg, #ef4444, #b91c1c);
+            padding: 80px;
+            border-radius: 60px;
+            text-align: center;
+            box-shadow: 0 40px 100px rgba(220, 38, 38, 0.4);
+            opacity: 0;
+            transform: translateY(100px);
+        }
+
+        .callout-tag {
+            font-family: 'Anton', sans-serif;
+            font-size: 50px;
+            letter-spacing: 5px;
+            color: #fca5a5;
+            margin-bottom: 30px;
+        }
+
+        .callout-statement {
+            font-size: 80px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        /* Template: outro */
+        .outro-cta {
+            font-family: 'Anton', sans-serif;
+            font-size: 120px;
+            text-transform: uppercase;
+            color: #10b981;
+            margin-bottom: 60px;
+            opacity: 0;
+        }
+
+        .outro-channel {
+            font-size: 80px;
+            font-weight: 800;
+            background: white;
+            color: black;
+            padding: 20px 60px;
+            border-radius: 100px;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+    </style>
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+
+<div id="container"></div>
+
+<script>
+    // Hàm này sẽ được Playwright gọi để render scene
+    window.renderScene = function(sceneData) {
+        const container = document.getElementById('container');
+        container.innerHTML = ''; // Clear old content
+        
+        const tpl = sceneData.templateData;
+        const timeline = gsap.timeline();
+
+        if (tpl.template === 'hook') {
+            const h1 = document.createElement('div');
+            h1.className = 'hook-headline';
+            h1.textContent = tpl.headline;
+            container.appendChild(h1);
+
+            timeline.to(h1, {opacity: 1, y: 0, duration: 0.8, ease: "power4.out"});
+
+            if (tpl.subhead) {
+                const sub = document.createElement('div');
+                sub.className = 'hook-subhead';
+                sub.textContent = tpl.subhead;
+                container.appendChild(sub);
+                timeline.to(sub, {opacity: 1, duration: 0.8}, "-=0.4");
+            }
+
+        } else if (tpl.template === 'stat-hero') {
+            const val = document.createElement('div');
+            val.className = 'stat-value';
+            val.textContent = tpl.value;
+            
+            const lbl = document.createElement('div');
+            lbl.className = 'stat-label';
+            lbl.textContent = tpl.label;
+
+            container.appendChild(val);
+            container.appendChild(lbl);
+
+            timeline.to(val, {opacity: 1, scale: 1, duration: 1, ease: "elastic.out(1, 0.5)"});
+            timeline.to(lbl, {opacity: 1, duration: 0.5}, "-=0.5");
+
+        } else if (tpl.template === 'feature-list') {
+            const title = document.createElement('div');
+            title.className = 'feature-title';
+            title.textContent = tpl.title;
+            container.appendChild(title);
+            timeline.to(title, {opacity: 1, duration: 0.6});
+
+            if (tpl.bullets && tpl.bullets.length > 0) {
+                tpl.bullets.forEach((b, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'feature-item';
+                    item.textContent = b;
+                    container.appendChild(item);
+                    timeline.to(item, {opacity: 1, x: 0, duration: 0.5}, "-=0.3");
+                });
+            }
+
+        } else if (tpl.template === 'comparison') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'comparison-wrapper';
+
+            const left = document.createElement('div');
+            left.className = `comparison-side ${tpl.left.color}`;
+            left.innerHTML = `<div class="comp-label">${tpl.left.label}</div><div class="comp-value">${tpl.left.value}</div>`;
+            
+            const right = document.createElement('div');
+            right.className = `comparison-side ${tpl.right.color}`;
+            right.innerHTML = `<div class="comp-label">${tpl.right.label}</div><div class="comp-value">${tpl.right.value}</div>`;
+
+            wrapper.appendChild(left);
+            wrapper.appendChild(right);
+            container.appendChild(wrapper);
+
+            timeline.to(wrapper, {opacity: 1, duration: 0.5});
+            timeline.from(left, {y: 100, opacity: 0, duration: 0.8, ease: "back.out(1.7)"}, "-=0.2");
+            timeline.from(right, {y: 100, opacity: 0, duration: 0.8, ease: "back.out(1.7)"}, "-=0.6");
+
+        } else if (tpl.template === 'callout') {
+            const box = document.createElement('div');
+            box.className = 'callout-box';
+
+            if (tpl.tag) {
+                const tag = document.createElement('div');
+                tag.className = 'callout-tag';
+                tag.textContent = tpl.tag;
+                box.appendChild(tag);
+            }
+
+            const state = document.createElement('div');
+            state.className = 'callout-statement';
+            state.textContent = tpl.statement;
+            box.appendChild(state);
+
+            container.appendChild(box);
+
+            timeline.to(box, {opacity: 1, y: 0, duration: 1, ease: "power4.out"});
+
+        } else if (tpl.template === 'outro') {
+            const cta = document.createElement('div');
+            cta.className = 'outro-cta';
+            cta.textContent = tpl.ctaTop;
+
+            const chan = document.createElement('div');
+            chan.className = 'outro-channel';
+            chan.textContent = tpl.channelName;
+
+            container.appendChild(cta);
+            container.appendChild(chan);
+
+            timeline.to(cta, {opacity: 1, duration: 0.6});
+            timeline.to(chan, {opacity: 1, scale: 1, duration: 0.8, ease: "elastic.out(1, 0.5)"}, "-=0.2");
+        }
+
+        // Đảm bảo timeline đã sẵn sàng
+        gsap.globalTimeline.pause();
+        return true;
+    };
+</script>
+
+</body>
+</html>

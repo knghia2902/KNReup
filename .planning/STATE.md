@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-30T03:56:00.000Z"
-last_activity: 2026-04-30
+last_updated: "2026-05-03T09:23:33.835Z"
+last_activity: 2026-05-03
 progress:
-  total_phases: 20
+  total_phases: 22
   completed_phases: 15
-  total_plans: 52
+  total_plans: 53
   completed_plans: 44
-  percent: 85
+  percent: 83
 ---
 
 # STATE.md — KNReup Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 26.1 — manual-crop-mode-tach-pipeline-analyze-review-render
+**Current focus:** Phase 28.1 — porting-auto-create-video
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
-- **Phase:** 25.1
-- **Status:** Executing Phase 26.1
-- **Last activity:** 2026-04-30
+- **Phase:** 28
+- **Status:** Executing Phase 28.1
+- **Last activity:** 2026-05-03
 
 ## Context
 

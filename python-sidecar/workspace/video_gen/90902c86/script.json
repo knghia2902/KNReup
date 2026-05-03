@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "title": "Elon Musk cảnh báo AI: Kịch bản 'Kẻ hủy diệt' có thật?",
+    "source": {
+      "url": "https://vnexpress.net/elon-musk-canh-bao-kich-ban-ai-tro-thanh-ke-huy-diet-5068949.html",
+      "domain": "vnexpress.net",
+      "image": null
+    },
+    "channel": "KNReup News"
+  },
+  "voice": {
+    "provider": "omnivoice",
+    "voiceId": "vi-VN-HoaiMyNeural",
+    "speed": 1.0
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "type": "hook",
+      "voiceText": "Elon Musk, người sáng lập Tesla và SpaceX, vừa đưa ra một lời cảnh báo cực kỳ nghiêm trọng về tương lai của Trí tuệ Nhân tạo. Ông lo ngại AI có thể phát triển đến mức trở thành một 'kẻ hủy diệt' toàn cầu. Liệu những lời cảnh báo này có đáng lo ngại không?",
+      "templateData": {
+        "template": "hook",
+        "headline": "Elon Musk: AI có thể là 'Kẻ hủy diệt'?",
+        "subhead": "Lời cảnh báo gây chấn động từ tỷ phú công nghệ."
+      },
+      "sfx": null
+    },
+    {
+      "id": "s2",
+      "type": "body",
+      "voiceText": "Trong phiên tòa liên quan đến vụ kiện với OpenAI, Musk đã nhiều lần nhắc đến kịch bản AI tiêu diệt nhân loại. Ông khẳng định, tình huống tệ nhất có thể xảy ra là AI vượt khỏi tầm kiểm soát của con người. Điều này khiến thẩm phán phải yêu cầu ông ngừng đề cập đến viễn cảnh 'tuyệt chủng'.",
+      "templateData": {
+        "template": "callout",
+        "quote": "Tình huống tệ nhất có thể là AI tiêu diệt tất cả chúng ta.",
+        "context": "Trong phiên tòa liên quan đến OpenAI."
+      },
+      "sfx": null
+    },
+    {
+      "id": "s3",
+      "type": "body",
+      "voiceText": "Tuy nhiên, vụ kiện này không chỉ xoay quanh AI. Musk còn đối đầu với OpenAI về định hướng phát triển. Ông chỉ trích công ty đã chuyển từ mô hình phi lợi nhuận sang mô hình thương mại hóa, gây ra nhiều mâu thuẫn lớn.",
+      "templateData": {
+        "template": "comparison",
+        "left": "Mô hình phi lợi nhuận (Ban đầu)",
+        "right": "Mô hình thương mại (Hiện tại)",
+        "focus": "Mâu thuẫn định hướng phát triển của OpenAI."
+      },
+      "sfx": null
+    },
+    {
+      "id": "s4",
+      "type": "body",
+      "voiceText": "Vậy, ai đang dẫn đầu cuộc đua AI? Musk khẳng định xAI của mình tuy nhỏ nhất nhưng vẫn là một đối thủ đáng gờm. Ông cũng chỉ ra các đối thủ lớn khác như Anthropic, OpenAI và Google. Cuộc cạnh tranh này sẽ định hình tương lai công nghệ thế nào?",
+      "templateData": {
+        "template": "feature-list",
+        "title": "Các đối thủ AI lớn:",
+        "bullets": [
+          "Anthropic (Được Musk nhận định là lớn nhất)",
+          "OpenAI",
+          "Google và các mô hình mã nguồn mở Trung Quốc"
+        ]
+      },
+      "sfx": null
+    },
+    {
+      "id": "s5",
+      "type": "body",
+      "voiceText": "Tóm lại, cuộc tranh chấp này không chỉ là một vụ kiện pháp lý. Nó đặt ra câu hỏi lớn về việc cân bằng giữa lợi nhuận, trách nhiệm xã hội và an toàn khi phát triển AI. Đây là một chủ đề mà toàn nhân loại cần phải theo dõi sát sao.",
+      "templateData": {
+        "template": "stat-hero",
+        "value": "Tương lai AI",
+        "label": "Cân bằng giữa Lợi nhuận và Trách nhiệm Xã hội"
+      },
+      "sfx": null
+    },
+    {
+      "id": "s6",
+      "type": "outro",
+      "voiceText": "Bạn nghĩ sao về những lời cảnh báo của Elon Musk? Liệu AI có thực sự là mối đe dọa? Hãy bình luận ý kiến của bạn bên dưới và theo dõi KNReup News để cập nhật những tin tức công nghệ nóng nhất!",
+      "templateData": {
+        "template": "outro",
+        "ctaTop": "Bình luận và Theo dõi ngay!",
+        "channelName": "KNReup News",
+        "source": "vnexpress.net"
+      },
+      "sfx": null
+    }
+  ]
+}

@@ -137,14 +137,16 @@ def get_tts_engine(engine_name: str, api_key: str = ""):
     """Factory: tạo TTS engine instance."""
     if engine_name == "omnivoice":
         from app.engines.tts.omnivoice_engine import OmniVoiceTTSEngine
-
         return OmniVoiceTTSEngine()
     elif engine_name == "elevenlabs":
         from app.engines.tts.elevenlabs_engine import ElevenLabsTTSEngine
-
         return ElevenLabsTTSEngine(api_key=api_key)
+    elif engine_name == "edge-tts":
+        from app.engines.tts.edge_tts_engine import EdgeTTSEngine
+        return EdgeTTSEngine()
     else:
-        raise HTTPException(400, f"Unknown TTS engine: {engine_name}")
+        from app.engines.tts.omnivoice_engine import OmniVoiceTTSEngine
+        return OmniVoiceTTSEngine()
 
 
 # ─── TTS Voices ───────────────────────────────────────────

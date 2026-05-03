@@ -1,0 +1,60 @@
+{
+  "title": "Elon Musk cảnh báo AI: Liệu nó có trở thành 'kẻ hủy diệt'?",
+  "topic": "Tranh chấp pháp lý giữa Elon Musk và OpenAI về định hướng phát triển của AI, cùng những cảnh báo về rủi ro AI.",
+  "scenes": [
+    {
+      "type": "hook",
+      "title": "Giới thiệu vấn đề nóng: AI và mối đe dọa 'kẻ hủy diệt'",
+      "content": "Elon Musk, CEO của Tesla và SpaceX, đã nhiều lần cảnh báo về kịch bản AI có thể trở thành 'kẻ hủy diệt' nhân loại. Đây là lời cảnh báo được đưa ra ngay tại một phiên tòa pháp lý căng thẳng.",
+      "voiceText": "Elon Musk, CEO của Tesla và SpaceX, đã nhiều lần cảnh báo về kịch bản AI có thể trở thành 'kẻ hủy diệt' nhân loại. Đây là lời cảnh báo được đưa ra ngay tại một phiên tòa pháp lý căng thẳng.",
+      "duration": 10.0,
+      "animationStyle": "fast_zoom",
+      "extraData": {}
+    },
+    {
+      "type": "body",
+      "title": "Phiên tòa căng thẳng: Musk đối đầu với OpenAI",
+      "content": "Trong phiên xử liên bang California, Musk đã trả lời các câu hỏi về việc xây dựng đội quân robot. Ông khẳng định không sản xuất vũ khí, nhưng vẫn nhấn mạnh: 'Tình huống tệ nhất có thể là AI tiêu diệt tất cả chúng ta.'",
+      "voiceText": "Tại phiên tòa liên bang California, Musk đã trả lời các câu hỏi về việc xây dựng đội quân robot. Ông khẳng định không sản xuất vũ khí, nhưng vẫn nhấn mạnh: 'Tình huống tệ nhất có thể là AI tiêu diệt tất cả chúng ta.'",
+      "duration": 12.0,
+      "animationStyle": "dramatic_reveal",
+      "extraData": {}
+    },
+    {
+      "type": "body",
+      "title": "Phản ứng của Tòa án và OpenAI",
+      "content": "Lời cảnh báo này khiến thẩm phán phải ngắt lời, yêu cầu ông không đề cập đến viễn cảnh 'tuyệt chủng' trong vụ kiện. Vụ kiện ban đầu bắt nguồn từ mâu thuẫn về định hướng: từ phi lợi nhuận sang thương mại.",
+      "voiceText": "Lời cảnh báo này khiến thẩm phán phải ngắt lời, yêu cầu ông không đề cập đến viễn cảnh 'tuyệt chủng' trong vụ kiện. Vụ kiện ban đầu bắt nguồn từ mâu thuẫn về định hướng: từ phi lợi nhuận sang thương mại.",
+      "duration": 10.0,
+      "animationStyle": "conflict_scene",
+      "extraData": {}
+    },
+    {
+      "type": "stats",
+      "title": "Cuộc chiến quyền lực và định hướng AI",
+      "content": "Vụ kiện không chỉ là tranh chấp pháp lý, mà còn đặt ra câu hỏi lớn về cách cân bằng giữa lợi nhuận, trách nhiệm xã hội và an toàn trong phát triển AI. Musk cáo buộc OpenAI phản bội sứ mệnh phi lợi nhuận.",
+      "voiceText": "Vụ kiện không chỉ là tranh chấp pháp lý, mà còn đặt ra câu hỏi lớn về cách cân bằng giữa lợi nhuận, trách nhiệm xã hội và an toàn trong phát triển AI. Musk cáo buộc OpenAI phản bội sứ mệnh phi lợi nhuận.",
+      "duration": 10.0,
+      "animationStyle": "infographic_data",
+      "extraData": {}
+    },
+    {
+      "type": "listicle",
+      "title": "Các bên liên quan và tầm ảnh hưởng",
+      "content": "Các bên tham gia bao gồm Musk, Sam Altman (CEO OpenAI), Microsoft, và nhiều nhân chứng quan trọng. Vụ kiện được xem là một trong những tranh chấp lớn nhất, có khả năng tái định hình toàn bộ ngành công nghiệp AI.",
+      "voiceText": "Các bên tham gia bao gồm Musk, Sam Altman, Microsoft, và nhiều nhân chứng quan trọng. Vụ kiện được xem là một trong những tranh chấp lớn nhất, có khả năng tái định hình toàn bộ ngành công nghiệp AI.",
+      "duration": 8.0,
+      "animationStyle": "list_reveal",
+      "extraData": {}
+    },
+    {
+      "type": "cta",
+      "title": "Tương lai AI: Cơ hội hay Thách thức?",
+      "content": "Sự đối đầu này không chỉ là câu chuyện tiền bạc, mà còn là cuộc tranh luận về đạo đức và tương lai của nhân loại. Bạn nghĩ gì về lời cảnh báo của Elon Musk? Hãy chia sẻ ý kiến của bạn!",
+      "voiceText": "Đây là cuộc tranh luận về đạo đức và tương lai của nhân loại. Bạn nghĩ gì về lời cảnh báo của Elon Musk? Hãy chia sẻ ý kiến của bạn!",
+      "duration": 8.0,
+      "animationStyle": "call_to_action",
+      "extraData": {}
+    }
+  ]
+}

@@ -348,3 +348,15 @@ Plans:
 
 **Plans:** 3/3 plans complete
 - [x] TBD (run /gsd-plan-phase 10 to break down) (completed 2026-04-23)
+
+---
+
+### Phase 28.1: Porting Auto-Create-Video Architecture (Tiếng Việt)
+
+**Goal:** Rebuild pipeline tạo video dựa trên kiến trúc của hoquanghai/Auto-Create-Video (Node.js/Puppeteer/GSAP/HyperFrames/Zod). Sử dụng 6 template cốt lõi, hỗ trợ render 9:16 native, sử dụng LLM để viết script theo schema Zod.
+**Requirements**: REBUILD-28.1-01, REBUILD-28.1-02
+**Depends on:** Phase 27
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] TBD (run /gsd-plan-phase 28.1 to break down) (completed 2026-05-03)

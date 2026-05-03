@@ -8,6 +8,11 @@ import os
 import uvicorn
 import logging
 import warnings
+import asyncio
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from app.logger_setup import setup_logging
 
 # Khởi tạo cấu hình logging để xuất ra file
@@ -65,10 +70,13 @@ app.include_router(proxy.router, prefix="/api")
 from app.routes import tts_profiles
 from app.routes import projects
 from app.routes import face_crop
+from app.routes import video_gen
+
 app.include_router(tts_profiles.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(downloader_router, prefix="/api")
 app.include_router(face_crop.router, prefix="/api", tags=["Smart Crop"])
+app.include_router(video_gen.router, prefix="/api", tags=["VideoGenerator"])
 
 def find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
