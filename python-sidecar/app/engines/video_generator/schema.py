@@ -8,15 +8,15 @@ from pydantic import BaseModel, Field
 # ─── 1. HOOK ─────────────────────────────────────────────────────────────
 class HookTemplateData(BaseModel):
     template: Literal["hook"] = "hook"
-    headline: str = Field(..., max_length=40, description="Tiêu đề ngắn gọn gây chú ý")
-    subhead: Optional[str] = Field(None, max_length=40, description="Phụ đề bên dưới headline")
+    headline: str = Field(..., max_length=100, description="Tiêu đề ngắn gọn gây chú ý")
+    subhead: Optional[str] = Field(None, max_length=150, description="Phụ đề bên dưới headline")
     bgSrc: Optional[str] = Field(None, description="Đường dẫn ảnh nền ($source.image → thay thế tự động)")
     kenBurns: Optional[str] = Field("zoom-in", description="Hiệu ứng Ken Burns: zoom-in, zoom-out, pan-left, pan-right")
 
 # ─── 2. COMPARISON ───────────────────────────────────────────────────────
 class ComparisonSide(BaseModel):
-    label: str = Field(..., max_length=30)
-    value: str = Field(..., max_length=20)
+    label: str = Field(..., max_length=60)
+    value: str = Field(..., max_length=60)
     color: str = Field("cyan", description="cyan hoặc purple")
 
 class ComparisonSideRight(ComparisonSide):
@@ -30,29 +30,29 @@ class ComparisonTemplateData(BaseModel):
 # ─── 3. STAT HERO ────────────────────────────────────────────────────────
 class StatHeroTemplateData(BaseModel):
     template: Literal["stat-hero"] = "stat-hero"
-    value: str = Field(..., max_length=20, description="Con số chính (VD: '97%', '$2.1B')")
-    label: str = Field(..., max_length=40, description="Nhãn mô tả con số")
-    context: Optional[str] = Field(None, max_length=50, description="Ngữ cảnh bổ sung")
+    value: str = Field(..., max_length=40, description="Con số chính (VD: '97%', '$2.1B')")
+    label: str = Field(..., max_length=80, description="Nhãn mô tả con số")
+    context: Optional[str] = Field(None, max_length=100, description="Ngữ cảnh bổ sung")
 
 # ─── 4. FEATURE LIST ─────────────────────────────────────────────────────
 class FeatureListData(BaseModel):
     template: Literal["feature-list"] = "feature-list"
-    title: str = Field(..., max_length=40, description="Tiêu đề danh sách")
-    bullets: List[str] = Field(..., min_length=1, max_length=4, description="Danh sách 1-4 bullet points")
+    title: str = Field(..., max_length=80, description="Tiêu đề danh sách")
+    bullets: List[str] = Field(..., min_length=1, max_length=5, description="Danh sách 1-5 bullet points")
     icon: Optional[str] = Field(None, description="Icon tùy chọn")
 
 # ─── 5. CALLOUT ──────────────────────────────────────────────────────────
 class CalloutTemplateData(BaseModel):
     template: Literal["callout"] = "callout"
-    statement: str = Field(..., max_length=80, description="Câu nhận định mạnh")
-    tag: Optional[str] = Field(None, max_length=20, description="Tag nhỏ (VD: 'CẢNH BÁO', 'QUAN TRỌNG')")
+    statement: str = Field(..., max_length=200, description="Câu nhận định mạnh")
+    tag: Optional[str] = Field(None, max_length=40, description="Tag nhỏ (VD: 'CẢNH BÁO', 'QUAN TRỌNG')")
 
 # ─── 6. OUTRO ────────────────────────────────────────────────────────────
 class OutroTemplateData(BaseModel):
     template: Literal["outro"] = "outro"
-    ctaTop: str = Field(..., max_length=30, description="Call to action text")
-    channelName: str = Field(..., max_length=30, description="Tên kênh")
-    source: str = Field(..., max_length=40, description="Nguồn bài viết")
+    ctaTop: str = Field(..., max_length=60, description="Call to action text")
+    channelName: str = Field(..., max_length=60, description="Tên kênh")
+    source: str = Field(..., max_length=80, description="Nguồn bài viết")
 
 # ── Scene type enum ─────────────────────────────────────────────────────
 class SceneType(str, Enum):

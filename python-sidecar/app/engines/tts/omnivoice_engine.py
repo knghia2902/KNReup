@@ -20,34 +20,43 @@ class OmniVoiceTTSEngine(TTSEngine):
     
     engine_name = "omnivoice"
     is_online = False
+    
+    # Use class-level variable to ensure singleton model across requests
+    _shared_model = None
+
+    @property
+    def _model(self):
+        return OmniVoiceTTSEngine._shared_model
+
+    @_model.setter
+    def _model(self, value):
+        OmniVoiceTTSEngine._shared_model = value
 
     def __init__(self):
         self.profiles_dir = MODELS_DIR
         self.profiles_dir.mkdir(parents=True, exist_ok=True)
-        self._model = None
         self._cancel_flag = False
         self._voice_prompts = {}
-        # We don't load the model immediately to save memory until requested,
-        # but we initialize the structure.
+        # We don't load the model immediately to save memory until requested.
 
     def force_unload(self):
         """Force unload model from GPU to free VRAM immediately."""
         self._cancel_flag = True
-        if self._model is not None:
+        if OmniVoiceTTSEngine._shared_model is not None:
             logger.info("Force unloading OmniVoice model from GPU...")
             try:
                 import torch
-                del self._model
-                self._model = None
+                del OmniVoiceTTSEngine._shared_model
+                OmniVoiceTTSEngine._shared_model = None
                 gc.collect()
                 torch.cuda.empty_cache()
                 logger.info("OmniVoice model unloaded, GPU memory freed.")
             except Exception as e:
                 logger.error(f"Error unloading OmniVoice model: {e}")
-                self._model = None
+                OmniVoiceTTSEngine._shared_model = None
 
     def _load_model(self):
-        if self._model is not None:
+        if OmniVoiceTTSEngine._shared_model is not None:
             return
             
         try:
@@ -154,9 +163,13 @@ class OmniVoiceTTSEngine(TTSEngine):
             else:
                 kwargs["instruct"] = "female"
             
+            logger.info(f"Starting OmniVoice generation for text (length {len(text)}): {text[:50]}...")
+            
             def _run_generate():
                 return self._model.generate(**kwargs)
             results = await asyncio.to_thread(_run_generate)
+            
+            logger.info("OmniVoice generation completed.")
             
             if not results or len(results) == 0:
                 raise RuntimeError("OmniVoice failed to generate any audio.")

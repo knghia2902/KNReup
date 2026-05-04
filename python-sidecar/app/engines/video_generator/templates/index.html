@@ -31,6 +31,8 @@
             align-items: center;
             padding: 80px;
             box-sizing: border-box;
+            word-break: break-word;
+            text-wrap: balance;
         }
 
         /* Template: hook */
@@ -297,6 +299,27 @@
 
             timeline.to(cta, {opacity: 1, duration: 0.6});
             timeline.to(chan, {opacity: 1, scale: 1, duration: 0.8, ease: "elastic.out(1, 0.5)"}, "-=0.2");
+        }
+
+        // Auto-fit text logic to prevent overflow bounds
+        // Container max inner dimensions (1080x1920 minus padding and safe areas)
+        const MAX_H = 1500;
+        const MAX_W = 920;
+        let attempts = 0;
+        
+        while ((container.scrollHeight > MAX_H || container.scrollWidth > MAX_W) && attempts < 25) {
+            const elements = container.querySelectorAll('*');
+            let shrunk = false;
+            elements.forEach(el => {
+                const style = window.getComputedStyle(el);
+                const size = parseFloat(style.fontSize);
+                if (size > 30) { // Don't shrink below 30px to maintain readability
+                    el.style.fontSize = (size * 0.9) + 'px';
+                    shrunk = true;
+                }
+            });
+            if (!shrunk) break; // Cannot shrink further
+            attempts++;
         }
 
         // Đảm bảo timeline đã sẵn sàng

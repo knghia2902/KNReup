@@ -48,6 +48,32 @@ tmp/
 query_db.py
 src-tauri/build_log.txt
 
+# Test frame outputs & scratch
+test_frames/
+test_frames_2/
+test_frames_final/
+python-sidecar/test_speed/
+python-sidecar/test_video/
+python-sidecar/test_hf/
+python-sidecar/test_e2e_log.txt
+python-sidecar/test_script_output.json
+scratch/
+scratch_*.py
+scratch_*.jpg
+scratch_*.md
+
+# Profiling
+*.cpuprofile
+
+# Workspace outputs (video gen)
+python-sidecar/workspace/
+
+# Runtime logs
+python-sidecar/logs/
+
+# Pytest cache
+.pytest_cache/
+
 # Database files (local dev only)
 *.db
 

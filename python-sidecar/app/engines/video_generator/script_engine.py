@@ -26,7 +26,10 @@ class OllamaScriptGenerator:
                 models = [m["name"] for m in resp.json().get("models", [])]
                 if not models:
                     raise ScriptGeneratorError("No downloaded models found in Ollama.")
-                # Prefer gemma or qwen
+                # Prefer gemma4:e2b (7.1GB fits in 8GB VRAM), then fallback to others
+                for pref in ["gemma4:e2b", "gemma4:e4b", "gemma2:2b", "qwen3.5:9b"]:
+                    if pref in models:
+                        return pref
                 chosen = next((m for m in models if "gemma" in m.lower()), None)
                 if not chosen:
                     chosen = next((m for m in models if "qwen" in m.lower()), None)
@@ -85,7 +88,21 @@ class OllamaScriptGenerator:
             f'    }},\n'
             f'    {{\n'
             f'      "id": "s3", "type": "body",\n'
-            f'      "voiceText": "Nội dung...",\n'
+            f'      "voiceText": "Mặt khác, đối thủ lại...",\n'
+            f'      "templateData": {{\n'
+            f'        "template": "comparison",\n'
+            f'        "left": {{ "label": "Bên Trái", "value": "Chậm", "color": "cyan" }},\n'
+            f'        "right": {{ "label": "Bên Phải", "value": "Nhanh", "color": "purple", "winner": true }}\n'
+            f'      }}\n'
+            f'    }},\n'
+            f'    {{\n'
+            f'      "id": "s4", "type": "body",\n'
+            f'      "voiceText": "Điều này thật đáng kinh ngạc...",\n'
+            f'      "templateData": {{ "template": "callout", "statement": "Nhận định cực kỳ mạnh mẽ!", "tag": "CHÚ Ý" }}\n'
+            f'    }},\n'
+            f'    {{\n'
+            f'      "id": "s5", "type": "body",\n'
+            f'      "voiceText": "Và có 3 điểm chính...",\n'
             f'      "templateData": {{ "template": "feature-list", "title": "Điểm chính", "bullets": ["Bullet 1", "Bullet 2"] }}\n'
             f'    }},\n'
             f'    {{\n'
@@ -115,7 +132,7 @@ class OllamaScriptGenerator:
             tokens = []
             async with httpx.AsyncClient(timeout=httpx.Timeout(
                 connect=10.0,
-                read=120.0,    # 120s between chunks is very generous
+                read=300.0,    # 300s to allow slow model loading / context evaluation
                 write=10.0,
                 pool=10.0
             )) as client:
@@ -152,7 +169,7 @@ class OllamaScriptGenerator:
             # Unload the model to free VRAM for TTS
             logger.info("Unloading Ollama model to free VRAM...")
             try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
+                async with httpx.AsyncClient(timeout=30.0) as client:
                     await client.post(f"{self.url}/api/generate", json={
                         "model": model,
                         "keep_alive": 0
@@ -161,7 +178,35 @@ class OllamaScriptGenerator:
             except Exception as unload_e:
                 logger.warning(f"Failed to unload Ollama model: {unload_e}")
                 
-            return VideoScript(**parsed_json)
+            # Auto-correction for common LLM JSON shape hallucinations
+            if "metadata" not in parsed_json:
+                logger.warning("LLM omitted 'metadata' wrapper. Auto-correcting...")
+                corrected = {
+                    "version": parsed_json.get("version", "1.0"),
+                    "metadata": {
+                        "title": parsed_json.get("title", "Bản tin KNReup"),
+                        "source": parsed_json.get("source", {"url": source_url if hasattr(self, 'source_url') else "", "domain": "knreup.com"}),
+                        "channel": parsed_json.get("channel", "KNReup News")
+                    },
+                    "voice": parsed_json.get("voice", { "provider": "omnivoice", "voiceId": "vi-VN-HoaiMyNeural", "speed": 1.0 }),
+                    "scenes": parsed_json.get("scenes", [])
+                }
+                
+                # If LLM put scenes as top-level keys like scene_1, scene_2
+                if not corrected["scenes"]:
+                    extracted_scenes = []
+                    for k, v in parsed_json.items():
+                        if isinstance(v, dict) and "type" in v and "voiceText" in v:
+                            extracted_scenes.append(v)
+                    if extracted_scenes:
+                        corrected["scenes"] = extracted_scenes
+                        
+                parsed_json = corrected
+
+            script_obj = VideoScript(**parsed_json)
+            if not script_obj.scenes:
+                raise ScriptGeneratorError("LLM failed to generate any scenes.")
+            return script_obj
         except json.JSONDecodeError as e:
             logger.error(f"LLM output is not valid JSON: {response_text[:500]}")
             raise ScriptGeneratorError(f"Ollama returned invalid JSON: {e}")

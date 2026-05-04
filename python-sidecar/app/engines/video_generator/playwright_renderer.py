@@ -56,8 +56,8 @@ class FrameRenderer:
             # Take screenshots frame by frame
             for i in range(total_frames):
                 current_time = i / self.fps
-                # Seek GSAP global timeline
-                await page.evaluate(f"gsap.globalTimeline.seek({current_time});")
+                # Seek GSAP global timeline and prevent serialization hang
+                await page.evaluate(f"gsap.globalTimeline.seek({current_time}); null;")
                 
                 frame_idx = start_frame_index + i
                 frame_path = os.path.join(output_dir, f"frame_{frame_idx:05d}.jpg")
