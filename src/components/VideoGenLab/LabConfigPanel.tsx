@@ -99,20 +99,19 @@ export function LabConfigPanel() {
           </select>
         </div>
 
-        {store.pipelineStatus === 'idle' && (
-          <div className="vgl-field">
-            <label className="vgl-field-label">Preview Scene</label>
-            <select
-              className="vgl-select"
-              value={store.selectedTemplate || 0}
-              onChange={(e) => store.setSelectedTemplate(Number(e.target.value))}
-            >
-              {getTemplateSet(store.selectedTemplateSet).templates.map((tpl, idx) => (
-                <option key={tpl.id} value={idx}>{tpl.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="vgl-field">
+          <label className="vgl-field-label">Preview Scene</label>
+          <select
+            className="vgl-select"
+            value={store.selectedTemplate || 0}
+            onChange={(e) => store.setSelectedTemplate(Number(e.target.value))}
+            disabled={store.pipelineStatus === 'running' || store.pipelineStatus === 'paused'}
+          >
+            {getTemplateSet(store.selectedTemplateSet).templates.map((tpl, idx) => (
+              <option key={tpl.id} value={idx}>{tpl.name}</option>
+            ))}
+          </select>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           {/* Voice Selection */}

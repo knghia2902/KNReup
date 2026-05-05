@@ -4,26 +4,12 @@ import { LabVideoPreview } from './LabVideoPreview';
 import { LabLivePreview } from './LabLivePreview';
 import { FilmStrip } from '@phosphor-icons/react';
 
-const phoneFrame: React.CSSProperties = {
-  height: '100%',
-  maxHeight: '85vh',
-  aspectRatio: '9/16',
-  backgroundColor: 'var(--vgl-bg)',
-  borderRadius: '32px',
-  border: '1px solid var(--vgl-border)',
-  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-  overflow: 'hidden',
-  display: 'flex',
-  flexDirection: 'column',
-  position: 'relative'
-};
-
 export function LabOutputPanel() {
   const store = useVideoGenLabStore();
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', overflow: 'auto' }}>
-      <div style={phoneFrame}>
+    <div className="vgl-output-wrapper">
+      <div className="vgl-phone-frame">
 
         {/* IDLE: Live Preview with Sample Data */}
         {store.pipelineStatus === 'idle' && (

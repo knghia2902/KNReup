@@ -86,6 +86,7 @@ export interface VideoGenLabState {
   continuePipeline: (modifiedScript?: any) => Promise<void>;
   fetchHistory: () => Promise<void>;
   viewHistoryEntry: (entry: LabHistoryEntry) => void;
+  deleteHistoryEntry: (sessionId: string) => Promise<void>;
   reset: () => void;
   addLog: (entry: LabLogEntry) => void;
 }
@@ -419,6 +420,18 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
       },
       overallProgress: 100
     });
+  },
+
+  deleteHistoryEntry: async (sessionId: string) => {
+    try {
+      await fetch(`http://127.0.0.1:8008/api/video-gen/lab/history/${sessionId}`, {
+        method: 'DELETE'
+      });
+      // Filter out locally right away
+      set({ history: get().history.filter(e => e.session_id !== sessionId) });
+    } catch (e) {
+      console.error(e);
+    }
   },
 
   reset: () => {

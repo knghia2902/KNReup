@@ -18,7 +18,6 @@ import {
   GearSix,
   Scissors,
   FilmStrip,
-  TestTube,
 } from '@phosphor-icons/react';
 import { RecentProjects } from './RecentProjects';
 import '../../styles/design-system.css';
@@ -168,15 +167,10 @@ export function HomeLauncher() {
                 <span>Smart Crop</span>
                 <span className="launcher-tool-desc">AI crop 16:9 → 9:16</span>
               </button>
-              <button className="launcher-tool-card" onClick={() => openTool('video-generator')}>
+              <button className="launcher-tool-card" onClick={() => openTool('video-gen-lab')}>
                 <FilmStrip size={24} weight="duotone" />
                 <span>Video Gen</span>
-                <span className="launcher-tool-desc">Tạo video từ Web Scraper</span>
-              </button>
-              <button className="launcher-tool-card" onClick={() => openTool('video-gen-lab')}>
-                <TestTube size={24} weight="duotone" />
-                <span>Video Lab</span>
-                <span className="launcher-tool-desc">Test pipeline URL → Video</span>
+                <span className="launcher-tool-desc">Tạo video từ URL bài báo</span>
               </button>
             </div>
           </div>

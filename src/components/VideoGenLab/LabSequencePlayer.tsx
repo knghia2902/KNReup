@@ -50,10 +50,21 @@ export function LabSequencePlayer() {
     }, []);
 
     useEffect(() => {
-        window.addEventListener('resize', fitViewport);
-        // Delay initial fit to ensure DOM is ready
-        setTimeout(fitViewport, 50);
-        return () => window.removeEventListener('resize', fitViewport);
+        fitViewport();
+        
+        const wrap = wrapRef.current;
+        let observer: ResizeObserver | null = null;
+        if (wrap) {
+            observer = new ResizeObserver(() => fitViewport());
+            observer.observe(wrap);
+        } else {
+            window.addEventListener('resize', fitViewport);
+        }
+        
+        return () => {
+            if (observer) observer.disconnect();
+            window.removeEventListener('resize', fitViewport);
+        };
     }, [fitViewport]);
 
     // Build the master timeline
@@ -88,6 +99,7 @@ export function LabSequencePlayer() {
                     c.innerHTML = '';
                     c.style.padding = '80px';
                     c.style.alignItems = 'center';
+                    c.style.justifyContent = 'center';
                     c.style.gap = '';
                     
                     // Hide initially

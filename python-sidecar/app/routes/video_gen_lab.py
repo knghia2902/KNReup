@@ -219,7 +219,7 @@ async def generate_lab_video(request: LabGenerateRequest):
         async for evt in _run_pipeline_from_tts(session_id, session_dir, script_dict, request.model_dump()):
             yield evt
             
-            if '"status":"done"' in evt:
+            if '"status": "done"' in evt or '"status":"done"' in evt:
                 entry = {
                     "session_id": session_id,
                     "url": request.url,
@@ -254,7 +254,7 @@ async def continue_lab_pipeline(session_id: str, request: LabContinueRequest):
         async for evt in _run_pipeline_from_tts(session_id, session_dir, request.script, req_dict):
             yield evt
             
-            if '"status":"done"' in evt:
+            if '"status": "done"' in evt or '"status":"done"' in evt:
                 url = request.script.get("metadata", {}).get("source", {}).get("url", "")
                 entry = {
                     "session_id": session_id,
@@ -291,6 +291,22 @@ async def list_ollama_models():
 async def get_lab_history():
     return {"history": get_history()}
 
+@router.delete("/video-gen/lab/history/{session_id}")
+async def delete_lab_history(session_id: str):
+    import shutil
+    
+    # 1. Update history.json
+    history = get_history()
+    new_history = [e for e in history if e.get("session_id") != session_id]
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(new_history, f, indent=2, ensure_ascii=False)
+        
+    # 2. Delete the physical workspace folder
+    session_dir = os.path.join(WORKSPACE_DIR, session_id)
+    if os.path.exists(session_dir):
+        shutil.rmtree(session_dir, ignore_errors=True)
+        
+    return {"success": True, "history": new_history}
 
 @router.get("/video-gen/lab/download/{session_id}")
 async def download_lab_video(session_id: str):

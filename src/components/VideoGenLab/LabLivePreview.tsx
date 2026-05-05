@@ -61,6 +61,7 @@ export function LabLivePreview() {
     c.innerHTML = '';
     c.style.padding = '80px';
     c.style.alignItems = 'center';
+    c.style.justifyContent = 'center';
     c.style.gap = '';
 
     tpl.render(c, tpl.sampleData, theme);
@@ -118,8 +119,16 @@ export function LabLivePreview() {
 
   useEffect(() => {
     fitViewport();
-    const onResize = () => fitViewport();
-    window.addEventListener('resize', onResize);
+    
+    // Use ResizeObserver for robust layout tracking
+    const wrap = wrapRef.current;
+    let observer: ResizeObserver | null = null;
+    if (wrap) {
+        observer = new ResizeObserver(() => fitViewport());
+        observer.observe(wrap);
+    } else {
+        window.addEventListener('resize', fitViewport);
+    }
 
     if (typeof gsap === 'undefined') {
       const script = document.createElement('script');
@@ -128,7 +137,10 @@ export function LabLivePreview() {
       document.head.appendChild(script);
     }
 
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      if (observer) observer.disconnect();
+      window.removeEventListener('resize', fitViewport);
+    };
   }, [fitViewport, renderScene]);
 
   const handleScrub = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -147,18 +159,20 @@ export function LabLivePreview() {
   const currentTime = (duration * progress).toFixed(1);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#000', position: 'relative' }}>
       {/* Viewport */}
-      <div style={{ maxHeight: 'calc(85vh - 48px)', maxWidth: '100%', height: '100%', aspectRatio: '9/16', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }} ref={wrapRef}>
-        <div ref={frameRef} style={{ position: 'relative', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', borderRadius: '8px' }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }} ref={wrapRef}>
+        <div ref={frameRef} style={{ position: 'relative', overflow: 'hidden' }}>
           <div ref={viewportRef} style={{ position: 'absolute', top: 0, left: 0, width: 1080, height: 1920, transformOrigin: 'top left' }}>
             <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }} />
           </div>
+          {/* Film grain overlay */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9999, backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.35%22/%3E%3C/svg%3E")', mixBlendMode: 'overlay' }} />
         </div>
       </div>
 
       {/* Controls */}
-      <div style={{ height: '48px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '12px', backgroundColor: 'var(--bg-secondary)' }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '48px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '12px', background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)', zIndex: 10 }}>
         <button 
           onClick={togglePlayback}
           style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

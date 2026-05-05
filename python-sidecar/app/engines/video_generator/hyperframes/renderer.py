@@ -125,16 +125,38 @@ class HyperFramesRenderer:
                     if not line:
                         continue
 
-                    pct_match = re.search(r"(\d+)%", line)
+                    # Remove ANSI escape codes
+                    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                    clean_line = ansi_escape.sub('', line).strip()
+                    
+                    if not clean_line:
+                        continue
+
+                    # Attempt to parse progress
+                    pct_match = re.search(r"(\d+)%", clean_line)
                     if pct_match:
                         pct = int(pct_match.group(1))
                         if pct > last_pct:
                             last_pct = pct
-                            msg = re.sub(r"[█░\s]+\d+%\s*", "", line).strip()
+                            msg = re.sub(r"[█░\s]+\d+%\s*", "", clean_line).strip()
+                            
+                            # Clean up known ugly prefixes
+                            msg = re.sub(r"^\[.*?\]\s*", "", msg).strip() # Remove [Compiler] or [INFO]
+                            
                             yield {
                                 "status": "rendering",
                                 "progress": pct,
                                 "message": msg or "Đang render..."
+                            }
+                    else:
+                        # Yield significant events even if no percentage
+                        lower_line = clean_line.lower()
+                        if "extracting" in lower_line or "processing" in lower_line or "capturing" in lower_line:
+                            msg = re.sub(r"^\[.*?\]\s*", "", clean_line).strip()
+                            yield {
+                                "status": "rendering",
+                                "progress": last_pct,
+                                "message": msg or "Đang xử lý..."
                             }
 
             await process.wait()

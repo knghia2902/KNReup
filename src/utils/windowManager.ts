@@ -101,8 +101,7 @@ export async function openTool(toolId: string): Promise<WebviewWindow | null> {
     downloader: { title: 'KNReup Downloader', width: 1000, height: 700 },
     'voice-studio': { title: 'KNReup Voice Studio', width: 1000, height: 750 },
     'smart-crop': { title: 'KNReup Smart Crop', width: 1200, height: 800 },
-    'video-generator': { title: 'KNReup Video Generator', width: 1200, height: 800 },
-    'video-gen-lab': { title: 'KNReup Video Gen Lab', width: 1400, height: 850 },
+    'video-gen-lab': { title: 'KNReup Video Gen', width: 1400, height: 850 },
   };
 
   const config = toolConfigs[toolId] || { title: `KNReup — ${toolId}`, width: 800, height: 600 };

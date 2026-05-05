@@ -14,7 +14,7 @@ export function VideoGenLabWindow() {
   useEffect(() => {
     store.fetchOllamaModels();
     store.fetchHistory();
-    getCurrentWindow().setTitle('KNReup Video Gen Lab').catch(console.warn);
+    getCurrentWindow().setTitle('KNReup Video Gen').catch(console.warn);
   }, [store.fetchOllamaModels, store.fetchHistory]);
 
   return (
@@ -24,16 +24,11 @@ export function VideoGenLabWindow() {
         {/* Top Hero Section */}
         <section className="vgl-top-section">
           <div className="vgl-hero-header">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <h1>
                 <Flask size={40} weight="duotone" color="var(--vgl-accent)" />
-                Video Gen Lab
+                Video Gen
               </h1>
-              <button className="theme-toggle" onClick={toggle} title={isDark ? 'Light Mode' : 'Dark Mode'}>
-                {isDark ? <Sun size={14} weight="bold" /> : <Moon size={14} weight="bold" />}
-              </button>
-            </div>
-            <p>End-to-end testing environment for the Auto-Create-Video pipeline. Enter a URL below to begin extraction.</p>
+            <p>Tạo video tự động từ URL bài báo. Nhập link bên dưới để bắt đầu.</p>
           </div>
 
           <div className="vgl-hero-search">
@@ -70,16 +65,7 @@ export function VideoGenLabWindow() {
                 {store.errorMessage}
               </div>
             )}
-            <div className="vgl-status-row">
-              <div className={`vgl-status-dot ${
-                store.pipelineStatus === 'running' ? 'running' : 
-                store.pipelineStatus === 'complete' ? 'active' : 
-                store.pipelineStatus === 'error' ? 'error' : ''
-              }`} />
-              <span className="vgl-status-label">
-                STATUS: {store.pipelineStatus.toUpperCase()} {store.currentStepName ? `| ${store.currentStepName}` : ''}
-              </span>
-            </div>
+
           </div>
         </section>
 

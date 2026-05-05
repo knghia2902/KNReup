@@ -27,9 +27,7 @@ function RootApp() {
           import('./components/tools/VoiceCloneWindow').then((m) => setView(() => m.VoiceCloneWindow));
         } else if (toolId === 'smart-crop') {
           import('./components/SmartCrop/SmartCropWindow').then((m) => setView(() => m.SmartCropWindow));
-        } else if (toolId === 'video-generator') {
-          import('./components/VideoGenerator/VideoGeneratorWindow').then((m) => setView(() => m.VideoGeneratorWindow));
-        } else if (toolId === 'video-gen-lab') {
+        } else if (toolId === 'video-generator' || toolId === 'video-gen-lab') {
           import('./components/VideoGenLab/VideoGenLabWindow').then((m) => setView(() => m.VideoGenLabWindow));
         } else {
           // Fallback — show launcher
