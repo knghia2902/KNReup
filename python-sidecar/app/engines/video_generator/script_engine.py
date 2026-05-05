@@ -64,6 +64,12 @@ class OllamaScriptGenerator:
             f"  * 'stat-hero' — for highlighting a big number/statistic\n"
             f"  * 'feature-list' — for listing key points (1-4 bullets)\n"
             f"  * 'callout' — for bold statements or quotes\n"
+            f"  * 'quote' — for pulling a quote from a person\n"
+            f"  * 'timeline' — for a list of chronological events\n"
+            f"  * 'countdown' — for displaying time remaining\n"
+            f"  * 'split-image' — for showing an image alongside text\n"
+            f"  * 'data-grid' — for showing a 2x2 grid of metrics\n"
+            f"  * 'title-card' — for chapter headings or transitions\n"
             f"- Each scene has 'voiceText' (narration in Vietnamese, 2-4 sentences)\n"
             f"- Keep total voiceText around 48-72 seconds when read aloud\n\n"
             f"OUTPUT FORMAT (strict JSON):\n"
@@ -104,6 +110,11 @@ class OllamaScriptGenerator:
             f'      "id": "s5", "type": "body",\n'
             f'      "voiceText": "Và có 3 điểm chính...",\n'
             f'      "templateData": {{ "template": "feature-list", "title": "Điểm chính", "bullets": ["Bullet 1", "Bullet 2"] }}\n'
+            f'    }},\n'
+            f'    {{\n'
+            f'      "id": "s6", "type": "body",\n'
+            f'      "voiceText": "Nhìn lại quá trình lịch sử...",\n'
+            f'      "templateData": {{ "template": "timeline", "title": "Lịch sử", "events": [{{"year": "2020", "event": "Bắt đầu"}}, {{"year": "2021", "event": "Phát triển"}}] }}\n'
             f'    }},\n'
             f'    {{\n'
             f'      "id": "sN", "type": "outro",\n'
@@ -179,27 +190,115 @@ class OllamaScriptGenerator:
                 logger.warning(f"Failed to unload Ollama model: {unload_e}")
                 
             # Auto-correction for common LLM JSON shape hallucinations
-            if "metadata" not in parsed_json:
-                logger.warning("LLM omitted 'metadata' wrapper. Auto-correcting...")
-                corrected = {
-                    "version": parsed_json.get("version", "1.0"),
-                    "metadata": {
-                        "title": parsed_json.get("title", "Bản tin KNReup"),
-                        "source": parsed_json.get("source", {"url": source_url if hasattr(self, 'source_url') else "", "domain": "knreup.com"}),
-                        "channel": parsed_json.get("channel", "KNReup News")
-                    },
-                    "voice": parsed_json.get("voice", { "provider": "omnivoice", "voiceId": "vi-VN-HoaiMyNeural", "speed": 1.0 }),
-                    "scenes": parsed_json.get("scenes", [])
-                }
+            if isinstance(parsed_json, dict):
+                if "metadata" not in parsed_json:
+                    logger.warning("LLM omitted 'metadata' wrapper. Auto-correcting...")
+                    corrected = {
+                        "version": parsed_json.get("version", "1.0"),
+                        "metadata": {
+                            "title": parsed_json.get("title", "Bản tin KNReup"),
+                            "source": parsed_json.get("source", {"url": source_url if hasattr(self, 'source_url') else "", "domain": "knreup.com"}),
+                            "channel": parsed_json.get("channel", "KNReup News")
+                        },
+                        "voice": parsed_json.get("voice", { "provider": "omnivoice", "voiceId": "vi-VN-HoaiMyNeural", "speed": 1.0 }),
+                        "scenes": parsed_json.get("scenes", [])
+                    }
+                else:
+                    corrected = parsed_json.copy()
                 
                 # If LLM put scenes as top-level keys like scene_1, scene_2
-                if not corrected["scenes"]:
+                if not corrected.get("scenes"):
                     extracted_scenes = []
                     for k, v in parsed_json.items():
                         if isinstance(v, dict) and "type" in v and "voiceText" in v:
                             extracted_scenes.append(v)
                     if extracted_scenes:
                         corrected["scenes"] = extracted_scenes
+                        
+                # Auto-correct hallucinated scene types to 'body'
+                for s in corrected.get("scenes", []):
+                    if "type" in s and s["type"] not in ["hook", "body", "outro"]:
+                        # If LLM put template name in the type field
+                        valid_templates = [
+                            "comparison", "stat-hero", "feature-list", "callout", 
+                            "quote", "timeline", "countdown", "split-image", 
+                            "data-grid", "title-card"
+                        ]
+                        if s["type"] in valid_templates:
+                            if "templateData" not in s:
+                                s["templateData"] = {"template": s["type"]}
+                            elif "template" not in s["templateData"]:
+                                s["templateData"]["template"] = s["type"]
+                        s["type"] = "body"
+
+                # Auto-correct nested templateData (e.g. {"template": "timeline", "timeline": {"title": "..."}})
+                for s in corrected.get("scenes", []):
+                    td = s.get("templateData", {})
+                    if isinstance(td, dict):
+                        tmpl_name = td.get("template")
+                        # Infer template name if missing
+                        if not tmpl_name:
+                            valid_templates = [
+                                "hook", "comparison", "stat-hero", "feature-list", "callout", 
+                                "outro", "quote", "timeline", "countdown", "split-image", 
+                                "data-grid", "title-card"
+                            ]
+                            for k in td.keys():
+                                if k in valid_templates and isinstance(td[k], dict):
+                                    tmpl_name = k
+                                    td["template"] = k
+                                    break
+                        
+                        # Flatten the nested dictionary
+                        if tmpl_name and tmpl_name in td and isinstance(td[tmpl_name], dict):
+                            nested_data = td.pop(tmpl_name)
+                            for k, v in nested_data.items():
+                                if k not in td:
+                                    td[k] = v
+
+                        # Schema Healer: Fix mismatched keys and fill missing required fields
+                        t = td.get("template")
+                        if t == "quote":
+                            if "statement" in td and "text" not in td: td["text"] = td.pop("statement")
+                            if "text" not in td: td["text"] = "Đang cập nhật..."
+                            if "author" not in td: td["author"] = "Nguồn tin"
+                        elif t == "callout":
+                            if "text" in td and "statement" not in td: td["statement"] = td.pop("text")
+                            if "statement" not in td: td["statement"] = "Thông tin quan trọng"
+                        elif t == "timeline":
+                            if "title" not in td: td["title"] = "Dòng sự kiện"
+                            if "events" not in td or not isinstance(td["events"], list) or len(td["events"]) < 2:
+                                td["events"] = [{"year": "Nay", "event": "Sự kiện 1"}, {"year": "Tới", "event": "Sự kiện 2"}]
+                        elif t == "feature-list":
+                            if "title" not in td: td["title"] = "Danh sách"
+                            if "bullets" not in td or not isinstance(td["bullets"], list) or len(td["bullets"]) == 0:
+                                td["bullets"] = ["Điểm nổi bật"]
+                        elif t == "stat-hero":
+                            if "value" not in td: td["value"] = "100%"
+                            if "label" not in td: td["label"] = "Thống kê"
+                        elif t == "comparison":
+                            if "left" not in td: td["left"] = {"label": "A", "value": "N/A", "color": "cyan"}
+                            if "right" not in td: td["right"] = {"label": "B", "value": "N/A", "color": "purple"}
+                        elif t == "countdown":
+                            if "label" not in td: td["label"] = "Đếm ngược"
+                            if "number" not in td: td["number"] = "3"
+                            if "unit" not in td: td["unit"] = "ngày"
+                        elif t == "split-image":
+                            if "headline" not in td: td["headline"] = "Tin nóng"
+                            if "body" not in td: td["body"] = "Đang cập nhật chi tiết..."
+                        elif t == "data-grid":
+                            if "title" not in td: td["title"] = "Bảng dữ liệu"
+                            if "cells" not in td or not isinstance(td["cells"], list) or len(td["cells"]) < 4:
+                                td["cells"] = [
+                                    {"value": "1", "label": "Mục 1"},
+                                    {"value": "2", "label": "Mục 2"},
+                                    {"value": "3", "label": "Mục 3"},
+                                    {"value": "4", "label": "Mục 4"}
+                                ]
+                        elif t == "title-card":
+                            if "category" not in td: td["category"] = "Tin tức"
+                            if "title" not in td: td["title"] = "Tiêu đề"
+                            if "date" not in td: td["date"] = "Hôm nay"
                         
                 parsed_json = corrected
 

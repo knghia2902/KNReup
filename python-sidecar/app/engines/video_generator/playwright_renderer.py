@@ -16,7 +16,7 @@ class FrameRenderer:
 
     def __init__(self, fps: int = 30):
         self.fps = fps
-        self.html_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "templates", "index.html"))
+        self.layouts_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "templates", "layouts"))
 
     async def render_scene_frames(
         self,
@@ -24,14 +24,21 @@ class FrameRenderer:
         duration_sec: float,
         output_dir: str,
         start_frame_index: int = 0,
+        theme_name: str = "default",
         callback: Optional[Callable[[int, str], None]] = None
     ) -> List[str]:
         """
         Renders a single scene into frames using Playwright.
         Returns a list of frame file paths.
         """
-        if not os.path.exists(self.html_path):
-            raise PlaywrightRendererError(f"Template HTML not found at {self.html_path}")
+        html_path = os.path.join(self.layouts_dir, f"{theme_name}.html")
+        if not os.path.exists(html_path):
+            # Fallback to default if theme not found
+            logger.warning(f"Theme '{theme_name}' not found. Falling back to 'default'.")
+            html_path = os.path.join(self.layouts_dir, "default.html")
+            
+        if not os.path.exists(html_path):
+            raise PlaywrightRendererError(f"Template HTML not found at {html_path}")
 
         frames_paths = []
         total_frames = int(duration_sec * self.fps)
@@ -45,7 +52,7 @@ class FrameRenderer:
             page = await context.new_page()
             
             # Load local HTML file
-            await page.goto(f"file://{self.html_path}")
+            await page.goto(f"file://{html_path}")
             
             # Ensure GSAP and fonts are loaded
             await page.wait_for_load_state("networkidle")

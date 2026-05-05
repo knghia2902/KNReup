@@ -29,6 +29,8 @@ function RootApp() {
           import('./components/SmartCrop/SmartCropWindow').then((m) => setView(() => m.SmartCropWindow));
         } else if (toolId === 'video-generator') {
           import('./components/VideoGenerator/VideoGeneratorWindow').then((m) => setView(() => m.VideoGeneratorWindow));
+        } else if (toolId === 'video-gen-lab') {
+          import('./components/VideoGenLab/VideoGenLabWindow').then((m) => setView(() => m.VideoGenLabWindow));
         } else {
           // Fallback — show launcher
           import('./components/setup/HomeLauncher').then((m) => setView(() => m.HomeLauncher));

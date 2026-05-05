@@ -45,6 +45,11 @@ allowed_origins = [
     "http://127.0.0.1:1420",
     "tauri://localhost",
     "http://tauri.localhost",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "http://localhost:5501",
+    "http://localhost:3000",
+    "null",
 ]
 
 app.add_middleware(
@@ -71,12 +76,14 @@ from app.routes import tts_profiles
 from app.routes import projects
 from app.routes import face_crop
 from app.routes import video_gen
+from app.routes import video_gen_lab
 
 app.include_router(tts_profiles.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(downloader_router, prefix="/api")
 app.include_router(face_crop.router, prefix="/api", tags=["Smart Crop"])
 app.include_router(video_gen.router, prefix="/api", tags=["VideoGenerator"])
+app.include_router(video_gen_lab.router, prefix="/api", tags=["VideoGenLab"])
 
 def find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

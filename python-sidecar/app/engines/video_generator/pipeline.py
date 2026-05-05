@@ -116,14 +116,9 @@ class VideoGenerationPipeline:
             await self.audio_mixer.mix_audio_tracks(voice_paths, None, mixed_audio_path)
 
             # Step B: Frame Rendering
+            theme_name = request.get("theme", "default")
             yield _format_event("rendering", 40, "Đang khởi tạo engine render hình ảnh...")
             
-            async def progress_callback(prog: int, msg: str):
-                # mapped from 40 to 80
-                mapped_prog = 40 + int((prog / 100) * 40)
-                # Currently we can't yield from a simple callback easily unless we use a queue,
-                # but we will just rely on the logging.
-
             start_frame_idx = 0
             for i, scene in enumerate(scenes):
                 yield _format_event("rendering", 40 + int(i/max(len(scenes), 1)*40), f"Render hình ảnh scene {i+1}/{len(scenes)}...")
@@ -132,7 +127,8 @@ class VideoGenerationPipeline:
                     duration_sec=scene["duration"],
                     output_dir=frames_dir,
                     start_frame_index=start_frame_idx,
-                    callback=progress_callback
+                    theme_name=theme_name,
+                    callback=lambda p, msg: None
                 )
                 start_frame_idx += int(scene["duration"] * self.renderer.fps)
 

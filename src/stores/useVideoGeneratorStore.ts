@@ -46,8 +46,8 @@ export interface VideoGeneratorState {
     // Settings
     voiceId: string;
     setVoiceId: (id: string) => void;
-    template: string;
-    setTemplate: (t: string) => void;
+    theme: string;
+    setTheme: (t: string) => void;
     
     // Preview
     previewAudioUrl: string | null;
@@ -83,8 +83,8 @@ export const useVideoGeneratorStore = create<VideoGeneratorState>((set, get) => 
 
     voiceId: 'vi-VN-HoaiMyNeural',
     setVoiceId: (id) => set({ voiceId: id }),
-    template: 'hook',
-    setTemplate: (t) => set({ template: t }),
+    theme: 'default',
+    setTheme: (t) => set({ theme: t }),
 
     previewAudioUrl: null,
     isPreviewPlaying: false,
@@ -143,7 +143,7 @@ export const useVideoGeneratorStore = create<VideoGeneratorState>((set, get) => 
     },
 
     startRender: async () => {
-        const { script, sessionId, voiceId, template } = get();
+        const { script, sessionId, voiceId, theme } = get();
         if (!script || !sessionId) return;
 
         set({
@@ -162,7 +162,7 @@ export const useVideoGeneratorStore = create<VideoGeneratorState>((set, get) => 
                 body: JSON.stringify({
                     session_id: sessionId,
                     script,
-                    template,
+                    theme,
                     voice_id: voiceId
                 })
             });

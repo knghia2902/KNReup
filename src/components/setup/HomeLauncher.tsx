@@ -18,6 +18,7 @@ import {
   GearSix,
   Scissors,
   FilmStrip,
+  TestTube,
 } from '@phosphor-icons/react';
 import { RecentProjects } from './RecentProjects';
 import '../../styles/design-system.css';
@@ -171,6 +172,11 @@ export function HomeLauncher() {
                 <FilmStrip size={24} weight="duotone" />
                 <span>Video Gen</span>
                 <span className="launcher-tool-desc">Tạo video từ Web Scraper</span>
+              </button>
+              <button className="launcher-tool-card" onClick={() => openTool('video-gen-lab')}>
+                <TestTube size={24} weight="duotone" />
+                <span>Video Lab</span>
+                <span className="launcher-tool-desc">Test pipeline URL → Video</span>
               </button>
             </div>
           </div>

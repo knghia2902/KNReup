@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-05T05:32:06.499Z"
-last_activity: 2026-05-04
+last_updated: "2026-05-05T06:02:51.594Z"
+last_activity: 2026-05-05
 progress:
   total_phases: 25
   completed_phases: 15
-  total_plans: 61
+  total_plans: 65
   completed_plans: 44
-  percent: 72
+  percent: 68
 ---
 
 # STATE.md — KNReup Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 29 — video-gen-lab-tool-test-lu-ng-end-to-end-url-crawl4ai-ollama
+**Current focus:** Phase 30 — video-gen-lab-scene-editor-ch-nh-template-v-tr-font-n-i-dung
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 28.1
-- **Status:** Executing Phase 29
-- **Last activity:** 2026-05-04
+- **Status:** Executing Phase 30
+- **Last activity:** 2026-05-05
 
 ## Context
 
