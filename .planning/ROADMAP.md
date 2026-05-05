@@ -351,12 +351,91 @@ Plans:
 
 ---
 
+### Phase 28: Web Scraper to Video Generator (Original)
+
+**Goal:** Xây dựng công cụ tạo video tự động từ URL bài viết sử dụng Crawl4AI + Playwright Python + GSAP.
+**Requirements**: SCRAPER-28-01, SCRAPER-28-02, SCRAPER-28-03, SCRAPER-28-04
+**Depends on:** Phase 27
+**Status**: ⚠️ Superseded by Phase 28.1
+
+> Playwright Python bị lỗi WinError 87, TargetClosedError, asyncio memory crashes trên Windows.
+> Toàn bộ render engine được viết lại trong Phase 28.1 với HyperFrames (Node.js subprocess).
+
+Plans:
+- [x] 28-01-PLAN.md — Backend Foundation (Crawl4AI, LLM, Pydantic schema)
+- [x] 28-02-PLAN.md — Playwright Rendering & Encoding
+- [x] 28-03-PLAN.md — API Routes & SSE Progress
+- [x] 28-04-PLAN.md — React Wizard UI (5-step)
+
+**Code retained:** `schema.py`, `script_engine.py`, `pipeline.py`, `scraper.py` (data layer tái sử dụng trong 28.1)
+
+### Phase 29: Video Gen Lab — Tool test luồng end-to-end URL-Crawl4AI-Ollama-OmniVoice-HyperFrames
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 28
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 29 to break down)
+
+---
+
 ### Phase 28.1: Porting Auto-Create-Video Architecture (Tiếng Việt)
 
-**Goal:** Rebuild pipeline tạo video dựa trên kiến trúc của hoquanghai/Auto-Create-Video (Node.js/Puppeteer/GSAP/HyperFrames/Zod). Sử dụng 6 template cốt lõi, hỗ trợ render 9:16 native, sử dụng LLM để viết script theo schema Zod.
+**Goal:** Rebuild pipeline tạo video dựa trên kiến trúc của hoquanghai/Auto-Create-Video. Mở rộng lên 12 Smart Templates + 6 Theme Palettes, sử dụng HyperFrames (Node.js) thay Playwright Python. Tích hợp Template Preview Studio vào Tauri app.
 **Requirements**: REBUILD-28.1-01, REBUILD-28.1-02
-**Depends on:** Phase 27
+**Depends on:** Phase 28
 **Plans:** 4/4 plans complete
 
 Plans:
-- [x] TBD (run /gsd-plan-phase 28.1 to break down) (completed 2026-05-03)
+- [x] 28.1-01-PLAN.md — Pydantic data + LLM Pipeline (completed 2026-05-03)
+- [x] 28.1-02-PLAN.md — Playwright + GSAP Templates (completed 2026-05-03)
+- [x] 28.1-03-PLAN.md — Audio Sync + FFmpeg Composer (completed 2026-05-03)
+- [x] 28.1-04-PLAN.md — Wizard UI Frontend (completed 2026-05-03)
+
+**Post-plan work (2026-05-04):**
+- [x] HyperFrames migration — Chuyển render engine từ Playwright sang `npx hyperframes` (Node.js subprocess)
+- [x] 12 Smart Templates — Mở rộng từ 6 templates gốc lên 12 templates đầy đủ
+- [x] 6 Theme Palettes — tech-blue, growth-green, finance-gold, warning-red, creator-purple, news-mono
+- [x] test-preview Studio — Standalone HTML preview studio (test-preview/) hoạt động
+- [x] Export MP4 — HyperFrames render 30fps 1080×1920, SSE progress, download
+- [x] React Port — TemplatePreviewStudio.tsx tích hợp vào Tauri app route `video-generator`
+
+**Backend files:**
+- `python-sidecar/app/engines/video_generator/hyperframes/build_composition.py`
+- `python-sidecar/app/engines/video_generator/hyperframes/renderer.py`
+- `python-sidecar/app/routes/video_gen.py` (API: render-preview, download-preview)
+
+**Frontend files:**
+- `src/components/TemplatePreview/TemplatePreviewStudio.tsx`
+- `src/components/TemplatePreview/templateData.ts`
+- `src/styles/template-preview.css`
+
+**UAT**: 1/2 pass (Wizard UI ✅, E2E video template matching ⚠️ — đã fix bằng HyperFrames migration)
+**Status**: 🚧 In Progress — React port hoàn thành, cần verify GSAP animations trong Tauri
+
+### Phase 30: Template Sets Library — Bộ giao diện đa dạng cho 12 Smart Templates
+
+**Goal:** Tạo thêm nhiều bộ giao diện (template sets/skins) cho 12 template types hiện có. Mỗi bộ có render + animate riêng biệt, cùng dùng chung data schema. User chọn bộ template trước khi generate video. Hiện có 1 bộ Default, thêm 2-3 bộ mới (ví dụ: Cinematic, Minimalist, Corporate...).
+**Requirements**: TBD
+**Depends on:** Phase 29
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 30 to break down)
+
+---
+
+### Phase 29: Video Gen Lab — Tool test luồng end-to-end
+
+**Goal:** Tạo tool window riêng (tách khỏi Video Gen wizard) để test toàn bộ pipeline: URL → Crawl4AI → Ollama Gemma4:e2b → OmniVoice TTS → HyperFrames render → MP4. Sử dụng 12 templates + 6 themes đã verify từ test-preview/.
+**Requirements**: VGLAB-29-01, VGLAB-29-02, VGLAB-29-03
+**Depends on:** Phase 28.1
+**Plans:** 0/4 plans complete
+
+Plans:
+- [ ] 29-01-PLAN.md — Backend Lab Pipeline Routes (Wave 1)
+- [ ] 29-02-PLAN.md — Lab Zustand Store & Window Registration (Wave 1)
+- [ ] 29-03-PLAN.md — Lab UI Components (Split-Panel) (Wave 2)
+- [ ] 29-04-PLAN.md — Lab CSS & Visual Polish (Wave 2)

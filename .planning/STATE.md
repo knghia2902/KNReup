@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-03T09:23:33.835Z"
-last_activity: 2026-05-03
+last_updated: "2026-05-04T17:15:59.120Z"
+last_activity: 2026-05-04
 progress:
-  total_phases: 22
+  total_phases: 24
   completed_phases: 15
-  total_plans: 53
+  total_plans: 61
   completed_plans: 44
-  percent: 83
+  percent: 72
 ---
 
 # STATE.md — KNReup Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 28.1 — porting-auto-create-video
+**Current focus:** Phase 29 — video-gen-lab-tool-test-lu-ng-end-to-end-url-crawl4ai-ollama
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
-- **Phase:** 28
-- **Status:** Executing Phase 28.1
-- **Last activity:** 2026-05-03
+- **Phase:** 28.1
+- **Status:** Executing Phase 29
+- **Last activity:** 2026-05-04
 
 ## Context
 
@@ -77,6 +77,10 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 08.3 inserted after Phase 08.2: Tạo ra một Phase riêng biệt tiếp theo chỉ để đập đi xây lại cấu trúc Timeline thành Main Track (URGENT)
 - Phase 25.1 inserted after Phase 25: Tách TTS Batch và Persist Data theo Project — Tách bước TTS ra khỏi Render, lưu Sub + Voice data theo project (URGENT)
 - Phase 26 added: Tích hợp công cụ TrackingFace auto crop 9:16 vào quy trình xử lý video
+- Phase 28 added: Web Scraper to Video Generator (Crawl4AI + Playwright Python) — later superseded
+- Phase 28.1 inserted: Porting Auto-Create-Video Architecture — HyperFrames thay Playwright, 12 templates, React port
+- Phase 29 added: Video Gen Lab — Tool test luồng end-to-end URL→Crawl4AI→Ollama→OmniVoice→HyperFrames
+- Phase 30 updated: Video Gen Lab Scene Editor → Template Sets Library — Scene Editor quá phức tạp, thay bằng tạo nhiều bộ giao diện (skins) cho 12 template types
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
@@ -112,9 +116,11 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 20 | Voice Studio Quick Wins | 📝 Not Started |
 | 25 | Social Media Crawlers | ✅ Complete |
 | 25.1 | Tách TTS Batch & Persist Data theo Project | 📝 Not Started |
+| 28 | Web Scraper to Video Generator (Original) | ⚠️ Superseded by 28.1 |
+| 28.1 | Porting Auto-Create-Video + HyperFrames | 🚧 Plans done, React port done |
 
 ---
-*Last updated: 2026-04-17T22:28+07:00 — Milestone 3 initialized*
+*Last updated: 2026-05-04T22:06+07:00 — Phase 28/28.1 audit & update*
 
 ## Quick Tasks Completed
 
