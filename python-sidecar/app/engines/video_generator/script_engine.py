@@ -1,8 +1,10 @@
 import json
 import logging
 import httpx
+import asyncio
 from typing import Optional
 from app.engines.video_generator.schema import VideoScript
+from app.engines.video_generator.sanitizer import validate_script
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,7 @@ class OllamaScriptGenerator:
         except Exception as e:
             raise ScriptGeneratorError(f"Failed to fetch Ollama models: {e}")
 
-    async def generate(self, content: str, language: str = "Vietnamese", source_url: str = "") -> VideoScript:
+    async def generate(self, content: str, language: str = "Vietnamese", source_url: str = "", source_image: str = None) -> VideoScript:
         """
         Generates a VideoScript from markdown content using Ollama.
         Uses STREAMING to avoid timeout issues — each token keeps the connection alive.
@@ -52,6 +54,8 @@ class OllamaScriptGenerator:
         if source_url:
             from urllib.parse import urlparse
             domain = urlparse(source_url).netloc
+            
+        img_str = f'"{source_image}"' if source_image else 'null'
         
         prompt = (
             f"You are a professional Vietnamese video scriptwriter for TikTok/Reels 9:16 short videos.\n"
@@ -77,7 +81,7 @@ class OllamaScriptGenerator:
             f'  "version": "1.0",\n'
             f'  "metadata": {{\n'
             f'    "title": "Tiêu đề video",\n'
-            f'    "source": {{ "url": "{source_url}", "domain": "{domain}", "image": null }},\n'
+            f'    "source": {{ "url": "{source_url}", "domain": "{domain}", "image": {img_str} }},\n'
             f'    "channel": "KNReup News"\n'
             f'  }},\n'
             f'  "voice": {{ "provider": "omnivoice", "voiceId": "vi-VN-HoaiMyNeural", "speed": 1.0 }},\n'
@@ -189,123 +193,9 @@ class OllamaScriptGenerator:
             except Exception as unload_e:
                 logger.warning(f"Failed to unload Ollama model: {unload_e}")
                 
-            # Auto-correction for common LLM JSON shape hallucinations
-            if isinstance(parsed_json, dict):
-                if "metadata" not in parsed_json:
-                    logger.warning("LLM omitted 'metadata' wrapper. Auto-correcting...")
-                    corrected = {
-                        "version": parsed_json.get("version", "1.0"),
-                        "metadata": {
-                            "title": parsed_json.get("title", "Bản tin KNReup"),
-                            "source": parsed_json.get("source", {"url": source_url if hasattr(self, 'source_url') else "", "domain": "knreup.com"}),
-                            "channel": parsed_json.get("channel", "KNReup News")
-                        },
-                        "voice": parsed_json.get("voice", { "provider": "omnivoice", "voiceId": "vi-VN-HoaiMyNeural", "speed": 1.0 }),
-                        "scenes": parsed_json.get("scenes", [])
-                    }
-                else:
-                    corrected = parsed_json.copy()
-                
-                # If LLM put scenes as top-level keys like scene_1, scene_2
-                if not corrected.get("scenes"):
-                    extracted_scenes = []
-                    for k, v in parsed_json.items():
-                        if isinstance(v, dict) and "type" in v and "voiceText" in v:
-                            extracted_scenes.append(v)
-                    if extracted_scenes:
-                        corrected["scenes"] = extracted_scenes
-                        
-                # Auto-correct hallucinated scene types to 'body'
-                for s in corrected.get("scenes", []):
-                    if "type" in s and s["type"] not in ["hook", "body", "outro"]:
-                        # If LLM put template name in the type field
-                        valid_templates = [
-                            "comparison", "stat-hero", "feature-list", "callout", 
-                            "quote", "timeline", "countdown", "split-image", 
-                            "data-grid", "title-card"
-                        ]
-                        if s["type"] in valid_templates:
-                            if "templateData" not in s:
-                                s["templateData"] = {"template": s["type"]}
-                            elif "template" not in s["templateData"]:
-                                s["templateData"]["template"] = s["type"]
-                        s["type"] = "body"
-
-                # Auto-correct nested templateData (e.g. {"template": "timeline", "timeline": {"title": "..."}})
-                for s in corrected.get("scenes", []):
-                    td = s.get("templateData", {})
-                    if isinstance(td, dict):
-                        tmpl_name = td.get("template")
-                        # Infer template name if missing
-                        if not tmpl_name:
-                            valid_templates = [
-                                "hook", "comparison", "stat-hero", "feature-list", "callout", 
-                                "outro", "quote", "timeline", "countdown", "split-image", 
-                                "data-grid", "title-card"
-                            ]
-                            for k in td.keys():
-                                if k in valid_templates and isinstance(td[k], dict):
-                                    tmpl_name = k
-                                    td["template"] = k
-                                    break
-                        
-                        # Flatten the nested dictionary
-                        if tmpl_name and tmpl_name in td and isinstance(td[tmpl_name], dict):
-                            nested_data = td.pop(tmpl_name)
-                            for k, v in nested_data.items():
-                                if k not in td:
-                                    td[k] = v
-
-                        # Schema Healer: Fix mismatched keys and fill missing required fields
-                        t = td.get("template")
-                        if t == "quote":
-                            if "statement" in td and "text" not in td: td["text"] = td.pop("statement")
-                            if "text" not in td: td["text"] = "Đang cập nhật..."
-                            if "author" not in td: td["author"] = "Nguồn tin"
-                        elif t == "callout":
-                            if "text" in td and "statement" not in td: td["statement"] = td.pop("text")
-                            if "statement" not in td: td["statement"] = "Thông tin quan trọng"
-                        elif t == "timeline":
-                            if "title" not in td: td["title"] = "Dòng sự kiện"
-                            if "events" not in td or not isinstance(td["events"], list) or len(td["events"]) < 2:
-                                td["events"] = [{"year": "Nay", "event": "Sự kiện 1"}, {"year": "Tới", "event": "Sự kiện 2"}]
-                        elif t == "feature-list":
-                            if "title" not in td: td["title"] = "Danh sách"
-                            if "bullets" not in td or not isinstance(td["bullets"], list) or len(td["bullets"]) == 0:
-                                td["bullets"] = ["Điểm nổi bật"]
-                        elif t == "stat-hero":
-                            if "value" not in td: td["value"] = "100%"
-                            if "label" not in td: td["label"] = "Thống kê"
-                        elif t == "comparison":
-                            if "left" not in td: td["left"] = {"label": "A", "value": "N/A", "color": "cyan"}
-                            if "right" not in td: td["right"] = {"label": "B", "value": "N/A", "color": "purple"}
-                        elif t == "countdown":
-                            if "label" not in td: td["label"] = "Đếm ngược"
-                            if "number" not in td: td["number"] = "3"
-                            if "unit" not in td: td["unit"] = "ngày"
-                        elif t == "split-image":
-                            if "headline" not in td: td["headline"] = "Tin nóng"
-                            if "body" not in td: td["body"] = "Đang cập nhật chi tiết..."
-                        elif t == "data-grid":
-                            if "title" not in td: td["title"] = "Bảng dữ liệu"
-                            if "cells" not in td or not isinstance(td["cells"], list) or len(td["cells"]) < 4:
-                                td["cells"] = [
-                                    {"value": "1", "label": "Mục 1"},
-                                    {"value": "2", "label": "Mục 2"},
-                                    {"value": "3", "label": "Mục 3"},
-                                    {"value": "4", "label": "Mục 4"}
-                                ]
-                        elif t == "title-card":
-                            if "category" not in td: td["category"] = "Tin tức"
-                            if "title" not in td: td["title"] = "Tiêu đề"
-                            if "date" not in td: td["date"] = "Hôm nay"
-                        
-                parsed_json = corrected
-
-            script_obj = VideoScript(**parsed_json)
-            if not script_obj.scenes:
-                raise ScriptGeneratorError("LLM failed to generate any scenes.")
-            return script_obj
+            # 2-pass validation: sanitize LLM hallucinations -> Pydantic strict
+            # At this point, script_obj is a fully validated VideoScript object
+            return validate_script(parsed_json, source_url=source_url)
         except json.JSONDecodeError as e:
             logger.error(f"LLM output is not valid JSON: {response_text[:500]}")
             raise ScriptGeneratorError(f"Ollama returned invalid JSON: {e}")
