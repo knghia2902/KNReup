@@ -2,8 +2,13 @@
   "id": "cinematic",
   "name": "Cinematic",
   "description": "Dark dramatic style with grain texture and bold typography",
-  "fonts": ["Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700", "Lora:ital,wght@0,400;0,700;1,400;1,700"],
+  "fonts": [
+    "Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700",
+    "Lora:ital,wght@0,400;0,700;1,400;1,700"
+  ],
   "bg_support": true,
-  "features": ["grain", "shimmer"],
+  "features": [
+    "shimmer"
+  ],
   "shell_html": false
 }

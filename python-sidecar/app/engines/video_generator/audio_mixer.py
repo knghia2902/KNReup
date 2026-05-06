@@ -80,8 +80,8 @@ class AudioMixer:
                 "ffmpeg", "-y",
                 "-i", voice_only_path,
                 "-stream_loop", "-1", "-i", bgm_path,
-                "-filter_complex", "[1:a]volume=-10dB[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2",
-                "-c:a", "aac", "-b:a", "192k",
+                "-filter_complex", "[1:a]volume=-10dB[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0",
+                "-c:a", "pcm_s16le", "-ar", "44100",
                 output_path
             ]
             proc = await asyncio.to_thread(subprocess.run, cmd_mix, capture_output=True, timeout=60)
@@ -101,10 +101,9 @@ class AudioMixer:
             shutil.copy(base_audio_path, output_path)
             return output_path
 
-        # Build ffmpeg filter_complex for all SFX overlays
         inputs = ["-i", base_audio_path]
         filter_parts = []
-        current_label = "[0:a]"
+        sfx_labels = ""
         valid_count = 0
 
         for i, sfx in enumerate(overlays):
@@ -117,23 +116,42 @@ class AudioMixer:
             delay_ms = int((sfx.timestamp_sec + sfx.offset_sec) * 1000)
             vol = sfx.volume
             sfx_label = f"[sfx{i}]"
-            mix_label = f"[mix{i}]"
-            filter_parts.append(f"[{input_idx}:a]volume={vol},adelay={delay_ms}|{delay_ms}{sfx_label}")
-            filter_parts.append(f"{current_label}{sfx_label}amix=inputs=2:duration=first:dropout_transition=0.05{mix_label}")
-            current_label = mix_label
+            # Resample to 44100 mono, apply delay and volume
+            filter_parts.append(
+                f"[{input_idx}:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,"
+                f"adelay={delay_ms}|{delay_ms},volume={vol}{sfx_label}"
+            )
+            sfx_labels += sfx_label
 
-        if not filter_parts:
+        if valid_count == 0:
             import shutil
             shutil.copy(base_audio_path, output_path)
             return output_path
+
+        mixed_sfx_label = ""
+        if valid_count == 1:
+            mixed_sfx_label = sfx_labels
+        else:
+            filter_parts.append(
+                f"{sfx_labels}amix=inputs={valid_count}:dropout_transition=0:normalize=0[sfxall]"
+            )
+            mixed_sfx_label = "[sfxall]"
+
+        # Resample base audio (voice) to match 44100 mono
+        filter_parts.append("[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono[voice]")
+
+        # Final mix of voice and combined SFX
+        filter_parts.append(
+            f"[voice]{mixed_sfx_label}amix=inputs=2:duration=first:dropout_transition=0:normalize=0[out]"
+        )
 
         filter_complex = ";".join(filter_parts)
         cmd = [
             "ffmpeg", "-y",
             *inputs,
             "-filter_complex", filter_complex,
-            "-map", current_label,
-            "-c:a", "aac", "-b:a", "192k",
+            "-map", "[out]",
+            "-c:a", "pcm_s16le", "-ar", "44100",
             output_path,
         ]
 

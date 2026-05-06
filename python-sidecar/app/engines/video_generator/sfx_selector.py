@@ -131,19 +131,46 @@ def pick_sfx_for_scene(
 
 # Volume + offset defaults per category
 DEFAULT_PLAYBACK: Dict[str, Dict[str, float]] = {
-    "transition": {"volume": 0.40, "offset_sec": 0.0},
-    "emphasis":   {"volume": 0.35, "offset_sec": 0.2},
-    "alert":      {"volume": 0.40, "offset_sec": 0.1},
-    "success":    {"volume": 0.35, "offset_sec": 0.3},
-    "fail":       {"volume": 0.35, "offset_sec": 0.1},
-    "reveal":     {"volume": 0.30, "offset_sec": 0.2},
-    "countdown":  {"volume": 0.30, "offset_sec": 0.0},
-    "cinematic":  {"volume": 0.35, "offset_sec": 0.0},
-    "drumroll":   {"volume": 0.40, "offset_sec": 0.0},
-    "outro":      {"volume": 0.35, "offset_sec": 0.5},
+    "transition": {"volume": 0.15, "offset_sec": 0.0},
+    "emphasis":   {"volume": 0.15, "offset_sec": 0.2},
+    "alert":      {"volume": 0.20, "offset_sec": 0.1},
+    "success":    {"volume": 0.15, "offset_sec": 0.3},
+    "fail":       {"volume": 0.15, "offset_sec": 0.1},
+    "reveal":     {"volume": 0.15, "offset_sec": 0.2},
+    "countdown":  {"volume": 0.15, "offset_sec": 0.0},
+    "cinematic":  {"volume": 0.20, "offset_sec": 0.0},
+    "drumroll":   {"volume": 0.15, "offset_sec": 0.0},
+    "outro":      {"volume": 0.25, "offset_sec": 0.5},
 }
 
 
 def get_default_playback(picked: PickedSfx) -> Dict[str, float]:
     cat = picked.rel_path.split("/")[0]
-    return DEFAULT_PLAYBACK.get(cat, {"volume": 0.35, "offset_sec": 0.1})
+    return DEFAULT_PLAYBACK.get(cat, {"volume": 0.15, "offset_sec": 0.1})
+
+def filter_sfx_overlays(overlays: list, max_count: int = 3) -> list:
+    """
+    Limit the number of SFX overlays per video to avoid audio clutter.
+    Prioritizes specific categories like outro, cinematic, transition.
+    """
+    if len(overlays) <= max_count:
+        return overlays
+        
+    def get_priority(overlay):
+        # Using path string to guess category
+        path = str(overlay.path).lower()
+        if "outro" in path: return 100
+        if "cinematic" in path: return 80
+        if "success" in path or "fail" in path: return 70
+        if "transition" in path: return 50
+        if "emphasis" in path: return 40
+        return 10
+        
+    # Sort descending by priority
+    sorted_by_priority = sorted(overlays, key=get_priority, reverse=True)
+    
+    # Take top N
+    top_n = sorted_by_priority[:max_count]
+    
+    # Sort back by timestamp to maintain temporal order
+    return sorted(top_n, key=lambda x: x.timestamp_sec)

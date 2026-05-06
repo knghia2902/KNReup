@@ -8,6 +8,8 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
     '''
 
     if sid == "hook":
+        if data.get("bgSrc"):
+            html += f'<div class="bg kb-zoom-in" style="position:absolute;inset:0;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;opacity:0.35;z-index:-1;"></div>\n        '
         html += f'<div id="{scene_id}-h" class="cine-headline" style="color:{t["text"]}">{data.get("headline","")}</div>'
         if data.get("subhead"):
             html += f'\n        <div id="{scene_id}-s" class="cine-subhead" style="color:{t["accent"]}">{data["subhead"]}</div>'
@@ -192,4 +194,7 @@ def get_css() -> str:
 .cine-tc-category { font-family: 'Inter', sans-serif; font-size: 32px; font-weight: 300; letter-spacing: 12px; text-transform: uppercase; margin-bottom: 40px; }
 .cine-tc-title { font-family: 'Bebas Neue', sans-serif; font-size: 120px; line-height: 1.1; letter-spacing: 6px; text-align: center; margin-bottom: 60px; padding: 0 40px; }
 .cine-tc-date { font-family: 'Inter', sans-serif; font-size: 28px; font-weight: 300; letter-spacing: 8px; text-transform: uppercase; opacity: 0.6; }
+
+.kb-zoom-in { animation: kb-zoom-in var(--scene-dur, 15s) linear forwards; }
+@keyframes kb-zoom-in { from { transform: scale(1.0); } to { transform: scale(1.18); } }
 """

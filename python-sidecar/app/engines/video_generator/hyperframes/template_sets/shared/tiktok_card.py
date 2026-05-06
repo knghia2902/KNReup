@@ -42,9 +42,11 @@ def tiktok_card_css() -> str:
   box-shadow: 0 8px 40px rgba(0,0,0,0.4);
   z-index: 50;
   opacity: 0;
+  width: max-content;
+  max-width: 900px;
 }
 .tt-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 3px solid #333; }
-.tt-profile-info { display: flex; flex-direction: column; gap: 2px; margin-right: 20px; }
+.tt-profile-info { display: flex; flex-direction: column; gap: 2px; margin-right: 20px; white-space: nowrap; }
 .tt-display-name { font-size: 42px; font-weight: 700; color: #fff; line-height: 1.3; }
 .tt-handle { font-size: 28px; color: #a0a0a0; line-height: 1.3; }
 .tt-followers { font-size: 25px; color: #737373; line-height: 1.3; }

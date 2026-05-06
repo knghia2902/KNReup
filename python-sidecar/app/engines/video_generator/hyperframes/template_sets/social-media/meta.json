@@ -2,8 +2,13 @@
   "id": "social-media",
   "name": "Social Media",
   "description": "TikTok/Reels optimized with vibrant colors and follow card",
-  "fonts": ["Inter:wght@400;500;600;700;800;900", "Anton"],
+  "fonts": [
+    "Inter:wght@400;500;600;700;800;900",
+    "Anton"
+  ],
   "bg_support": false,
-  "features": ["grain", "tiktok_card"],
+  "features": [
+    "tiktok_card"
+  ],
   "shell_html": false
 }

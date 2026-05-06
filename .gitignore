@@ -32,6 +32,9 @@ python-sidecar/data/
 Thumbs.db
 desktop.ini
 
+# Cookie files
+douyin_cookie.txt
+
 # Clone directory (reference only, rất nặng)
 Clone/
 

@@ -212,6 +212,7 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
     
     return html
 
+
 def get_shell_html() -> str:
     """Return the persistent shell elements for the V2 News layout."""
     return f'''
@@ -235,8 +236,7 @@ def get_shell_html() -> str:
       <span>vnexpress.net</span>
     </div>
     
-    <!-- Grain overlay -->
-    {render_grain(opacity=0.15)}
+    <!-- Grain overlay is injected globally based on meta.json features -->
     '''
 
 def render_scene_animation(scene_id: str, sid: str, data: dict, start: float) -> str:

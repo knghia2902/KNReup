@@ -4,7 +4,10 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
     """Generate inner HTML for one scene."""
     t = theme
     if sid == "hook":
-        html = f'<div id="{scene_id}-h" class="hook-headline" style="color:{t["text"]}">{data["headline"]}</div>'
+        bg_html = ""
+        if data.get("bgSrc"):
+            bg_html = f'<div class="bg kb-zoom-in" style="position:absolute;inset:0;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;opacity:0.3;z-index:-1;"></div>'
+        html = f'{bg_html}\n        <div id="{scene_id}-h" class="hook-headline" style="color:{t["text"]}">{data["headline"]}</div>'
         if data.get("subhead"):
             html += f'\n        <div id="{scene_id}-s" class="hook-subhead" style="color:{t["accent"]}">{data["subhead"]}</div>'
         return html

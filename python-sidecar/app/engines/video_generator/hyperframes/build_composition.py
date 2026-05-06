@@ -135,8 +135,8 @@ def build_composition(
         from .template_sets.shared.shimmer_sweep import shimmer_css
         extra_css += "\n" + shimmer_css()
 
-    # TikTok card: inject CSS for any set that declares the feature
-    inject_tiktok_card = "tiktok_card" in features
+    # TikTok card: inject CSS for all sets as requested by user
+    inject_tiktok_card = True
     if inject_tiktok_card:
         from .template_sets.shared.tiktok_card import render_tiktok_card, tiktok_card_css, tiktok_card_animation
         extra_css += "\n" + tiktok_card_css()
@@ -146,8 +146,7 @@ def build_composition(
     if meta.get("shell_html") and hasattr(set_module, 'get_shell_html'):
         shell_html = set_module.get_shell_html()
     
-    # Add shared extra HTML
-    shell_html += "\n" + extra_html
+    # Do NOT add extra_html to shell_html here, we want it appended AFTER clips so it overlays them.
 
     # Template sets with their own .scene CSS don't need the default fallback class
     has_custom_scene_css = hasattr(set_module, 'get_shell_html')
@@ -222,6 +221,7 @@ def build_composition(
       .scene {{
         position: absolute; inset: 0;
         box-sizing: border-box;
+        z-index: 0;
       }}
       /* Fallback layout for template sets without their own .scene CSS */
       .scene-default {{
@@ -240,6 +240,8 @@ def build_composition(
 {clips_joined}
 
 {audio_section}
+
+{extra_html}
     </div>
 
     <script>

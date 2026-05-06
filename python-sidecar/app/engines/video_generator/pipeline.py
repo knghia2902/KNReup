@@ -11,7 +11,7 @@ from app.engines.video_generator.script_engine import OllamaScriptGenerator
 from app.engines.video_generator.playwright_renderer import FrameRenderer
 from app.engines.video_generator.audio_mixer import AudioMixer, SfxOverlay
 from app.engines.video_generator.sfx_selector import (
-    index_sfx_library, pick_sfx_for_scene, get_default_playback
+    index_sfx_library, pick_sfx_for_scene, get_default_playback, filter_sfx_overlays
 )
 
 # Try importing TTS Engine
@@ -158,9 +158,10 @@ class VideoGenerationPipeline:
                 current_ts += scene.get("duration", 2.0)
 
             if sfx_overlays:
-                yield _format_event("sfx", 37, f"Overlaying {len(sfx_overlays)} SFX...")
+                filtered_overlays = filter_sfx_overlays(sfx_overlays, max_count=3)
+                yield _format_event("sfx", 37, f"Overlaying {len(filtered_overlays)} SFX (lọc từ {len(sfx_overlays)})...")
                 sfx_audio_path = os.path.join(audio_dir, "mixed_with_sfx.wav")
-                await self.audio_mixer.overlay_sfx(mixed_audio_path, sfx_overlays, sfx_audio_path)
+                await self.audio_mixer.overlay_sfx(mixed_audio_path, filtered_overlays, sfx_audio_path)
                 mixed_audio_path = sfx_audio_path
 
             # Step B: Frame Rendering
@@ -188,6 +189,8 @@ class VideoGenerationPipeline:
                 "-framerate", str(self.renderer.fps),
                 "-i", os.path.join(frames_dir, "frame_%05d.jpg"),
                 "-i", mixed_audio_path,
+                "-map", "0:v:0",
+                "-map", "1:a:0",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
                 "-c:a", "aac", "-b:a", "192k",
                 "-shortest",

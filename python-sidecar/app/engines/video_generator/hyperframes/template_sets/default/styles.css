@@ -165,3 +165,11 @@
         word-break: break-word;
         box-sizing: border-box;
       }
+      
+      .kb-zoom-in {
+        animation: kb-zoom-in var(--scene-dur, 15s) linear forwards;
+      }
+      @keyframes kb-zoom-in {
+        from { transform: scale(1.0); }
+        to { transform: scale(1.18); }
+      }

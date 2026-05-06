@@ -13,7 +13,7 @@ from typing import List, Optional, Dict, Any
 from app.engines.video_generator.scraper import WebScraper
 from app.engines.video_generator.script_engine import OllamaScriptGenerator
 from app.engines.video_generator.audio_mixer import AudioMixer, SfxOverlay
-from app.engines.video_generator.sfx_selector import index_sfx_library, pick_sfx_for_scene, get_default_playback
+from app.engines.video_generator.sfx_selector import index_sfx_library, pick_sfx_for_scene, get_default_playback, filter_sfx_overlays
 from app.engines.video_generator.hyperframes.build_composition import build_composition, THEMES
 from app.engines.video_generator.hyperframes.renderer import HyperFramesRenderer
 
@@ -179,11 +179,13 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
             cumulative_time += scene.get("duration", 2.0)
 
         if overlays:
+            # Filter to max 3 SFX per video, prioritizing outro
+            filtered_overlays = filter_sfx_overlays(overlays, max_count=3)
             sfx_output = os.path.join(audio_dir, "mixed_with_sfx.wav")
             try:
-                await audio_mixer.overlay_sfx(mixed_audio_path, overlays, sfx_output)
+                await audio_mixer.overlay_sfx(mixed_audio_path, filtered_overlays, sfx_output)
                 mixed_audio_path = sfx_output
-                yield format_sse(4, "render", "running", 14, f"Đã overlay {len(overlays)} SFX")
+                yield format_sse(4, "render", "running", 14, f"Đã overlay {len(filtered_overlays)} SFX (lọc từ {len(overlays)})")
             except Exception as e:
                 logger.warning(f"SFX overlay failed (non-fatal): {e}")
     else:
@@ -233,6 +235,8 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
         "ffmpeg", "-y",
         "-i", output_video_path,
         "-i", mixed_audio_path,
+        "-map", "0:v:0",
+        "-map", "1:a:0",
         "-c:v", "copy",
         "-c:a", "aac", "-b:a", "192k",
         "-shortest",
