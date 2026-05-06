@@ -1,6 +1,10 @@
 import os
 import re
 
+from ..shared.tiktok_card import render_tiktok_card, tiktok_card_css, tiktok_card_animation
+from ..shared.grain_overlay import render_grain, grain_css
+from ..shared.shimmer_sweep import shimmer_css
+
 def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
     """Render the inner HTML for V2 News Visual System scenes."""
     
@@ -104,21 +108,7 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
         ch = escape(data.get("channelName", ""))
         src = escape(data.get("source", ""))
         
-        tt_card = f'''<div id="{scene_id}-tt-card" class="tt-card">
-          <img class="tt-avatar" src="assets/avatar.png" alt="KNReup" crossorigin="anonymous" />
-          <div class="tt-profile-info">
-            <div class="tt-display-name">KNReup News</div>
-            <div class="tt-handle">@knreup</div>
-            <div class="tt-followers">1.2M followers</div>
-          </div>
-          <div id="{scene_id}-tt-follow-btn" class="tt-follow-btn">
-            <span id="{scene_id}-tt-btn-follow" class="tt-btn-text">Follow</span>
-            <span id="{scene_id}-tt-btn-following" class="tt-btn-text tt-btn-text-following">
-              <span>Following</span>
-              <span class="tt-check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
-            </span>
-          </div>
-        </div>'''
+        tt_card = render_tiktok_card(scene_id, channel_name=ch, handle="@knreup", followers="1.2M followers")
         
         html = f'''<div id="{scene_id}-outro-layout" class="layout-outro">
           <div id="{scene_id}-cta" class="out-cta-top">{cta}</div>
@@ -224,7 +214,7 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
 
 def get_shell_html() -> str:
     """Return the persistent shell elements for the V2 News layout."""
-    return '''
+    return f'''
     <!-- Shell: persistent brand elements (no data-start -> always visible) -->
     <div class="shell-bg"></div>
 
@@ -246,7 +236,7 @@ def get_shell_html() -> str:
     </div>
     
     <!-- Grain overlay -->
-    <div class="grain-overlay" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.35%22/%3E%3C/svg%3E');"></div>
+    {render_grain(opacity=0.15)}
     '''
 
 def render_scene_animation(scene_id: str, sid: str, data: dict, start: float) -> str:
@@ -280,12 +270,7 @@ def render_scene_animation(scene_id: str, sid: str, data: dict, start: float) ->
         js += f'tl.fromTo("#{scene_id}-src", {{ opacity: 0, y: 20 }}, {{ opacity: 1, y: 0, duration: 0.4 }}, {s + 1.3});\n'
         
         # TikTok card sequence
-        ttBase = s + 1.6
-        js += f'tl.fromTo("#{scene_id}-tt-card", {{ opacity: 0, y: 300, xPercent: -50 }}, {{ opacity: 1, y: 0, xPercent: -50, duration: 0.5 }}, {ttBase});\n'
-        js += f'tl.to("#{scene_id}-tt-follow-btn", {{ scale: 0.92, duration: 0.15 }}, {ttBase + 0.9});\n'
-        js += f'tl.to("#{scene_id}-tt-follow-btn", {{ scale: 1, duration: 0.4 }}, {ttBase + 1.05});\n'
-        js += f'tl.to("#{scene_id}-tt-btn-follow", {{ opacity: 0, duration: 0.08 }}, {ttBase + 1.05});\n'
-        js += f'tl.to("#{scene_id}-tt-btn-following", {{ opacity: 1, duration: 0.08 }}, {ttBase + 1.08});\n'
+        js += tiktok_card_animation(scene_id, base_time=s + 1.6) + "\n"
     elif sid == "quote":
         js += f'tl.fromTo("#{scene_id}-mark", {{ scale: 0.3, opacity: 0 }}, {{ scale: 1, opacity: 0.2, duration: 0.5 }}, {s + 0.1});\n'
         js += f'tl.fromTo("#{scene_id}-txt", {{ y: 40, opacity: 0 }}, {{ y: 0, opacity: 1, duration: 0.7 }}, {s + 0.3});\n'
@@ -318,7 +303,12 @@ def get_css() -> str:
     """Return the CSS string for V2 News Visual System."""
     import os
     css_path = os.path.join(os.path.dirname(__file__), "styles.css")
+    css = ""
     if os.path.exists(css_path):
         with open(css_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return ""
+            css = f.read()
+    
+    css += "\n" + tiktok_card_css()
+    css += "\n" + grain_css()
+    css += "\n" + shimmer_css()
+    return css

@@ -121,10 +121,28 @@ def build_composition(
     fonts_param = "&family=".join(font_families)
     google_fonts_url = f"https://fonts.googleapis.com/css2?family={fonts_param}&display=swap"
 
+    # Inject shared features based on meta.json
+    features = meta.get("features", [])
+    extra_css = ""
+    extra_html = ""
+
+    if "grain" in features:
+        from .template_sets.shared.grain_overlay import render_grain, grain_css
+        extra_html += render_grain()
+        extra_css += "\n" + grain_css()
+
+    if "shimmer" in features:
+        from .template_sets.shared.shimmer_sweep import shimmer_css
+        extra_css += "\n" + shimmer_css()
+
     # Read shell HTML from set_module if available
     shell_html = ""
     if meta.get("shell_html") and hasattr(set_module, 'get_shell_html'):
         shell_html = set_module.get_shell_html()
+    
+    # Add shared extra HTML
+    shell_html += "\n" + extra_html
+
     # Template sets with their own .scene CSS don't need the default fallback class
     has_custom_scene_css = hasattr(set_module, 'get_shell_html')
     scene_extra_class = "" if has_custom_scene_css else " scene-default"
@@ -157,7 +175,7 @@ def build_composition(
         current_time += dur
 
     # Read CSS from set_module (already loaded above)
-    scene_css = set_module.get_css()
+    scene_css = set_module.get_css() + extra_css
 
     # Pre-compute joined strings to avoid f-string restrictions
     clips_joined = "".join(clips_html)
