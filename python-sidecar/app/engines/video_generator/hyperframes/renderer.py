@@ -109,6 +109,7 @@ class HyperFramesRenderer:
             "-o", output_path,
         ]
 
+        logger.info(f"Starting HyperFrames stream render: {' '.join(cmd)} in {composition_dir}")
         try:
             cmd_str = " ".join(cmd)
             process = await asyncio.create_subprocess_shell(
@@ -120,44 +121,64 @@ class HyperFramesRenderer:
 
             last_pct = 0
             if process.stdout:
-                async for line_bytes in process.stdout:
-                    line = line_bytes.decode("utf-8", errors="replace").strip()
-                    if not line:
-                        continue
-
-                    # Remove ANSI escape codes
-                    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-                    clean_line = ansi_escape.sub('', line).strip()
+                buffer = ""
+                while True:
+                    chunk = await process.stdout.read(128)
+                    if not chunk:
+                        break
+                        
+                    buffer += chunk.decode("utf-8", errors="replace")
                     
-                    if not clean_line:
-                        continue
+                    # Process completed lines (separated by \n or \r)
+                    while '\n' in buffer or '\r' in buffer:
+                        idx_n = buffer.find('\n')
+                        idx_r = buffer.find('\r')
+                        
+                        if idx_n != -1 and idx_r != -1:
+                            idx = min(idx_n, idx_r)
+                        elif idx_n != -1:
+                            idx = idx_n
+                        else:
+                            idx = idx_r
+                            
+                        line = buffer[:idx].strip()
+                        buffer = buffer[idx+1:]
+                        
+                        if not line:
+                            continue
+                        
+                        logger.debug(f"[HyperFrames] {line}")
 
-                    # Attempt to parse progress
-                    pct_match = re.search(r"(\d+)%", clean_line)
-                    if pct_match:
-                        pct = int(pct_match.group(1))
-                        if pct > last_pct:
-                            last_pct = pct
-                            msg = re.sub(r"[█░\s]+\d+%\s*", "", clean_line).strip()
-                            
-                            # Clean up known ugly prefixes
-                            msg = re.sub(r"^\[.*?\]\s*", "", msg).strip() # Remove [Compiler] or [INFO]
-                            
-                            yield {
-                                "status": "rendering",
-                                "progress": pct,
-                                "message": msg or "Đang render..."
-                            }
-                    else:
-                        # Yield significant events even if no percentage
-                        lower_line = clean_line.lower()
-                        if "extracting" in lower_line or "processing" in lower_line or "capturing" in lower_line:
-                            msg = re.sub(r"^\[.*?\]\s*", "", clean_line).strip()
-                            yield {
-                                "status": "rendering",
-                                "progress": last_pct,
-                                "message": msg or "Đang xử lý..."
-                            }
+                        # Remove ANSI escape codes
+                        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                        clean_line = ansi_escape.sub('', line).strip()
+                        
+                        if not clean_line:
+                            continue
+
+                        # Yield ANY line so frontend doesn't hang in silence
+                        # Only yield if it looks meaningful or has progress
+                        pct_match = re.search(r"(\d+)%", clean_line)
+                        if pct_match:
+                            pct = int(pct_match.group(1))
+                            if pct > last_pct:
+                                last_pct = pct
+                                msg = re.sub(r"[█░\s]+\d+%\s*", "", clean_line).strip()
+                                msg = re.sub(r"^\[.*?\]\s*", "", msg).strip()
+                                yield {
+                                    "status": "rendering",
+                                    "progress": pct,
+                                    "message": msg or "Đang render..."
+                                }
+                        else:
+                            lower_line = clean_line.lower()
+                            if "extracting" in lower_line or "processing" in lower_line or "capturing" in lower_line or "starting" in lower_line:
+                                msg = re.sub(r"^\[.*?\]\s*", "", clean_line).strip()
+                                yield {
+                                    "status": "rendering",
+                                    "progress": last_pct,
+                                    "message": msg[:100] or "Đang xử lý..."
+                                }
 
             await process.wait()
 

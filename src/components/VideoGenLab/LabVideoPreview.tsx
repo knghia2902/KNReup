@@ -1,3 +1,4 @@
+import React from 'react';
 import { useVideoGenLabStore } from '../../stores/useVideoGenLabStore';
 import { DownloadSimple, FolderOpen } from '@phosphor-icons/react';
 import { open } from '@tauri-apps/plugin-shell';
@@ -24,10 +25,24 @@ export function LabVideoPreview() {
     }
   };
 
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  React.useEffect(() => {
+    // Cleanup video playback on unmount to prevent background audio leaks
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
+      }
+    };
+  }, []);
+
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Video takes all available space */}
       <video
+        ref={videoRef}
         src={videoUrl}
         controls
         autoPlay

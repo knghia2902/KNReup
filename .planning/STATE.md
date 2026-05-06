@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-05T06:02:51.594Z"
-last_activity: 2026-05-05
+last_updated: "2026-05-06T02:51:49.104Z"
+last_activity: 2026-05-06
 progress:
-  total_phases: 25
+  total_phases: 26
   completed_phases: 15
-  total_plans: 65
-  completed_plans: 44
+  total_plans: 69
+  completed_plans: 47
   percent: 68
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Nâng cấp trải nghiệm Editor, tích hợp AI Assistants, và xây dựng hệ thống tự động hóa + phân phối.
-**Current focus:** Phase 30 — video-gen-lab-scene-editor-ch-nh-template-v-tr-font-n-i-dung
+**Current focus:** Phase 31 — Template Sets Refactor + SFX Port + Shared Components + Schema Validation
 
 ## Current Status
 
 - **Milestone:** 3 (Full Release)
 - **Phase:** 28.1
-- **Status:** Executing Phase 30
-- **Last activity:** 2026-05-05
+- **Status:** Executing Phase 31
+- **Last activity:** 2026-05-06
 
 ## Context
 
@@ -81,6 +81,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 - Phase 28.1 inserted: Porting Auto-Create-Video Architecture — HyperFrames thay Playwright, 12 templates, React port
 - Phase 29 added: Video Gen Lab — Tool test luồng end-to-end URL→Crawl4AI→Ollama→OmniVoice→HyperFrames
 - Phase 30 updated: Video Gen Lab Scene Editor → Template Sets Library — Scene Editor quá phức tạp, thay bằng tạo nhiều bộ giao diện (skins) cho 12 template types
+- Phase 31 added: Template Sets Refactor + SFX Port + Shared Components + Schema Validation — Tách 5 bộ template thành folder độc lập, port SFX selector từ KNCraw, tách shared components (TikTok card, grain, shimmer), port Zod schema → Pydantic
 
 | 2026-04-17 | Milestone 3: Ưu tiên Editor upgrade | User yêu cầu nâng cấp Editor trước khi làm Monitor/License |
 | 2026-04-22 | Reduced VideoControls time display minWidth to 100px | Focus on compact UI |
@@ -118,9 +119,10 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 | 25.1 | Tách TTS Batch & Persist Data theo Project | 📝 Not Started |
 | 28 | Web Scraper to Video Generator (Original) | ⚠️ Superseded by 28.1 |
 | 28.1 | Porting Auto-Create-Video + HyperFrames | 🚧 Plans done, React port done |
+| 31 | Template Sets Refactor + SFX Port + Components + Schema | 📋 4 Plans Ready |
 
 ---
-*Last updated: 2026-05-04T22:06+07:00 — Phase 28/28.1 audit & update*
+*Last updated: 2026-05-06T09:48+07:00 — Phase 31 planning complete*
 
 ## Quick Tasks Completed
 

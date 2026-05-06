@@ -4,6 +4,7 @@ import { THEME_PALETTES, applyLayoutOverrides } from '../TemplatePreview/templat
 import { getTemplateSet } from '../TemplatePreview/sets';
 import { Play, Pause } from '@phosphor-icons/react';
 import '../../styles/template-preview.css'; // Reuse TP styles for the viewport
+import '../../styles/v2-visual-styles.css'; // V2 styles
 
 declare const gsap: any;
 
@@ -66,16 +67,18 @@ export function LabLivePreview() {
 
     tpl.render(c, tpl.sampleData, theme);
 
-    // Apply layout overrides (using default layout for Lab)
-    applyLayoutOverrides(c, vp, { 
-      name: 'Default', 
-      bodyFont: 'sans-serif',
-      headlineFont: 'sans-serif',
-      serifFont: 'sans-serif',
-      dotColor: '',
-      borderRadius: '0px',
-      grain: false
-    }, theme);
+    // Apply layout overrides (using default layout for Lab) only for default set
+    if (templateSetId === 'default') {
+      applyLayoutOverrides(c, vp, { 
+        name: 'Default', 
+        bodyFont: 'sans-serif',
+        headlineFont: 'sans-serif',
+        serifFont: 'sans-serif',
+        dotColor: '',
+        borderRadius: '0px',
+        grain: false
+      }, theme);
+    }
 
     if (typeof gsap !== 'undefined') {
       const tl = gsap.timeline({ paused: true });

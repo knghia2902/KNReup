@@ -7,6 +7,7 @@ import { SMART_TEMPLATES, THEME_PALETTES, LAYOUT_PRESETS, applyLayoutOverrides }
 import type { ThemePalette, LayoutPreset } from './templateData';
 import { Play, Pause, CaretLeft, CaretRight, FilmSlate, DownloadSimple, Clock, X } from '@phosphor-icons/react';
 import '../../styles/template-preview.css';
+import '../../styles/v2-visual-styles.css';
 
 declare const gsap: any;
 
@@ -91,8 +92,13 @@ export const TemplatePreviewStudio: React.FC = () => {
         // Render template content
         tpl.render(c, tpl.sampleData, theme);
 
-        // Apply layout overrides
-        applyLayoutOverrides(c, vp, layout, theme);
+        // Apply layout overrides only if using the default layout
+        if (layoutId !== 'default' || themeId !== 'news-mono') {
+             applyLayoutOverrides(c, vp, layout, theme);
+        }
+        // Wait, the V2 news set uses its own fonts and ignores the 'layout' entirely.
+        // Actually, since we're using V2_NEWS_SET in LabLivePreview, but TemplatePreviewStudio
+        // still uses SMART_TEMPLATES which is DEFAULT_SET. So TemplatePreviewStudio is fine.
 
         // Build GSAP timeline (paused)
         if (typeof gsap !== 'undefined') {

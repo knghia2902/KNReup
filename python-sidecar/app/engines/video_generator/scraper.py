@@ -41,11 +41,25 @@ class WebScraper:
                 # Some sites might return title in result.metadata or we might need to extract it
                 title = getattr(result, "title", "Extracted Article")
 
+                # Extract og:image if available
+                image_url = None
+                # Check for image in metadata
+                # crawl4ai result.metadata might be None depending on config, but let's try safely
+                if hasattr(result, "metadata") and result.metadata and isinstance(result.metadata, dict):
+                    image_url = result.metadata.get("og:image")
+
+                # Alternative: Some versions of crawl4ai store media
+                if not image_url and hasattr(result, "media") and hasattr(result.media, "images"):
+                    images = getattr(result.media, "images", [])
+                    if images and len(images) > 0:
+                        image_url = images[0].get("src")
+
                 return {
                     "url": url,
                     "title": title,
                     "markdown": markdown_content,
                     "word_count": word_count,
+                    "image": image_url,
                     "success": True
                 }
         except Exception as e:

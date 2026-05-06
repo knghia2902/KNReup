@@ -15,6 +15,7 @@
 |--------|--------|
 | **🎬 NLE Editor** | Giao diện chỉnh sửa chuyên nghiệp — Media Bin, Video Preview, Properties, Timeline (VID/TTS/SUB/AUDIO) |
 | **🔊 Pipeline AI** | Whisper ASR → Dịch thuật (DeepSeek/Gemini/DeepL/OpenAI) → TTS (Edge TTS/Piper) → FFmpeg Render |
+| **🧪 Video Gen** | Tự động tạo video 9:16 từ URL bài báo (Scraping → LLM kịch bản → TTS → HyperFrames Rendering) |
 | **📥 Video Downloader** | Tải video Douyin (no-watermark), YouTube, TikTok — xác thực cookie tự động |
 | **🎨 Output Pro** | Watermark, Blur vùng, Smart Crop 9:16, Audio Ducking, WYSIWYG subtitle preview |
 | **⏱️ Magnetic Timeline** | Multi-clip timeline với snap tự động, kéo thả segment, collision detection |
@@ -39,6 +40,7 @@ KNReup/
 │   │   ├── editor/               # Timeline, VideoPreview, Tracks
 │   │   ├── properties/           # Style, TTS, Subtitle, Output tabs
 │   │   ├── downloader/           # URL Input, Douyin Auth, History
+│   │   ├── VideoGenLab/          # Trình tạo video tự động (URL to MP4)
 │   │   └── setup/                # Dependency Checker
 │   ├── stores/                   # Zustand stores (Project, Subtitle, Queue)
 │   ├── hooks/                    # useSidecar, usePipeline, useDownloader
@@ -88,6 +90,7 @@ npm run tauri dev              # Vite @ port 1420 + Tauri window
 - Video Downloader (Douyin no-watermark, yt-dlp)
 - Output nâng cao (Watermark, Blur, Crop 9:16, Audio Ducking)
 - Magnetic snapping timeline
+- **Video Gen Lab**: Tự động tạo video từ bài báo với hệ thống Template HyperFrames (9:16)
 
 ### 🔄 Đang phát triển (Milestone 3 — v3.0)
 - AI Engine Profile System

@@ -425,6 +425,19 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 30 to break down)
 
+### Phase 31: Template Sets Refactor + SFX Port + Shared Components + Schema Validation
+
+**Goal:** Tách 5 bộ template (default, cinematic, news-broadcast, social-media, v2-news) thành folder độc lập với CSS/meta.json riêng. Port hệ thống SFX 3-tier selector từ KNCraw TypeScript → Python. Tách shared components (TikTok card, grain overlay, shimmer sweep) thành module reusable. Port Zod script schema → Pydantic validation.
+**Requirements**: TPL-31-01 (folder restructure), TPL-31-02 (SFX port), TPL-31-03 (shared components), TPL-31-04 (schema validation)
+**Depends on:** Phase 30
+**Plans:** 0/4 plans
+
+Plans:
+- [ ] 31-01-PLAN.md — Phase A: Template Sets Folder Restructure (create folders, meta.json, migrate files, refactor registry + build_composition)
+- [ ] 31-02-PLAN.md — Phase B: SFX Selector Port (copy SFX library, port sfx_selector.py, extend AudioMixer, wire into pipeline)
+- [ ] 31-03-PLAN.md — Phase C: Shared Components + Dynamic Wiring (extract tiktok_follow/grain/shimmer, dynamic fonts, LLM whitelist, bg_support)
+- [ ] 31-04-PLAN.md — Phase D: Script Schema Validation (port Zod → Pydantic, lenient sanitizer, wire into pipeline)
+
 ---
 
 ### Phase 29: Video Gen Lab — Tool test luồng end-to-end

@@ -135,6 +135,12 @@ def build_composition(
         from .template_sets.shared.shimmer_sweep import shimmer_css
         extra_css += "\n" + shimmer_css()
 
+    # TikTok card: inject CSS for any set that declares the feature
+    inject_tiktok_card = "tiktok_card" in features
+    if inject_tiktok_card:
+        from .template_sets.shared.tiktok_card import render_tiktok_card, tiktok_card_css, tiktok_card_animation
+        extra_css += "\n" + tiktok_card_css()
+
     # Read shell HTML from set_module if available
     shell_html = ""
     if meta.get("shell_html") and hasattr(set_module, 'get_shell_html'):
@@ -147,6 +153,11 @@ def build_composition(
     has_custom_scene_css = hasattr(set_module, 'get_shell_html')
     scene_extra_class = "" if has_custom_scene_css else " scene-default"
 
+    # Check if the set module already handles tiktok_card internally (e.g. v2-news)
+    set_handles_tiktok = hasattr(set_module, '_HAS_TIKTOK_CARD') or (
+        template_set == "v2-news"
+    )
+
     for i, scene in enumerate(scenes):
         sid = scene["id"]
         data = scene["data"]
@@ -154,6 +165,11 @@ def build_composition(
         scene_id = f"s{i}"
 
         inner_html = set_module.render_scene_html(scene_id, sid, data, theme)
+
+        # Inject TikTok card into outro scene if feature is enabled and set doesn't handle it
+        if inject_tiktok_card and sid == "outro" and not set_handles_tiktok:
+            channel = data.get("channelName", "KNReup News")
+            inner_html += "\n" + render_tiktok_card(scene_id, channel_name=channel)
 
         clips_html.append(f'''
       <!-- Scene {i+1}: {scene.get("name", sid)} -->
@@ -164,6 +180,11 @@ def build_composition(
         # Make scene visible during its active duration
         anims_js.append(f'      tl.set("#{scene_id}", {{opacity: 1}}, {current_time});')
         anims_js.append(f'      {set_module.render_scene_animation(scene_id, sid, data, current_time)}')
+
+        # Inject TikTok card animation for outro scenes
+        if inject_tiktok_card and sid == "outro" and not set_handles_tiktok:
+            anims_js.append(f'      {tiktok_card_animation(scene_id, base_time=current_time + 1.6)}')
+
         anims_js.append(f'      tl.set("#{scene_id}", {{opacity: 0}}, {current_time + dur});')
         if audio_paths and i < len(audio_paths) and audio_paths[i]:
             audio_html.append(

@@ -12,7 +12,8 @@ from typing import List, Optional, Dict, Any
 
 from app.engines.video_generator.scraper import WebScraper
 from app.engines.video_generator.script_engine import OllamaScriptGenerator
-from app.engines.video_generator.audio_mixer import AudioMixer
+from app.engines.video_generator.audio_mixer import AudioMixer, SfxOverlay
+from app.engines.video_generator.sfx_selector import index_sfx_library, pick_sfx_for_scene, get_default_playback
 from app.engines.video_generator.hyperframes.build_composition import build_composition, THEMES
 from app.engines.video_generator.hyperframes.renderer import HyperFramesRenderer
 
@@ -107,9 +108,86 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
     # Step 4: Render
     yield format_sse(4, "render", "running", 0, "Đang khởi tạo HyperFrames...")
     
+    # Download source image if available
+    source_image = script_data.get("metadata", {}).get("source", {}).get("image")
+    if source_image and str(source_image).startswith("http"):
+        yield format_sse(4, "render", "running", 5, "Đang tải ảnh nền...")
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+                "Referer": request.get("url", "https://google.com")
+            }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                img_resp = await client.get(source_image, headers=headers)
+                img_resp.raise_for_status()
+                assets_dir = os.path.join(frames_dir, "assets")
+                os.makedirs(assets_dir, exist_ok=True)
+                
+                bg_path = os.path.join(assets_dir, "bg.jpg")
+                with open(bg_path, "wb") as f:
+                    f.write(img_resp.content)
+                    
+                # Update script scenes to use assets/bg.jpg
+                # Force-inject bgSrc into the first hook scene regardless of LLM output
+                for s in scenes:
+                    if "templateData" in s:
+                        td = s["templateData"]
+                        tpl = td.get("template", "")
+                        # If the scene already references the source image or placeholder, replace it
+                        if td.get("bgSrc") in ["$source.image", source_image]:
+                            td["bgSrc"] = "assets/bg.jpg"
+                        # Force-inject into hook scene if no bgSrc was set by LLM
+                        elif tpl == "hook" and not td.get("bgSrc"):
+                            td["bgSrc"] = "assets/bg.jpg"
+        except Exception as e:
+            logger.warning(f"Failed to download source image {source_image}: {e}")
+    
     mixed_audio_path = os.path.join(audio_dir, "mixed_audio.wav")
     yield format_sse(4, "render", "running", 10, "Đang mix âm thanh tổng...")
-    await audio_mixer.mix_audio_tracks([p for p in voice_paths if p], None, mixed_audio_path)
+    try:
+        await audio_mixer.mix_audio_tracks([p for p in voice_paths if p], None, mixed_audio_path)
+    except Exception as e:
+        yield format_sse(4, "render", "error", 0, f"Lỗi mix audio: {str(e)}")
+        return
+
+    # SFX overlay: select per-scene SFX and mix onto audio
+    sfx_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "engines", "video_generator", "hyperframes", "assets", "sfx"))
+    sfx_index = index_sfx_library(sfx_dir)
+    if sfx_index:
+        yield format_sse(4, "render", "running", 12, "Đang chọn và mix SFX...")
+        overlays: list[SfxOverlay] = []
+        cumulative_time = 0.0
+        for i, scene in enumerate(scenes):
+            tpl_name = ""
+            voice_text = scene.get("voiceText", "")
+            if "templateData" in scene:
+                tpl_name = scene["templateData"].get("template", "")
+            scene_id = f"scene_{i}"
+            picked = pick_sfx_for_scene(voice_text, tpl_name, scene_id, sfx_index)
+            if picked:
+                sfx_path = os.path.join(sfx_dir, picked.rel_path)
+                if os.path.exists(sfx_path):
+                    pb = get_default_playback(picked)
+                    overlays.append(SfxOverlay(
+                        path=sfx_path,
+                        timestamp_sec=cumulative_time,
+                        volume=pb["volume"],
+                        offset_sec=pb["offset_sec"],
+                    ))
+                    logger.info(f"SFX scene {i} ({tpl_name}): {picked.rel_path} [{picked.source}]")
+            cumulative_time += scene.get("duration", 2.0)
+
+        if overlays:
+            sfx_output = os.path.join(audio_dir, "mixed_with_sfx.wav")
+            try:
+                await audio_mixer.overlay_sfx(mixed_audio_path, overlays, sfx_output)
+                mixed_audio_path = sfx_output
+                yield format_sse(4, "render", "running", 14, f"Đã overlay {len(overlays)} SFX")
+            except Exception as e:
+                logger.warning(f"SFX overlay failed (non-fatal): {e}")
+    else:
+        logger.info("Không tìm thấy thư mục SFX, bỏ qua")
 
     yield format_sse(4, "render", "running", 20, "Building HTML composition...")
     durations = [s.get("duration", 2.0) for s in scenes]
@@ -200,7 +278,12 @@ async def generate_lab_video(request: LabGenerateRequest):
         yield format_sse(2, "script", "running", 0, "Đang sinh kịch bản...")
         llm = OllamaScriptGenerator(model=request.model)
         try:
-            script_obj = await llm.generate(content=scrape_data["markdown"], language=request.language, source_url=request.url)
+            script_obj = await llm.generate(
+                content=scrape_data["markdown"], 
+                language=request.language, 
+                source_url=request.url,
+                source_image=scrape_data.get("image")
+            )
         except Exception as e:
             yield format_sse(2, "script", "error", 0, f"Lỗi sinh kịch bản: {str(e)}")
             return
