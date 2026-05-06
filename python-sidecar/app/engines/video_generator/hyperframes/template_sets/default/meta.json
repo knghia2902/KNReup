@@ -1,0 +1,9 @@
+{
+  "id": "default",
+  "name": "Default",
+  "description": "Standard clean templates with accent-driven styling",
+  "fonts": ["Inter:wght@300;400;500;600;700;800;900", "Manrope:wght@300;400;500;600;700;800"],
+  "bg_support": false,
+  "features": [],
+  "shell_html": false
+}

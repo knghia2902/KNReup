@@ -1,0 +1,9 @@
+{
+  "id": "v2-news",
+  "name": "V2 Visual System",
+  "description": "Advanced tech news style with grain, shimmer, and TikTok follow card",
+  "fonts": ["Space+Mono:wght@400;700", "JetBrains+Mono:wght@400;700", "Inter:wght@400;500;600;700;800;900"],
+  "bg_support": true,
+  "features": ["grain", "shimmer", "tiktok_card"],
+  "shell_html": true
+}

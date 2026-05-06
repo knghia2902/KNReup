@@ -70,7 +70,7 @@ def get_voice_text(scene: dict) -> str:
     return str(d)
 
 
-from .template_sets import get_set_module
+from .template_sets import get_set_module, get_set_meta
 
 
 
@@ -97,6 +97,14 @@ def build_composition(
 
     total_duration = sum(durations)
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Copy hyperframes assets to output_dir
+    import shutil
+    src_assets = os.path.join(os.path.dirname(__file__), "assets")
+    dst_assets = os.path.join(output_dir, "assets")
+    if os.path.exists(src_assets):
+        os.makedirs(dst_assets, exist_ok=True)
+        shutil.copytree(src_assets, dst_assets, dirs_exist_ok=True)
 
     # Build scene HTML clips and animations
     clips_html = []
@@ -104,24 +112,41 @@ def build_composition(
     audio_html = []
     current_time = 0.0
 
+    # Load set module and metadata
+    set_module = get_set_module(template_set)
+    meta = get_set_meta(template_set)
+
+    # Build dynamic Google Fonts URL from meta.json
+    font_families = meta.get("fonts", ["Inter:wght@400;500;600;700"])
+    fonts_param = "&family=".join(font_families)
+    google_fonts_url = f"https://fonts.googleapis.com/css2?family={fonts_param}&display=swap"
+
+    # Read shell HTML from set_module if available
+    shell_html = ""
+    if meta.get("shell_html") and hasattr(set_module, 'get_shell_html'):
+        shell_html = set_module.get_shell_html()
+    # Template sets with their own .scene CSS don't need the default fallback class
+    has_custom_scene_css = hasattr(set_module, 'get_shell_html')
+    scene_extra_class = "" if has_custom_scene_css else " scene-default"
+
     for i, scene in enumerate(scenes):
         sid = scene["id"]
         data = scene["data"]
         dur = durations[i]
         scene_id = f"s{i}"
 
-        set_module = get_set_module(template_set)
         inner_html = set_module.render_scene_html(scene_id, sid, data, theme)
 
         clips_html.append(f'''
       <!-- Scene {i+1}: {scene.get("name", sid)} -->
-      <div id="{scene_id}" class="clip scene" data-start="{current_time}" data-duration="{dur}" data-track-index="0">
+      <div id="{scene_id}" class="clip scene{scene_extra_class}" data-start="{current_time}" data-duration="{dur}" data-track-index="0">
         {inner_html}
       </div>''')
-
-        anims_js.append(f'      // Scene {i+1}: {sid}\n      {set_module.render_scene_animation(scene_id, sid, data, current_time)}')
-
-        # Audio track (if available)
+        anims_js.append(f'      // Scene {i+1}: {sid}')
+        # Make scene visible during its active duration
+        anims_js.append(f'      tl.set("#{scene_id}", {{opacity: 1}}, {current_time});')
+        anims_js.append(f'      {set_module.render_scene_animation(scene_id, sid, data, current_time)}')
+        anims_js.append(f'      tl.set("#{scene_id}", {{opacity: 0}}, {current_time + dur});')
         if audio_paths and i < len(audio_paths) and audio_paths[i]:
             audio_html.append(
                 f'      <audio id="voice-{i}" data-start="{current_time}" '
@@ -131,8 +156,7 @@ def build_composition(
 
         current_time += dur
 
-    # Read CSS from set_module
-    set_module = get_set_module(template_set)
+    # Read CSS from set_module (already loaded above)
     scene_css = set_module.get_css()
 
     # Pre-compute joined strings to avoid f-string restrictions
@@ -146,7 +170,7 @@ def build_composition(
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1080, height=1920" />
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Anton&family=Lora:ital,wght@0,400;0,700;1,400;1,700&family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Bebas+Neue&family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="{google_fonts_url}" rel="stylesheet">
     <style>
       * {{ margin: 0; padding: 0; box-sizing: border-box; }}
       html, body {{
@@ -158,9 +182,13 @@ def build_composition(
       }}
       .scene {{
         position: absolute; inset: 0;
+        box-sizing: border-box;
+      }}
+      /* Fallback layout for template sets without their own .scene CSS */
+      .scene-default {{
         display: flex; flex-direction: column;
         justify-content: center; align-items: center;
-        padding: 80px; box-sizing: border-box;
+        padding: 80px;
         word-break: break-word;
       }}
 {scene_css}
@@ -168,6 +196,8 @@ def build_composition(
   </head>
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-duration="{total_duration}" data-width="1080" data-height="1920">
+{shell_html}
+
 {clips_joined}
 
 {audio_section}

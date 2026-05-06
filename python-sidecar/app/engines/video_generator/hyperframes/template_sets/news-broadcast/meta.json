@@ -1,0 +1,9 @@
+{
+  "id": "news-broadcast",
+  "name": "News Broadcast",
+  "description": "TV news style with bold headlines and ticker aesthetics",
+  "fonts": ["Inter:wght@400;500;600;700;800;900", "Bebas+Neue"],
+  "bg_support": false,
+  "features": [],
+  "shell_html": false
+}
