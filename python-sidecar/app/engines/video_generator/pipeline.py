@@ -9,7 +9,10 @@ from app.engines.video_generator.schema import VideoGenRequest, VideoScript
 from app.engines.video_generator.scraper import WebScraper
 from app.engines.video_generator.script_engine import OllamaScriptGenerator
 from app.engines.video_generator.playwright_renderer import FrameRenderer
-from app.engines.video_generator.audio_mixer import AudioMixer
+from app.engines.video_generator.audio_mixer import AudioMixer, SfxOverlay
+from app.engines.video_generator.sfx_selector import (
+    index_sfx_library, pick_sfx_for_scene, get_default_playback
+)
 
 # Try importing TTS Engine
 try:
@@ -32,6 +35,10 @@ class VideoGenerationPipeline:
         self.tts = OmniVoiceTTSEngine() if OmniVoiceTTSEngine else None
         self.audio_mixer = AudioMixer(self.tts)
         self.renderer = FrameRenderer(fps=30)
+
+        # Index SFX library for smart audio overlay
+        sfx_dir = os.path.join(os.path.dirname(__file__), "hyperframes", "assets", "sfx")
+        self.sfx_index = index_sfx_library(sfx_dir)
 
     async def generate_script_only(self, request: VideoGenRequest) -> dict:
         """
@@ -114,6 +121,47 @@ class VideoGenerationPipeline:
             yield _format_event("audio_mix", 35, "Đang mix âm thanh tổng...")
             # Todo: allow passing actual bgm_path
             await self.audio_mixer.mix_audio_tracks(voice_paths, None, mixed_audio_path)
+
+            # SFX Selection + Overlay
+            sfx_overlays = []
+            current_ts = 0.0
+            for i, scene in enumerate(scenes):
+                scene_sfx = scene.get("sfx")
+                template_name = scene.get("templateData", {}).get("template", "")
+                voice_text = scene.get("voiceText", "")
+                scene_id = scene.get("id", f"s{i}")
+
+                if scene_sfx and scene_sfx.get("name") == "none":
+                    pass  # Tier 1: explicit disable
+                elif scene_sfx and scene_sfx.get("name"):
+                    # Tier 1: explicit override
+                    sfx_path = os.path.join(os.path.dirname(__file__), "hyperframes", "assets", "sfx", scene_sfx["name"])
+                    if os.path.exists(sfx_path):
+                        sfx_overlays.append(SfxOverlay(
+                            path=sfx_path,
+                            timestamp_sec=current_ts,
+                            volume=scene_sfx.get("volume", 0.4),
+                            offset_sec=scene_sfx.get("startOffsetSec", 0.0),
+                        ))
+                else:
+                    # Tier 2-4: automatic selection
+                    picked = pick_sfx_for_scene(voice_text, template_name, scene_id, self.sfx_index)
+                    if picked:
+                        sfx_path = os.path.join(os.path.dirname(__file__), "hyperframes", "assets", "sfx", picked.rel_path)
+                        playback = get_default_playback(picked)
+                        sfx_overlays.append(SfxOverlay(
+                            path=sfx_path,
+                            timestamp_sec=current_ts,
+                            volume=playback["volume"],
+                            offset_sec=playback["offset_sec"],
+                        ))
+                current_ts += scene.get("duration", 2.0)
+
+            if sfx_overlays:
+                yield _format_event("sfx", 37, f"Overlaying {len(sfx_overlays)} SFX...")
+                sfx_audio_path = os.path.join(audio_dir, "mixed_with_sfx.wav")
+                await self.audio_mixer.overlay_sfx(mixed_audio_path, sfx_overlays, sfx_audio_path)
+                mixed_audio_path = sfx_audio_path
 
             # Step B: Frame Rendering
             theme_name = request.get("theme", "default")

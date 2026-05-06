@@ -2,6 +2,7 @@ import os
 import asyncio
 import subprocess
 import logging
+from dataclasses import dataclass
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -64,9 +65,14 @@ class AudioMixer:
             "ffmpeg", "-y", "-f", "concat", "-safe", "0",
             "-i", concat_file, "-c", "copy", voice_only_path
         ]
-        proc = await asyncio.to_thread(subprocess.run, cmd_concat, capture_output=True, timeout=30)
-        if proc.returncode != 0:
-            raise AudioMixerError(f"Failed to concat voice tracks: {proc.stderr.decode()}")
+        logger.info(f"Running ffmpeg concat: {' '.join(cmd_concat)}")
+        try:
+            proc = await asyncio.to_thread(subprocess.run, cmd_concat, capture_output=True, timeout=60)
+            if proc.returncode != 0:
+                raise AudioMixerError(f"Failed to concat voice tracks: {proc.stderr.decode()}")
+        except Exception as e:
+            logger.error(f"FFmpeg concat failed: {e}")
+            raise AudioMixerError(str(e))
             
         # 3. If BGM provided, mix them
         if bgm_path and os.path.exists(bgm_path):
@@ -87,3 +93,62 @@ class AudioMixer:
             shutil.copy(voice_only_path, output_path)
             
         return output_path
+
+    async def overlay_sfx(self, base_audio_path: str, overlays: List['SfxOverlay'], output_path: str) -> str:
+        """Overlay SFX files onto base audio at specific timestamps using ffmpeg."""
+        if not overlays:
+            import shutil
+            shutil.copy(base_audio_path, output_path)
+            return output_path
+
+        # Build ffmpeg filter_complex for all SFX overlays
+        inputs = ["-i", base_audio_path]
+        filter_parts = []
+        current_label = "[0:a]"
+        valid_count = 0
+
+        for i, sfx in enumerate(overlays):
+            if not os.path.exists(sfx.path):
+                logger.warning(f"SFX file not found: {sfx.path}, skipping")
+                continue
+            inputs.extend(["-i", sfx.path])
+            valid_count += 1
+            input_idx = valid_count
+            delay_ms = int((sfx.timestamp_sec + sfx.offset_sec) * 1000)
+            vol = sfx.volume
+            sfx_label = f"[sfx{i}]"
+            mix_label = f"[mix{i}]"
+            filter_parts.append(f"[{input_idx}:a]volume={vol},adelay={delay_ms}|{delay_ms}{sfx_label}")
+            filter_parts.append(f"{current_label}{sfx_label}amix=inputs=2:duration=first:dropout_transition=0.05{mix_label}")
+            current_label = mix_label
+
+        if not filter_parts:
+            import shutil
+            shutil.copy(base_audio_path, output_path)
+            return output_path
+
+        filter_complex = ";".join(filter_parts)
+        cmd = [
+            "ffmpeg", "-y",
+            *inputs,
+            "-filter_complex", filter_complex,
+            "-map", current_label,
+            "-c:a", "aac", "-b:a", "192k",
+            output_path,
+        ]
+
+        logger.info(f"Overlaying {len(overlays)} SFX onto audio")
+        proc = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, timeout=60)
+        if proc.returncode != 0:
+            raise AudioMixerError(f"SFX overlay failed: {proc.stderr.decode()}")
+
+        return output_path
+
+
+@dataclass
+class SfxOverlay:
+    """Single SFX overlay to mix into the audio track."""
+    path: str            # absolute path to SFX mp3 file
+    timestamp_sec: float  # position in the mixed audio
+    volume: float = 0.35
+    offset_sec: float = 0.0  # delay from scene start
