@@ -20,14 +20,14 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
         
         bg_html = f'<div class="bg gradient-news-dark"></div>'
         if data.get("bgSrc"):
-            bg_html = f'<div class="bg kb-zoom-in" style="background-image: url(\'{data["bgSrc"]}\')"></div>'
+            bg_html = f'<div class="bg-blur" style="position:absolute;inset:0;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;filter:blur(35px);opacity:0.4;transform:scale(1.1);z-index:0;"></div>\n            <div class="bg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:1040px;height:585px;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.4);z-index:1;"></div>'
             
-        overlay_html = '<div class="overlay" style="opacity: 0.55"></div>'
+        overlay_html = '<div class="overlay" style="opacity: 0.1"></div>'
         
         html = f'''{bg_html}
         {overlay_html}
         <div id="{scene_id}-hook-layout" class="layout-hook" style="position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 200px 80px 300px; text-align: center;">
-            <div id="{scene_id}-headline" class="hook-headline shimmer-sweep-target">{headline}</div>
+            <div id="{scene_id}-headline" class="hook-headline">{headline}</div>
             <div id="{scene_id}-subhead" class="hook-subhead">{subhead}</div>
         </div>'''
         
@@ -65,7 +65,7 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
         ctx_html = f'<div id="{scene_id}-ctx" class="stat-context">{ctx}</div>' if ctx else ""
         
         html = f'''<div id="{scene_id}-stat-layout" class="layout-stat-hero">
-          <div id="{scene_id}-val" class="stat-value shimmer-sweep-target">{val}</div>
+          <div id="{scene_id}-val" class="stat-value">{val}</div>
           <div id="{scene_id}-lbl" class="stat-label">{lbl}</div>
           {ctx_html}
         </div>'''

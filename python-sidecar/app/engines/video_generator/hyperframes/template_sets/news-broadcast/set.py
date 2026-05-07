@@ -7,7 +7,7 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
 
     if sid == "hook":
         if data.get("bgSrc"):
-            html += f'<div class="bg kb-zoom-in" style="position:absolute;inset:0;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;opacity:0.3;z-index:-1;"></div>\n        '
+            html += f'<div class="bg-blur" style="position:absolute;inset:0;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;filter:blur(35px);opacity:0.3;transform:scale(1.1);z-index:-2;"></div>\n            <div class="bg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:1040px;height:585px;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.4);opacity:0.9;z-index:-1;"></div>\n        '
         html += f'''<div class="news-lower-third" style="position:absolute;bottom:100px;left:0;right:0;background:rgba({_hex_to_rgb(t["surface"])},0.95);border-left:12px solid {t["accent"]};padding:40px 60px;">
           <div id="{scene_id}-h" class="news-headline" style="color:{t["text"]}">{data.get("headline","")}</div>
           <div id="{scene_id}-s" class="news-subhead" style="color:{t["accent"]}">{data.get("subhead","")}</div>
@@ -203,5 +203,5 @@ def get_css() -> str:
 .news-tc-date { font-family: 'Inter', sans-serif; font-size: 24px; font-weight: 600; text-transform: uppercase; }
 
 .kb-zoom-in { animation: kb-zoom-in var(--scene-dur, 15s) linear forwards; }
-@keyframes kb-zoom-in { from { transform: scale(1.0); } to { transform: scale(1.18); } }
+@keyframes kb-zoom-in { from { transform: scale(1.0); } to { transform: scale(1.0); } }
 """

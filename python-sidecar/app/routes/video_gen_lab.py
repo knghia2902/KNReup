@@ -33,7 +33,7 @@ class LabGenerateRequest(BaseModel):
     model: str = "gemma4:e2b"
     theme: str = "tech-blue"
     template_set: str = "default"
-    voice_id: str = "vi-VN-HoaiMyNeural"
+    voice_id: str = "default_female"
     language: str = "Vietnamese"
     mode: str = "auto"
 
@@ -41,7 +41,7 @@ class LabContinueRequest(BaseModel):
     script: Dict[str, Any]
     theme: str = "tech-blue"
     template_set: str = "default"
-    voice_id: str = "vi-VN-HoaiMyNeural"
+    voice_id: str = "default_female"
 
 def get_history():
     if not os.path.exists(HISTORY_FILE):
@@ -93,7 +93,7 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
             audio_path = os.path.join(audio_dir, f"scene_{i:03d}.mp3")
             duration = await audio_mixer.generate_scene_audio(
                 text=scene_content,
-                voice_id=request.get("voice_id", "vi-VN-HoaiMyNeural"),
+                voice_id=request.get("voice_id", "default_female"),
                 output_path=audio_path
             )
             scene["duration"] = duration
@@ -408,15 +408,30 @@ async def download_lab_video(session_id: str):
 
 @router.get("/video-gen/lab/voices")
 async def list_voices():
-    return {
-        "voices": {
-            "Vietnamese": [
-                {"id": "vi-VN-HoaiMyNeural", "name": "Hoài My (Nữ)"}, 
-                {"id": "vi-VN-NamMinhNeural", "name": "Nam Minh (Nam)"}
-            ],
-            "English": [
-                {"id": "en-US-JennyMultilingualNeural", "name": "Jenny (Female)"},
-                {"id": "en-US-GuyNeural", "name": "Guy (Male)"}
-            ]
+    if OmniVoiceTTSEngine:
+        engine = OmniVoiceTTSEngine()
+        voices = await engine.list_voices()
+        standard_voices = [
+            {"id": "default_female", "name": "Default Female"},
+            {"id": "default_male", "name": "Default Male"}
+        ]
+        cloned_voices = [{"id": v["id"], "name": v["name"]} for v in voices if v.get("type") in ("cloned", "designed")]
+        
+        voices_dict = {"OmniVoice Standard": standard_voices}
+        if cloned_voices:
+            voices_dict["OmniVoice Cloned"] = cloned_voices
+            
+        return {"voices": voices_dict}
+    else:
+        return {
+            "voices": {
+                "Vietnamese": [
+                    {"id": "vi-VN-HoaiMyNeural", "name": "Hoài My (Nữ)"}, 
+                    {"id": "vi-VN-NamMinhNeural", "name": "Nam Minh (Nam)"}
+                ],
+                "English": [
+                    {"id": "en-US-JennyMultilingualNeural", "name": "Jenny (Female)"},
+                    {"id": "en-US-GuyNeural", "name": "Guy (Male)"}
+                ]
+            }
         }
-    }

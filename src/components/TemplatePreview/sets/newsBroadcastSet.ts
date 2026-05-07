@@ -35,6 +35,11 @@ export const NEWS_BROADCAST_TEMPLATES: SmartTemplate[] = [
         id: 'hook', name: 'Hook', icon: '⚡', desc: 'Headline + Ken Burns BG',
         sampleData: { headline: 'APPLE ĐÃ LÀM GÌ MÀ CẢ THẾ GIỚI SỐC?', subhead: 'Sự thật đằng sau thương vụ tỷ đô' },
         render(c, d, theme) {
+            if (d.bgSrc) {
+                const bgHtml = `<div class="bg-blur" style="position: absolute; inset: 0; background-image: url('${d.bgSrc}'); background-size: cover; background-position: center; filter: blur(35px); opacity: 0.3; transform: scale(1.1); z-index: -2;"></div>
+                   <div class="bg" style="background-image: url('${d.bgSrc}'); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1040px; height: 585px; background-size: cover; background-position: center; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); opacity: 0.9; z-index: -1;"></div>`;
+                c.insertAdjacentHTML('afterbegin', bgHtml);
+            }
             const lt = createLowerThird(c, theme);
             
             const tag = el('div', 'news-breaking-bar', 'BREAKING NEWS');

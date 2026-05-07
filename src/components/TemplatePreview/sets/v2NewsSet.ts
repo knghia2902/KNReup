@@ -33,14 +33,15 @@ export const V2_NEWS_TEMPLATES: SmartTemplate[] = [
             c.style.padding = '0'; // reset default padding
             
             const bgHtml = d.bgSrc 
-                ? `<div class="bg kb-zoom-in" style="background-image: url('${d.bgSrc}'); position: absolute; inset: 0; z-index: 1; background-size: cover; background-position: center;"></div>`
+                ? `<div class="bg-blur" style="position: absolute; inset: 0; background-image: url('${d.bgSrc}'); background-size: cover; background-position: center; filter: blur(35px); opacity: 0.4; transform: scale(1.1); z-index: 0;"></div>
+                   <div class="bg" style="background-image: url('${d.bgSrc}'); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1040px; height: 585px; background-size: cover; background-position: center; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); z-index: 1;"></div>`
                 : `<div class="bg gradient-news-dark" style="position: absolute; inset: 0; z-index: 1;"></div>`;
                 
             c.innerHTML = getShellHtml(d) + `
                 ${bgHtml}
-                <div class="overlay" style="opacity: 0.55; position: absolute; inset: 0; background: #000; z-index: 2;"></div>
+                <div class="overlay" style="opacity: 0.1; position: absolute; inset: 0; background: #000; z-index: 2;"></div>
                 <div class="layout-hook" style="position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 200px 80px 300px; text-align: center;">
-                    <div class="hook-headline shimmer-sweep-target">${d.headline}</div>
+                    <div class="hook-headline">${d.headline}</div>
                     ${d.subhead ? `<div class="hook-subhead">${d.subhead}</div>` : ''}
                 </div>
             `;
@@ -59,7 +60,7 @@ export const V2_NEWS_TEMPLATES: SmartTemplate[] = [
             c.style.padding = '0';
             c.innerHTML = getShellHtml(d) + `
                 <div class="layout-stat-hero" style="position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 120px 80px;">
-                    <div class="stat-value shimmer-sweep-target">${d.value}</div>
+                    <div class="stat-value">${d.value}</div>
                     <div class="stat-label">${d.label}</div>
                     ${d.context ? `<div class="stat-context">${d.context}</div>` : ''}
                 </div>

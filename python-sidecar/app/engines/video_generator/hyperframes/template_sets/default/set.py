@@ -6,7 +6,7 @@ def render_scene_html(scene_id: str, sid: str, data: dict, theme: dict) -> str:
     if sid == "hook":
         bg_html = ""
         if data.get("bgSrc"):
-            bg_html = f'<div class="bg kb-zoom-in" style="position:absolute;inset:0;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;opacity:0.3;z-index:-1;"></div>'
+            bg_html = f'<div class="bg-blur" style="position:absolute;inset:0;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;filter:blur(35px);opacity:0.3;transform:scale(1.1);z-index:-2;"></div>\n            <div class="bg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:1040px;height:585px;background-image:url(\'{data["bgSrc"]}\');background-size:cover;background-position:center;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.4);opacity:0.9;z-index:-1;"></div>'
         html = f'{bg_html}\n        <div id="{scene_id}-h" class="hook-headline" style="color:{t["text"]}">{data["headline"]}</div>'
         if data.get("subhead"):
             html += f'\n        <div id="{scene_id}-s" class="hook-subhead" style="color:{t["accent"]}">{data["subhead"]}</div>'

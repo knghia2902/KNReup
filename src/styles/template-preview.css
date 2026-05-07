@@ -1091,7 +1091,7 @@ html, body {
 }
 
 /* ── BACKGROUND PRIMITIVES ─────────────────────────────────── */
-.bg { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 1; }
+.bg { position: absolute; inset: 0; background-size: contain; background-repeat: no-repeat; background-position: center; z-index: 1; }
 
 /* Ken Burns */
 .bg.kb-zoom-in    { animation: kb-zoom-in    var(--scene-dur) linear forwards; }
@@ -1099,8 +1099,8 @@ html, body {
 .bg.kb-pan-left   { animation: kb-pan-left   var(--scene-dur) linear forwards; }
 .bg.kb-pan-right  { animation: kb-pan-right  var(--scene-dur) linear forwards; }
 
-@keyframes kb-zoom-in   { from { transform: scale(1.0); } to { transform: scale(1.18); } }
-@keyframes kb-zoom-out  { from { transform: scale(1.18); } to { transform: scale(1.0); } }
+@keyframes kb-zoom-in   { from { transform: scale(1.0); } to { transform: scale(1.0); } }
+@keyframes kb-zoom-out  { from { transform: scale(1.0); } to { transform: scale(1.0); } }
 @keyframes kb-pan-left  { from { transform: scale(1.15) translateX(4%); } to { transform: scale(1.15) translateX(-4%); } }
 @keyframes kb-pan-right { from { transform: scale(1.15) translateX(-4%); } to { transform: scale(1.15) translateX(4%); } }
 

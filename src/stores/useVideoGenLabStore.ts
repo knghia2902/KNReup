@@ -42,6 +42,9 @@ export interface VideoGenLabState {
   selectedVoice: string;
   selectedLanguage: string;
 
+  // Available Voices
+  availableVoices: Record<string, {id: string, name: string}[]>;
+
   // Ollama models (auto-detect)
   ollamaModels: OllamaModel[];
   ollamaOnline: boolean;
@@ -82,6 +85,7 @@ export interface VideoGenLabState {
   setSelectedVoice: (voice: string) => void;
   setSelectedLanguage: (lang: string) => void;
   fetchOllamaModels: () => Promise<void>;
+  fetchVoices: () => Promise<void>;
   startPipeline: () => Promise<void>;
   continuePipeline: (modifiedScript?: any) => Promise<void>;
   fetchHistory: () => Promise<void>;
@@ -98,8 +102,10 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
   selectedTemplate: 0,
   selectedTemplateSet: 'default',
   selectedTheme: 'tech-blue',
-  selectedVoice: 'vi-VN-HoaiMyNeural',
+  selectedVoice: 'default_female',
   selectedLanguage: 'Vietnamese',
+
+  availableVoices: {},
 
   ollamaModels: [],
   ollamaOnline: false,
@@ -151,6 +157,18 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
     } catch (e) {
       console.error(e);
       set({ ollamaOnline: false, ollamaModels: [] });
+    }
+  },
+
+  fetchVoices: async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:8008/api/video-gen/lab/voices');
+      const data = await res.json();
+      if (data.voices) {
+        set({ availableVoices: data.voices });
+      }
+    } catch (e) {
+      console.error('Failed to fetch voices:', e);
     }
   },
 

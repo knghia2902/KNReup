@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useVideoGenLabStore } from '../../stores/useVideoGenLabStore';
 import { THEME_PALETTES } from '../TemplatePreview/templateData';
 import { TEMPLATE_SET_LIST, getTemplateSet } from '../TemplatePreview/sets';
@@ -5,6 +6,10 @@ import { LabHistoryList } from './LabHistoryList';
 
 export function LabConfigPanel() {
   const store = useVideoGenLabStore();
+
+  useEffect(() => {
+    store.fetchVoices();
+  }, []);
 
   return (
     <>
@@ -123,13 +128,25 @@ export function LabConfigPanel() {
               onChange={(e) => store.setSelectedVoice(e.target.value)}
               disabled={store.pipelineStatus === 'running'}
             >
-              <optgroup label="Tiếng Việt">
-                <option value="vi-VN-HoaiMyNeural">Hoài My (Nữ)</option>
-                <option value="vi-VN-NamMinhNeural">Nam Minh (Nam)</option>
-              </optgroup>
-              <optgroup label="English">
-                <option value="en-US-JennyMultilingualNeural">Jenny (Female)</option>
-              </optgroup>
+              {Object.keys(store.availableVoices).length === 0 ? (
+                <>
+                  <optgroup label="Tiếng Việt">
+                    <option value="vi-VN-HoaiMyNeural">Hoài My (Nữ)</option>
+                    <option value="vi-VN-NamMinhNeural">Nam Minh (Nam)</option>
+                  </optgroup>
+                  <optgroup label="English">
+                    <option value="en-US-JennyMultilingualNeural">Jenny (Female)</option>
+                  </optgroup>
+                </>
+              ) : (
+                Object.entries(store.availableVoices).map(([group, voices]) => (
+                  <optgroup key={group} label={group}>
+                    {voices.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </optgroup>
+                ))
+              )}
             </select>
           </div>
 

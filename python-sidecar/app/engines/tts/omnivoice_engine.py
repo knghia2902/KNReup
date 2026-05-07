@@ -161,7 +161,10 @@ class OmniVoiceTTSEngine(TTSEngine):
                     )
                 kwargs["voice_clone_prompt"] = self._voice_prompts[ref_audio]
             else:
-                kwargs["instruct"] = "female"
+                if voice and "male" in voice.lower() and "female" not in voice.lower():
+                    kwargs["instruct"] = "male"
+                else:
+                    kwargs["instruct"] = "female"
             
             logger.info(f"Starting OmniVoice generation for text (length {len(text)}): {text[:50]}...")
             
