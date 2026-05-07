@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { PlayCircle } from '@phosphor-icons/react';
 import { useVideoGenLabStore } from '../../stores/useVideoGenLabStore';
 import { THEME_PALETTES } from '../TemplatePreview/templateData';
 import { TEMPLATE_SET_LIST, getTemplateSet } from '../TemplatePreview/sets';
@@ -6,6 +7,35 @@ import { LabHistoryList } from './LabHistoryList';
 
 export function LabConfigPanel() {
   const store = useVideoGenLabStore();
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handlePlayVoice = async () => {
+    if (isPlaying) return;
+    setIsPlaying(true);
+    try {
+      const response = await fetch('http://127.0.0.1:8008/api/video-gen/lab/preview-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voice_id: store.selectedVoice,
+          speed: store.voiceSpeed
+        })
+      });
+      if (!response.ok) throw new Error('Failed to fetch audio');
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => {
+        setIsPlaying(false);
+        URL.revokeObjectURL(url);
+      };
+      audio.play();
+    } catch (e) {
+      console.error(e);
+      setIsPlaying(false);
+    }
+  };
 
   useEffect(() => {
     store.fetchVoices();
@@ -169,7 +199,22 @@ export function LabConfigPanel() {
         <div className="vgl-field" style={{ marginTop: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <label className="vgl-field-label" style={{ marginBottom: 0 }}>Voice Speed</label>
-            <span style={{ fontSize: '12px', color: '#888' }}>{store.voiceSpeed.toFixed(1)}x</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#888' }}>{store.voiceSpeed.toFixed(1)}x</span>
+              <button 
+                onClick={handlePlayVoice}
+                disabled={isPlaying || store.pipelineStatus === 'running'}
+                style={{
+                  background: 'none', border: 'none', cursor: isPlaying ? 'default' : 'pointer',
+                  color: isPlaying ? 'var(--vgl-accent)' : 'var(--vgl-text)',
+                  padding: 0, display: 'flex', alignItems: 'center',
+                  opacity: (isPlaying || store.pipelineStatus === 'running') ? 0.5 : 1
+                }}
+                title="Nghe thử giọng đọc"
+              >
+                <PlayCircle size={20} weight={isPlaying ? "fill" : "regular"} />
+              </button>
+            </div>
           </div>
           <input 
             type="range" 

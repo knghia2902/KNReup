@@ -42,6 +42,12 @@ class LabContinueRequest(BaseModel):
     theme: str = "tech-blue"
     template_set: str = "default"
     voice_id: str = "default_female"
+    voice_speed: float = 1.0
+
+class VoicePreviewRequest(BaseModel):
+    voice_id: str
+    speed: float = 1.0
+    text: str = "Xin chào, đây là giọng đọc thử nghiệm để kiểm tra tốc độ."
 
 def get_history():
     if not os.path.exists(HISTORY_FILE):
@@ -472,3 +478,17 @@ async def list_voices():
                 ]
             }
         }
+
+@router.post("/video-gen/lab/preview-voice")
+async def preview_voice_lab(req: VoicePreviewRequest):
+    import tempfile
+    from fastapi.responses import FileResponse
+    
+    if not OmniVoiceTTSEngine:
+        raise HTTPException(500, "OmniVoice TTS is not available")
+        
+    engine = OmniVoiceTTSEngine()
+    temp_out = tempfile.mktemp(suffix=".wav")
+    await engine.synthesize(text=req.text, voice=req.voice_id, output_path=temp_out, rate=req.speed)
+    
+    return FileResponse(temp_out, media_type="audio/wav")
