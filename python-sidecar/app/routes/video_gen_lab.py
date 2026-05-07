@@ -47,7 +47,7 @@ class LabContinueRequest(BaseModel):
 class VoicePreviewRequest(BaseModel):
     voice_id: str
     speed: float = 1.0
-    text: str = "Xin chào, đây là giọng đọc thử nghiệm để kiểm tra tốc độ."
+    text: str = "Xin chào, đây là giọng đọc thử."
 
 def get_history():
     if not os.path.exists(HISTORY_FILE):
@@ -482,13 +482,20 @@ async def list_voices():
 @router.post("/video-gen/lab/preview-voice")
 async def preview_voice_lab(req: VoicePreviewRequest):
     import tempfile
+    import hashlib
     from fastapi.responses import FileResponse
     
     if not OmniVoiceTTSEngine:
         raise HTTPException(500, "OmniVoice TTS is not available")
         
     engine = OmniVoiceTTSEngine()
-    temp_out = tempfile.mktemp(suffix=".wav")
-    await engine.synthesize(text=req.text, voice=req.voice_id, output_path=temp_out, rate=req.speed)
     
-    return FileResponse(temp_out, media_type="audio/wav")
+    # Simple hash for cache key
+    cache_key = hashlib.md5(f"{req.voice_id}_{req.speed}_{req.text}".encode()).hexdigest()
+    cache_path = os.path.join(tempfile.gettempdir(), f"vgl_preview_{cache_key}.wav")
+    
+    if os.path.exists(cache_path):
+        return FileResponse(cache_path, media_type="audio/wav")
+        
+    await engine.synthesize(text=req.text, voice=req.voice_id, output_path=cache_path, rate=req.speed)
+    return FileResponse(cache_path, media_type="audio/wav")

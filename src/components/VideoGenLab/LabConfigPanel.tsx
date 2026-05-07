@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PlayCircle } from '@phosphor-icons/react';
+import { PlayCircle, Spinner } from '@phosphor-icons/react';
 import { useVideoGenLabStore } from '../../stores/useVideoGenLabStore';
 import { THEME_PALETTES } from '../TemplatePreview/templateData';
 import { TEMPLATE_SET_LIST, getTemplateSet } from '../TemplatePreview/sets';
@@ -212,7 +212,11 @@ export function LabConfigPanel() {
                 }}
                 title="Nghe thử giọng đọc"
               >
-                <PlayCircle size={20} weight={isPlaying ? "fill" : "regular"} />
+                {isPlaying ? (
+                  <Spinner size={20} className="vgl-spin" />
+                ) : (
+                  <PlayCircle size={20} weight="fill" />
+                )}
               </button>
             </div>
           </div>
