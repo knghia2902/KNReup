@@ -34,8 +34,10 @@ class LabGenerateRequest(BaseModel):
     theme: str = "tech-blue"
     template_set: str = "default"
     voice_id: str = "default_female"
+    voice_speed: float = 1.0
     language: str = "Vietnamese"
     mode: str = "auto"
+    subtitles_enabled: bool = True
 
 class LabContinueRequest(BaseModel):
     script: Dict[str, Any]
@@ -43,6 +45,7 @@ class LabContinueRequest(BaseModel):
     template_set: str = "default"
     voice_id: str = "default_female"
     voice_speed: float = 1.0
+    subtitles_enabled: bool = True
 
 class VoicePreviewRequest(BaseModel):
     voice_id: str
@@ -232,6 +235,7 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
         if "templateData" in s:
             t_data = s["templateData"]
             t_id = t_data.get("template", "hook")
+            t_data["voiceText"] = s.get("voiceText", "") # Inject voiceText for subtitles
             comp_scenes.append({"id": t_id, "data": t_data})
         else:
             comp_scenes.append(s)
@@ -243,7 +247,8 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
             template_set=request.get("template_set", "default"),
             scenes=comp_scenes,
             durations=durations,
-            audio_paths=voice_paths
+            audio_paths=voice_paths,
+            subtitles_enabled=request.get("subtitles_enabled", True)
         )
     except Exception as e:
         yield format_sse(4, "render", "error", 0, f"Lỗi build composition: {str(e)}")

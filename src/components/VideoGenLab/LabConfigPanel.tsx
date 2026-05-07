@@ -231,6 +231,43 @@ export function LabConfigPanel() {
             style={{ width: '100%', cursor: 'pointer' }}
           />
         </div>
+
+        {/* Subtitles Toggle */}
+        <div className="vgl-field" style={{ marginTop: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label className="vgl-field-label" style={{ marginBottom: 0 }}>Phụ đề (Subtitles)</label>
+            <button
+              onClick={() => store.setSubtitlesEnabled(!store.subtitlesEnabled)}
+              disabled={store.pipelineStatus === 'running'}
+              style={{
+                position: 'relative',
+                width: '44px',
+                height: '24px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: store.pipelineStatus === 'running' ? 'default' : 'pointer',
+                backgroundColor: store.subtitlesEnabled ? 'var(--vgl-accent)' : 'var(--vgl-border)',
+                transition: 'background-color 0.2s',
+                padding: 0,
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                top: '2px',
+                left: store.subtitlesEnabled ? '22px' : '2px',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                backgroundColor: '#fff',
+                transition: 'left 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              }} />
+            </button>
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--vgl-text-muted)', marginTop: '4px', display: 'block' }}>
+            {store.subtitlesEnabled ? 'Sub sẽ hiển thị trực tiếp trong video' : 'Không có sub, chỉ export SRT'}
+          </span>
+        </div>
       </div>
 
       <div className="vgl-content-card">

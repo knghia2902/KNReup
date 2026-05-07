@@ -112,12 +112,54 @@ export function LabSequencePlayer() {
                         tpl.render(c, scene.templateData, theme);
                         applyLayoutOverrides(c, vp, layout, theme);
 
+                        // Inject Subtitle Overlay for Preview
+                        const voiceText = store.subtitlesEnabled ? scene.voiceText?.trim() : null;
+                        if (voiceText) {
+                            const subOverlay = document.createElement('div');
+                            subOverlay.className = 'subtitle-overlay';
+                            subOverlay.style.position = 'absolute';
+                            subOverlay.style.bottom = '120px';
+                            subOverlay.style.left = '60px';
+                            subOverlay.style.right = '60px';
+                            subOverlay.style.textAlign = 'center';
+                            subOverlay.style.zIndex = '9999';
+                            subOverlay.style.pointerEvents = 'none';
+
+                            const subText = document.createElement('div');
+                            subText.className = 'subtitle-text';
+                            subText.textContent = voiceText;
+                            subText.style.display = 'inline-block';
+                            subText.style.background = 'rgba(0, 0, 0, 0.7)';
+                            subText.style.color = '#ffffff';
+                            subText.style.fontFamily = "'Manrope', sans-serif";
+                            subText.style.fontSize = '55px';
+                            subText.style.fontWeight = '800';
+                            subText.style.padding = '20px 40px';
+                            subText.style.borderRadius = '24px';
+                            subText.style.backdropFilter = 'blur(12px)';
+                            subText.style.setProperty('-webkit-backdrop-filter', 'blur(12px)');
+                            subText.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
+                            subText.style.border = '2px solid rgba(255,255,255,0.15)';
+                            subText.style.textShadow = '0 4px 8px rgba(0,0,0,0.8)';
+                            subText.style.lineHeight = '1.4';
+
+                            subOverlay.appendChild(subText);
+                            c.appendChild(subOverlay);
+                        }
+
                         const sceneTl = gsap.timeline();
                         // Show scene
                         sceneTl.set(c, { autoAlpha: 1 });
                         
                         // Animate scene
                         tpl.animate(c, sceneTl);
+
+                        if (voiceText) {
+                            const subEl = c.querySelector('.subtitle-overlay');
+                            if (subEl) {
+                                sceneTl.from(subEl, { y: 30, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 0.1);
+                            }
+                        }
                         
                         // Add 1.5s hold time after animations finish
                         sceneTl.to({}, { duration: 1.5 });
@@ -155,7 +197,7 @@ export function LabSequencePlayer() {
         } else {
             buildTimeline();
         }
-    }, [store.script, theme, layout]);
+    }, [store.script, store.subtitlesEnabled, theme, layout]);
 
     // Playback loop
     const tickPlayback = useCallback(() => {

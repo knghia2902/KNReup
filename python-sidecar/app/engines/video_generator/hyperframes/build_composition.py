@@ -81,6 +81,7 @@ def build_composition(
     scenes: Optional[List[dict]] = None,
     durations: Optional[List[float]] = None,
     audio_paths: Optional[List[str]] = None,
+    subtitles_enabled: bool = True,
 ) -> str:
     """
     Build a HyperFrames composition HTML file.
@@ -141,6 +142,35 @@ def build_composition(
         from .template_sets.shared.tiktok_card import render_tiktok_card, tiktok_card_css, tiktok_card_animation
         extra_css += "\n" + tiktok_card_css()
 
+    # Subtitle Overlay CSS
+    extra_css += '''
+      .subtitle-overlay {
+        position: absolute;
+        bottom: 120px;
+        left: 60px;
+        right: 60px;
+        text-align: center;
+        z-index: 9999;
+        pointer-events: none;
+      }
+      .subtitle-text {
+        display: inline-block;
+        background: rgba(0, 0, 0, 0.7);
+        color: #ffffff;
+        font-family: 'Manrope', sans-serif;
+        font-size: 55px;
+        font-weight: 800;
+        padding: 20px 40px;
+        border-radius: 24px;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border: 2px solid rgba(255,255,255,0.15);
+        text-shadow: 0 4px 8px rgba(0,0,0,0.8);
+        line-height: 1.4;
+      }
+    '''
+
     # Read shell HTML from set_module if available
     shell_html = ""
     if meta.get("shell_html") and hasattr(set_module, 'get_shell_html'):
@@ -165,6 +195,18 @@ def build_composition(
 
         inner_html = set_module.render_scene_html(scene_id, sid, data, theme)
 
+        # Inject voiceText as subtitle if present and subtitles are enabled
+        voice_text = data.get("voiceText", "").strip()
+        if voice_text and subtitles_enabled:
+            import html
+            safe_text = html.escape(voice_text)
+            subtitle_html = f'''
+            <div class="subtitle-overlay">
+                <div class="subtitle-text">{safe_text}</div>
+            </div>
+            '''
+            inner_html += "\n" + subtitle_html
+
         # Inject TikTok card into outro scene if feature is enabled and set doesn't handle it
         if inject_tiktok_card and sid == "outro" and not set_handles_tiktok:
             channel = data.get("channelName", "KNReup News")
@@ -179,6 +221,10 @@ def build_composition(
         # Make scene visible during its active duration
         anims_js.append(f'      tl.set("#{scene_id}", {{opacity: 1}}, {current_time});')
         anims_js.append(f'      {set_module.render_scene_animation(scene_id, sid, data, current_time)}')
+
+        # Animate subtitle overlay if present
+        if voice_text and subtitles_enabled:
+            anims_js.append(f'      tl.from("#{scene_id} .subtitle-overlay", {{y: 30, opacity: 0, duration: 0.5, ease: "back.out(1.5)"}}, {current_time + 0.1});')
 
         # Inject TikTok card animation for outro scenes
         if inject_tiktok_card and sid == "outro" and not set_handles_tiktok:

@@ -42,6 +42,7 @@ export interface VideoGenLabState {
   selectedVoice: string;
   selectedLanguage: string;
   voiceSpeed: number;
+  subtitlesEnabled: boolean;
 
   // Available Voices
   availableVoices: Record<string, {id: string, name: string}[]>;
@@ -86,6 +87,7 @@ export interface VideoGenLabState {
   setSelectedVoice: (voice: string) => void;
   setSelectedLanguage: (lang: string) => void;
   setVoiceSpeed: (speed: number) => void;
+  setSubtitlesEnabled: (enabled: boolean) => void;
   fetchOllamaModels: () => Promise<void>;
   fetchVoices: () => Promise<void>;
   startPipeline: () => Promise<void>;
@@ -107,6 +109,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
   selectedVoice: 'default_female',
   selectedLanguage: 'Vietnamese',
   voiceSpeed: 1.0,
+  subtitlesEnabled: true,
 
   availableVoices: {},
 
@@ -141,6 +144,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
   setSelectedVoice: (voice) => set({ selectedVoice: voice }),
   setSelectedLanguage: (lang) => set({ selectedLanguage: lang }),
   setVoiceSpeed: (speed) => set({ voiceSpeed: speed }),
+  setSubtitlesEnabled: (enabled) => set({ subtitlesEnabled: enabled }),
 
   addLog: (entry) => set((state) => ({ logs: [...state.logs, entry] })),
 
@@ -207,7 +211,8 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
           voice_id: selectedVoice,
           voice_speed: voiceSpeed,
           language: selectedLanguage,
-          mode
+          mode,
+          subtitles_enabled: get().subtitlesEnabled
         })
       });
 
@@ -334,6 +339,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
           template_set: selectedTemplateSet,
           voice_id: selectedVoice,
           voice_speed: voiceSpeed,
+          subtitles_enabled: get().subtitlesEnabled,
         })
       });
 
