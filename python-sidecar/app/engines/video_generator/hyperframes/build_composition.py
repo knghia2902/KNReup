@@ -142,32 +142,41 @@ def build_composition(
         from .template_sets.shared.tiktok_card import render_tiktok_card, tiktok_card_css, tiktok_card_animation
         extra_css += "\n" + tiktok_card_css()
 
-    # Subtitle Overlay CSS
+    # Subtitle Overlay CSS — single-line sequential display
     extra_css += '''
       .subtitle-overlay {
         position: absolute;
         bottom: 120px;
-        left: 60px;
-        right: 60px;
+        left: 40px;
+        right: 40px;
         text-align: center;
         z-index: 9999;
         pointer-events: none;
       }
-      .subtitle-text {
+      .subtitle-chunk {
+        position: absolute;
+        left: 0; right: 0;
+        text-align: center;
+        opacity: 0;
+      }
+      .subtitle-chunk-inner {
         display: inline-block;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.75);
         color: #ffffff;
         font-family: 'Manrope', sans-serif;
-        font-size: 55px;
-        font-weight: 800;
-        padding: 20px 40px;
-        border-radius: 24px;
+        font-size: 48px;
+        font-weight: 700;
+        padding: 16px 36px;
+        border-radius: 20px;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        border: 2px solid rgba(255,255,255,0.15);
-        text-shadow: 0 4px 8px rgba(0,0,0,0.8);
-        line-height: 1.4;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        border: 1.5px solid rgba(255,255,255,0.12);
+        text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     '''
 
@@ -195,17 +204,22 @@ def build_composition(
 
         inner_html = set_module.render_scene_html(scene_id, sid, data, theme)
 
-        # Inject voiceText as subtitle if present and subtitles are enabled
+        # Inject voiceText as sequential subtitle chunks if present and subtitles are enabled
         voice_text = data.get("voiceText", "").strip()
+        sub_chunks = []
         if voice_text and subtitles_enabled:
-            import html
-            safe_text = html.escape(voice_text)
-            subtitle_html = f'''
-            <div class="subtitle-overlay">
-                <div class="subtitle-text">{safe_text}</div>
-            </div>
-            '''
-            inner_html += "\n" + subtitle_html
+            import html as html_mod
+            # Split into ~5-word chunks for single-line display
+            words = voice_text.split()
+            chunk_size = 5
+            sub_chunks = [" ".join(words[j:j+chunk_size]) for j in range(0, len(words), chunk_size)]
+            
+            chunks_html = '<div class="subtitle-overlay">\n'
+            for ci, chunk in enumerate(sub_chunks):
+                safe_chunk = html_mod.escape(chunk)
+                chunks_html += f'                <div class="subtitle-chunk" id="{scene_id}-sub-{ci}"><span class="subtitle-chunk-inner">{safe_chunk}</span></div>\n'
+            chunks_html += '            </div>'
+            inner_html += "\n" + chunks_html
 
         # Inject TikTok card into outro scene if feature is enabled and set doesn't handle it
         if inject_tiktok_card and sid == "outro" and not set_handles_tiktok:
@@ -222,9 +236,24 @@ def build_composition(
         anims_js.append(f'      tl.set("#{scene_id}", {{opacity: 1}}, {current_time});')
         anims_js.append(f'      {set_module.render_scene_animation(scene_id, sid, data, current_time)}')
 
-        # Animate subtitle overlay if present
-        if voice_text and subtitles_enabled:
-            anims_js.append(f'      tl.from("#{scene_id} .subtitle-overlay", {{y: 30, opacity: 0, duration: 0.5, ease: "back.out(1.5)"}}, {current_time + 0.1});')
+        # Animate subtitle chunks sequentially
+        if sub_chunks and subtitles_enabled:
+            num_chunks = len(sub_chunks)
+            # Reserve 0.3s buffer at start and end of scene
+            sub_start = current_time + 0.3
+            usable_dur = max(dur - 0.6, 1.0)
+            chunk_dur = usable_dur / num_chunks
+            fade_in = 0.3
+            fade_out = 0.25
+            
+            for ci in range(num_chunks):
+                chunk_sel = f'"#{scene_id}-sub-{ci}"'
+                t_in = sub_start + ci * chunk_dur
+                t_out = t_in + chunk_dur - fade_out
+                # Fade in from below
+                anims_js.append(f'      tl.fromTo({chunk_sel}, {{opacity: 0, y: 20}}, {{opacity: 1, y: 0, duration: {fade_in}, ease: "power2.out"}}, {t_in});')
+                # Fade out
+                anims_js.append(f'      tl.to({chunk_sel}, {{opacity: 0, duration: {fade_out}, ease: "power2.in"}}, {t_out});')
 
         # Inject TikTok card animation for outro scenes
         if inject_tiktok_card and sid == "outro" and not set_handles_tiktok:

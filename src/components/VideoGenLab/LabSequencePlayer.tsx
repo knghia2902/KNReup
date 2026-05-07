@@ -112,38 +112,57 @@ export function LabSequencePlayer() {
                         tpl.render(c, scene.templateData, theme);
                         applyLayoutOverrides(c, vp, layout, theme);
 
-                        // Inject Subtitle Overlay for Preview
+                        // Inject Sequential Subtitle Chunks for Preview
                         const voiceText = store.subtitlesEnabled ? scene.voiceText?.trim() : null;
+                        const subChunks: string[] = [];
                         if (voiceText) {
+                            const words = voiceText.split(/\s+/);
+                            const chunkSize = 5;
+                            for (let j = 0; j < words.length; j += chunkSize) {
+                                subChunks.push(words.slice(j, j + chunkSize).join(' '));
+                            }
+
                             const subOverlay = document.createElement('div');
                             subOverlay.className = 'subtitle-overlay';
                             subOverlay.style.position = 'absolute';
                             subOverlay.style.bottom = '120px';
-                            subOverlay.style.left = '60px';
-                            subOverlay.style.right = '60px';
+                            subOverlay.style.left = '40px';
+                            subOverlay.style.right = '40px';
                             subOverlay.style.textAlign = 'center';
                             subOverlay.style.zIndex = '9999';
                             subOverlay.style.pointerEvents = 'none';
 
-                            const subText = document.createElement('div');
-                            subText.className = 'subtitle-text';
-                            subText.textContent = voiceText;
-                            subText.style.display = 'inline-block';
-                            subText.style.background = 'rgba(0, 0, 0, 0.7)';
-                            subText.style.color = '#ffffff';
-                            subText.style.fontFamily = "'Manrope', sans-serif";
-                            subText.style.fontSize = '55px';
-                            subText.style.fontWeight = '800';
-                            subText.style.padding = '20px 40px';
-                            subText.style.borderRadius = '24px';
-                            subText.style.backdropFilter = 'blur(12px)';
-                            subText.style.setProperty('-webkit-backdrop-filter', 'blur(12px)');
-                            subText.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
-                            subText.style.border = '2px solid rgba(255,255,255,0.15)';
-                            subText.style.textShadow = '0 4px 8px rgba(0,0,0,0.8)';
-                            subText.style.lineHeight = '1.4';
+                            subChunks.forEach((chunk, ci) => {
+                                const chunkDiv = document.createElement('div');
+                                chunkDiv.className = 'subtitle-chunk';
+                                chunkDiv.id = `sub-${i}-${ci}`;
+                                chunkDiv.style.position = 'absolute';
+                                chunkDiv.style.left = '0';
+                                chunkDiv.style.right = '0';
+                                chunkDiv.style.textAlign = 'center';
+                                chunkDiv.style.opacity = '0';
 
-                            subOverlay.appendChild(subText);
+                                const inner = document.createElement('span');
+                                inner.className = 'subtitle-chunk-inner';
+                                inner.textContent = chunk;
+                                inner.style.display = 'inline-block';
+                                inner.style.background = 'rgba(0, 0, 0, 0.75)';
+                                inner.style.color = '#ffffff';
+                                inner.style.fontFamily = "'Manrope', sans-serif";
+                                inner.style.fontSize = '48px';
+                                inner.style.fontWeight = '700';
+                                inner.style.padding = '16px 36px';
+                                inner.style.borderRadius = '20px';
+                                inner.style.backdropFilter = 'blur(12px)';
+                                inner.style.setProperty('-webkit-backdrop-filter', 'blur(12px)');
+                                inner.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)';
+                                inner.style.border = '1.5px solid rgba(255,255,255,0.12)';
+                                inner.style.textShadow = '0 2px 6px rgba(0,0,0,0.9)';
+                                inner.style.whiteSpace = 'nowrap';
+
+                                chunkDiv.appendChild(inner);
+                                subOverlay.appendChild(chunkDiv);
+                            });
                             c.appendChild(subOverlay);
                         }
 
@@ -154,11 +173,24 @@ export function LabSequencePlayer() {
                         // Animate scene
                         tpl.animate(c, sceneTl);
 
-                        if (voiceText) {
-                            const subEl = c.querySelector('.subtitle-overlay');
-                            if (subEl) {
-                                sceneTl.from(subEl, { y: 30, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 0.1);
-                            }
+                        // Animate subtitle chunks sequentially
+                        if (subChunks.length > 0) {
+                            const sceneDur = sceneTl.duration() + 1.5; // include hold time
+                            const subStart = 0.3;
+                            const usableDur = Math.max(sceneDur - 0.6, 1.0);
+                            const chunkDur = usableDur / subChunks.length;
+                            const fadeIn = 0.3;
+                            const fadeOut = 0.25;
+
+                            subChunks.forEach((_, ci) => {
+                                const el = c.querySelector(`#sub-${i}-${ci}`);
+                                if (el) {
+                                    const tIn = subStart + ci * chunkDur;
+                                    const tOut = tIn + chunkDur - fadeOut;
+                                    sceneTl.fromTo(el, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: fadeIn, ease: "power2.out" }, tIn);
+                                    sceneTl.to(el, { opacity: 0, duration: fadeOut, ease: "power2.in" }, tOut);
+                                }
+                            });
                         }
                         
                         // Add 1.5s hold time after animations finish
