@@ -94,7 +94,8 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
             duration = await audio_mixer.generate_scene_audio(
                 text=scene_content,
                 voice_id=request.get("voice_id", "default_female"),
-                output_path=audio_path
+                output_path=audio_path,
+                rate=request.get("voice_speed", 1.0)
             )
             scene["duration"] = duration
             voice_paths.append(audio_path)
@@ -104,6 +105,31 @@ async def _run_pipeline_from_tts(session_id: str, session_dir: str, script_data:
             scene["duration"] = 2.0
             voice_paths.append(None)
     yield format_sse(3, "tts", "complete", 100, "Hoàn tất tạo giọng đọc")
+
+    # Generate SRT File
+    def format_srt_time(seconds: float) -> str:
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = int(seconds % 60)
+        ms = int((seconds % 1) * 1000)
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+    srt_path = os.path.join(session_dir, f"subtitles_{session_id}.srt")
+    try:
+        with open(srt_path, "w", encoding="utf-8") as f:
+            current_time = 0.0
+            srt_idx = 1
+            for scene in scenes:
+                dur = scene.get("duration", 2.0)
+                text = scene.get("voiceText", "").strip()
+                if text:
+                    f.write(f"{srt_idx}\n")
+                    f.write(f"{format_srt_time(current_time)} --> {format_srt_time(current_time + dur)}\n")
+                    f.write(f"{text}\n\n")
+                    srt_idx += 1
+                current_time += dur
+    except Exception as e:
+        logger.error(f"Failed to generate SRT: {e}")
 
     # Step 4: Render
     yield format_sse(4, "render", "running", 0, "Đang khởi tạo HyperFrames...")
@@ -404,6 +430,17 @@ async def download_lab_video(session_id: str):
         video_path,
         media_type="video/mp4",
         filename=f"knreup_lab_{session_id}.mp4"
+    )
+
+@router.get("/video-gen/lab/download_srt/{session_id}")
+async def download_lab_srt(session_id: str):
+    srt_path = os.path.join(WORKSPACE_DIR, session_id, f"subtitles_{session_id}.srt")
+    if not os.path.exists(srt_path):
+        raise HTTPException(404, f"SRT not found for session {session_id}")
+    return FileResponse(
+        srt_path,
+        media_type="text/plain",
+        filename=f"knreup_lab_{session_id}.srt"
     )
 
 @router.get("/video-gen/lab/voices")

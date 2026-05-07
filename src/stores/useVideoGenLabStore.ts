@@ -41,6 +41,7 @@ export interface VideoGenLabState {
   selectedTheme: string;
   selectedVoice: string;
   selectedLanguage: string;
+  voiceSpeed: number;
 
   // Available Voices
   availableVoices: Record<string, {id: string, name: string}[]>;
@@ -84,6 +85,7 @@ export interface VideoGenLabState {
   setSelectedTheme: (theme: string) => void;
   setSelectedVoice: (voice: string) => void;
   setSelectedLanguage: (lang: string) => void;
+  setVoiceSpeed: (speed: number) => void;
   fetchOllamaModels: () => Promise<void>;
   fetchVoices: () => Promise<void>;
   startPipeline: () => Promise<void>;
@@ -104,6 +106,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
   selectedTheme: 'tech-blue',
   selectedVoice: 'default_female',
   selectedLanguage: 'Vietnamese',
+  voiceSpeed: 1.0,
 
   availableVoices: {},
 
@@ -137,6 +140,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
   setSelectedTheme: (theme) => set({ selectedTheme: theme }),
   setSelectedVoice: (voice) => set({ selectedVoice: voice }),
   setSelectedLanguage: (lang) => set({ selectedLanguage: lang }),
+  setVoiceSpeed: (speed) => set({ voiceSpeed: speed }),
 
   addLog: (entry) => set((state) => ({ logs: [...state.logs, entry] })),
 
@@ -173,7 +177,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
   },
 
   startPipeline: async () => {
-    const { url, mode, selectedModel, selectedTheme, selectedTemplateSet, selectedVoice, selectedLanguage } = get();
+    const { url, mode, selectedModel, selectedTheme, selectedTemplateSet, selectedVoice, selectedLanguage, voiceSpeed } = get();
     if (!url) return;
 
     set({ 
@@ -201,6 +205,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
           theme: selectedTheme,
           template_set: selectedTemplateSet,
           voice_id: selectedVoice,
+          voice_speed: voiceSpeed,
           language: selectedLanguage,
           mode
         })
@@ -310,7 +315,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
   },
 
   continuePipeline: async (modifiedScript?: any) => {
-    const { sessionId, selectedTheme, selectedTemplateSet, selectedVoice } = get();
+    const { sessionId, selectedTheme, selectedTemplateSet, selectedVoice, voiceSpeed } = get();
     if (!sessionId) return;
     
     const scriptToUse = modifiedScript || get().script;
@@ -328,6 +333,7 @@ export const useVideoGenLabStore = create<VideoGenLabState>((set, get) => ({
           theme: selectedTheme,
           template_set: selectedTemplateSet,
           voice_id: selectedVoice,
+          voice_speed: voiceSpeed,
         })
       });
 

@@ -164,6 +164,24 @@ export function LabConfigPanel() {
             </select>
           </div>
         </div>
+
+        {/* Voice Speed */}
+        <div className="vgl-field" style={{ marginTop: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <label className="vgl-field-label" style={{ marginBottom: 0 }}>Voice Speed</label>
+            <span style={{ fontSize: '12px', color: '#888' }}>{store.voiceSpeed.toFixed(1)}x</span>
+          </div>
+          <input 
+            type="range" 
+            min="0.5" 
+            max="2.0" 
+            step="0.1" 
+            value={store.voiceSpeed}
+            onChange={(e) => store.setVoiceSpeed(parseFloat(e.target.value))}
+            disabled={store.pipelineStatus === 'running'}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
+        </div>
       </div>
 
       <div className="vgl-content-card">

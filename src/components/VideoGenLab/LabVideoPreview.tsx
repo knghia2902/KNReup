@@ -113,7 +113,28 @@ export function LabVideoActions() {
           onMouseOut={(e) => e.currentTarget.style.filter = 'none'}
         >
           <DownloadSimple size={18} weight="bold" />
-          Lưu
+          MP4
+        </button>
+        <button
+          onClick={() => window.open(`http://127.0.0.1:8008/api/video-gen/lab/download_srt/${store.sessionId}`, '_blank')}
+          style={{
+            flex: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            padding: '10px',
+            backgroundColor: 'var(--vgl-accent-dim)',
+            color: 'var(--vgl-accent)',
+            border: '1px solid var(--vgl-accent)',
+            borderRadius: '8px',
+            fontWeight: 600,
+            fontSize: '13px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.2)'}
+          onMouseOut={(e) => e.currentTarget.style.filter = 'none'}
+        >
+          <DownloadSimple size={18} weight="bold" />
+          SRT
         </button>
         <button
           onClick={handleOpenFolder}

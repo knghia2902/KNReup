@@ -16,7 +16,7 @@ class AudioMixer:
     def __init__(self, tts_engine=None):
         self.tts = tts_engine
 
-    async def generate_scene_audio(self, text: str, voice_id: str, output_path: str) -> float:
+    async def generate_scene_audio(self, text: str, voice_id: str, output_path: str, rate: float = 1.0) -> float:
         """
         Generates TTS audio and returns its duration in seconds using ffprobe.
         """
@@ -24,7 +24,7 @@ class AudioMixer:
             raise AudioMixerError("TTS engine is not initialized")
             
         try:
-            await self.tts.synthesize(text=text, voice=voice_id, output_path=output_path)
+            await self.tts.synthesize(text=text, voice=voice_id, output_path=output_path, rate=rate)
             
             # Use ffprobe to get exact duration
             cmd = [
